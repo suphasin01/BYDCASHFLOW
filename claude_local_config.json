@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "local-api": {
+      "command": "node",
+      "args": ["/Users/beyonddev/Documents/Claude/Projects/Fruit Project/local-api/dist/mcp.js"],
+      "env": {}
+    }
+  }
+}

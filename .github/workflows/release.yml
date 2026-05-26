@@ -1,0 +1,52 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'          # trigger เมื่อ push tag เช่น v1.0.0, v1.1.0
+
+jobs:
+  # ── Windows: build NSIS installer (.exe) ──────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: npm run release:win
+
+  # ── macOS: build DMG ───────────────────────────────────────────────────────
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies (skip native compile)
+        run: npm install --ignore-scripts
+
+      - name: Download Electron binary
+        run: node ./node_modules/electron/install.js
+
+      - name: Rebuild better-sqlite3 for Electron
+        run: CXXFLAGS="-std=c++20" npx @electron/rebuild -f -w better-sqlite3
+
+      - name: Create app icons
+        run: bash create-icon.sh
+
+      - name: Build macOS DMG
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: npm run release:mac
