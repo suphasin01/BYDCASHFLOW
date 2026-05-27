@@ -9,8 +9,24 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # ── Create GitHub Release with correct name ───────────────────────────────
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --repo ${{ github.repository }} \
+            --title "chore: release ${{ github.ref_name }}" \
+            --notes "" \
+            --draft=false \
+            || true
+
   # ── Windows: build NSIS installer (.exe) ──────────────────────────────────
   build-windows:
+    needs: create-release
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +51,7 @@ jobs:
 
   # ── macOS: build DMG ───────────────────────────────────────────────────────
   build-mac:
+    needs: create-release
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
