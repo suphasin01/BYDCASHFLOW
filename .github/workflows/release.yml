@@ -12,10 +12,12 @@ jobs:
   # ── Create GitHub Release with correct name ───────────────────────────────
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Create Release
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ github.ref_name }} \
             --repo ${{ github.repository }} \
@@ -28,6 +30,8 @@ jobs:
   build-windows:
     needs: create-release
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -35,7 +39,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install dependencies (skip native compile)
+      - name: Install root dependencies
         run: npm install --ignore-scripts
 
       - name: Download Electron binary
@@ -44,15 +48,23 @@ jobs:
       - name: Rebuild better-sqlite3 for Electron
         run: npx @electron/rebuild -f -w better-sqlite3
 
+      - name: Build UI
+        run: cd src-ui && npm install && npm run build
+
+      - name: Build TypeScript
+        run: npm run build
+
       - name: Build Windows installer
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: npm run release:win
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
 
   # ── macOS: build DMG ───────────────────────────────────────────────────────
   build-mac:
     needs: create-release
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +72,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install dependencies (skip native compile)
+      - name: Install root dependencies
         run: npm install --ignore-scripts
 
       - name: Download Electron binary
@@ -72,7 +84,13 @@ jobs:
       - name: Create app icons
         run: bash create-icon.sh
 
+      - name: Build UI
+        run: cd src-ui && npm install && npm run build
+
+      - name: Build TypeScript
+        run: npm run build
+
       - name: Build macOS DMG
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: npm run release:mac
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --publish always
