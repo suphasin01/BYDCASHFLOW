@@ -22,3 +22,5 @@ npm-debug.log*
 .idea/
 src-ui/node_modules/
 src-ui/dist/
+src-ui/node_modules/
+src-ui/dist/
