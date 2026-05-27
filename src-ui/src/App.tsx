@@ -58,6 +58,11 @@ export default function App() {
     api?.onUpdateStatus(data => setUpdateBanner(data))
   }, [])
 
+  const installUpdate = () => {
+    const api = (window as unknown as { electronAPI?: { installUpdate: () => void } }).electronAPI
+    api?.installUpdate()
+  }
+
   const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, msg, type }])
@@ -288,9 +293,15 @@ export default function App() {
                     {updateBanner.type === 'ready' ? `v${updateBanner.version} พร้อมแล้ว` : `กำลังดาวน์โหลด v${updateBanner.version}...`}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                    {updateBanner.type === 'ready' ? 'จะติดตั้งอัตโนมัติเมื่อปิดโปรแกรม' : 'ดาวน์โหลดอัพเดทในพื้นหลัง'}
+                    {updateBanner.type === 'ready' ? 'ดาวน์โหลดเสร็จแล้ว พร้อมติดตั้ง' : 'ดาวน์โหลดอัพเดทในพื้นหลัง'}
                   </div>
                 </div>
+                {updateBanner.type === 'ready' && (
+                  <button onClick={installUpdate}
+                    style={{ background: 'rgba(34,211,160,0.2)', border: '1px solid rgba(34,211,160,0.5)', borderRadius: 7, cursor: 'pointer', padding: '5px 12px', color: '#22d3a0', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                    ติดตั้งเดี๋ยวนี้
+                  </button>
+                )}
                 <button onClick={() => setUpdateBanner(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 14, padding: '0 4px', fontFamily: 'inherit', marginLeft: 4 }}>✕</button>
               </div>
             )}

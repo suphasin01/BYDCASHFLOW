@@ -93,6 +93,11 @@ function setupAutoUpdater() {
   }, 4 * 60 * 60 * 1000);
 }
 
+// ── Install Update IPC ────────────────────────────────────────────────
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall();
+});
+
 // ── PDF Export IPC ────────────────────────────────────────────────────
 ipcMain.handle('export-pdf', async (_event, html, filename) => {
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
@@ -123,7 +128,7 @@ function createWindow() {
     height: 840,
     minWidth: 960,
     minHeight: 640,
-    title: 'LocalBiz',
+    title: 'FruitBiz',
     backgroundColor: '#0a0f1e',
     webPreferences: {
       nodeIntegration: false,
