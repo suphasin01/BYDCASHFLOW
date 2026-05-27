@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'          # trigger เมื่อ push tag เช่น v1.0.0, v1.1.0
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ── Windows: build NSIS installer (.exe) ──────────────────────────────────
   build-windows:
