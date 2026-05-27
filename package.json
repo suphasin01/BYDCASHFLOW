@@ -1,5 +1,5 @@
 {
-  "name": "localbiz",
+  "name": "fruitbiz",
   "version": "1.0.6",
   "description": "Local offline business document system",
   "author": {
@@ -46,8 +46,8 @@
   },
   "build": {
     "appId": "com.localbiz.app",
-    "productName": "LocalBiz",
-    "copyright": "Copyright © 2026 LocalBiz",
+    "productName": "FruitBiz",
+    "copyright": "Copyright © 2026 FruitBiz",
     "asar": true,
     "directories": {
       "output": "release",
@@ -115,7 +115,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "LocalBiz",
+      "shortcutName": "FruitBiz",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
       "menuCategory": false,
@@ -123,7 +123,7 @@
       "uninstallerIcon": "assets/icon.ico"
     },
     "dmg": {
-      "title": "LocalBiz",
+      "title": "FruitBiz",
       "contents": [
         {
           "x": 130,

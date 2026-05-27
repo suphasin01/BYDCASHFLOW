@@ -152,7 +152,7 @@ export default function App() {
               <div style={{ padding: '20px 20px 18px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)' }}>
                 <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg,#7c6df3,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>💼</div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px' }}>LocalBiz</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px' }}>FruitBiz</div>
                   <div style={{ fontSize: 10, color: '#8892a4', marginTop: 1 }}>{t('app_subtitle')}</div>
                 </div>
               </div>

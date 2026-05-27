@@ -481,7 +481,7 @@ function buildPDFHtml(doc: Document, company: Company | null, t: (k: string) => 
 <div class="page">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #6366f1">
     <div style="display:flex;align-items:center;gap:16px">${logoHtml}<div>
-      <div style="font-size:18px;font-weight:700;color:#111827">${company?.name || 'LocalBiz'}</div>
+      <div style="font-size:18px;font-weight:700;color:#111827">${company?.name || 'FruitBiz'}</div>
       ${company?.branch ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${company.branch}</div>` : ''}
       ${company?.tax_id ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${t('pdf_tax_prefix')}${company.tax_id}</div>` : ''}
       ${company?.address ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;max-width:240px">${company.address}</div>` : ''}
@@ -537,9 +537,7 @@ function buildPDFHtml(doc: Document, company: Company | null, t: (k: string) => 
     <div style="text-align:center"><div style="border-top:1px solid #d1d5db;padding-top:8px;margin-top:48px"><div style="font-size:12px;color:#6b7280">${t('pdf_auth_sig')}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${company?.name || ''}</div></div></div>
     <div style="text-align:center"><div style="border-top:1px solid #d1d5db;padding-top:8px;margin-top:48px"><div style="font-size:12px;color:#6b7280">${t('pdf_recv_sig')}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${doc.contact_name || ''}</div></div></div>
   </div>
-  <div style="text-align:center;margin-top:32px;padding-top:16px;border-top:1px solid #f1f5f9;font-size:11px;color:#9ca3af">
-    ${t('pdf_footer_by')} ${company?.name || 'LocalBiz'} ${t('pdf_footer_app')}
-  </div>
+
 </div></body></html>`
 
   return html

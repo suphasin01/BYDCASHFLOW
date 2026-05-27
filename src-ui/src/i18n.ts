@@ -82,7 +82,7 @@ const I18N: Record<Lang, Record<string, string | string[]>> = {
     pdf_item_no: '#', pdf_item_desc: 'รายการ', pdf_qty: 'จำนวน', pdf_unit: 'หน่วย', pdf_unit_price: 'ราคา/หน่วย', pdf_amount: 'จำนวนเงิน',
     pdf_subtotal: 'ราคารวมก่อนภาษี', pdf_discount: 'ส่วนลด', pdf_vat: 'ภาษีมูลค่าเพิ่ม (VAT)', pdf_grand_total: 'ยอดรวมทั้งสิ้น',
     pdf_notes_label: 'หมายเหตุ', pdf_auth_sig: 'ลายมือชื่อผู้มีอำนาจ', pdf_recv_sig: 'ลายมือชื่อผู้รับ',
-    pdf_footer_by: 'เอกสารนี้ออกโดย', pdf_footer_app: '· สร้างด้วย LocalBiz', pdf_no_items: 'ไม่มีรายการ',
+    pdf_no_items: 'ไม่มีรายการ',
     pdf_tax_prefix: 'เลขภาษี: ', pdf_tel_prefix: 'โทร: ',
   },
   en: {
@@ -164,7 +164,7 @@ const I18N: Record<Lang, Record<string, string | string[]>> = {
     pdf_item_no: '#', pdf_item_desc: 'Description', pdf_qty: 'Qty', pdf_unit: 'Unit', pdf_unit_price: 'Unit Price', pdf_amount: 'Amount',
     pdf_subtotal: 'Subtotal (before tax)', pdf_discount: 'Discount', pdf_vat: 'Value Added Tax (VAT)', pdf_grand_total: 'Grand Total',
     pdf_notes_label: 'Notes', pdf_auth_sig: 'Authorized Signature', pdf_recv_sig: 'Recipient Signature',
-    pdf_footer_by: 'This document is issued by', pdf_footer_app: '· Created with LocalBiz', pdf_no_items: 'No items',
+    pdf_no_items: 'No items',
     pdf_tax_prefix: 'Tax ID: ', pdf_tel_prefix: 'Tel: ',
   },
   zh: {
@@ -246,7 +246,7 @@ const I18N: Record<Lang, Record<string, string | string[]>> = {
     pdf_item_no: '#', pdf_item_desc: '描述', pdf_qty: '数量', pdf_unit: '单位', pdf_unit_price: '单价', pdf_amount: '金额',
     pdf_subtotal: '税前合计', pdf_discount: '折扣', pdf_vat: '增值税 (VAT)', pdf_grand_total: '总计',
     pdf_notes_label: '备注', pdf_auth_sig: '授权签名', pdf_recv_sig: '收件人签名',
-    pdf_footer_by: '本文件由', pdf_footer_app: '签发 · 由 LocalBiz 创建', pdf_no_items: '无项目',
+    pdf_no_items: '无项目',
     pdf_tax_prefix: '税号: ', pdf_tel_prefix: '电话: ',
   },
 }
