@@ -63,6 +63,11 @@ export default function App() {
     api?.installUpdate()
   }
 
+  const quitApp = () => {
+    const api = (window as unknown as { electronAPI?: { quitApp: () => void } }).electronAPI
+    api?.quitApp()
+  }
+
   const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
     const id = Date.now()
     setToasts(prev => [...prev, { id, msg, type }])
@@ -200,6 +205,17 @@ export default function App() {
                   </div>
                   <div style={{ fontSize: 10, color: '#6b7685' }}>▼</div>
                 </div>
+              </div>
+
+              {/* Exit Button */}
+              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
+                <button onClick={quitApp}
+                  style={{ width: '100%', background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 8, cursor: 'pointer', padding: '8px 12px', color: '#f87171', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, transition: 'background .15s' }}
+                  onMouseOver={e => (e.currentTarget.style.background = 'rgba(248,113,113,0.15)')}
+                  onMouseOut={e => (e.currentTarget.style.background = 'rgba(248,113,113,0.07)')}>
+                  <span style={{ fontSize: 14 }}>🚪</span>
+                  <span>{t('btn_exit_app')}</span>
+                </button>
               </div>
 
               {/* Status */}

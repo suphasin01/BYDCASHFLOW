@@ -98,6 +98,11 @@ ipcMain.handle('install-update', () => {
   autoUpdater.quitAndInstall();
 });
 
+// ── Quit App IPC ──────────────────────────────────────────────────────
+ipcMain.handle('quit-app', () => {
+  app.quit();
+});
+
 // ── PDF Export IPC ────────────────────────────────────────────────────
 ipcMain.handle('export-pdf', async (_event, html, filename) => {
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
@@ -215,10 +220,8 @@ app.whenReady().then(async () => {
   buildMenu();
 
   // Start server (or attach to existing one in dev)
-  let alreadyRunning = false;
   try {
     await waitForPort(PORT, 500);
-    alreadyRunning = true;
     log.info('Attaching to existing server on :' + PORT);
   } catch {
     log.info('Starting embedded API server...');

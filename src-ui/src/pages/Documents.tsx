@@ -113,6 +113,11 @@ export default function Documents() {
   }
 
   const save = async () => {
+    const validItems = items.filter(i => i.description.trim())
+    if (validItems.length === 0) {
+      toast(t('no_items'), 'err')
+      return
+    }
     try {
       const payload = {
         type: fType as Document['type'], number: fNumber || undefined,
@@ -120,7 +125,7 @@ export default function Documents() {
         contact_name: fContactName || null,
         date: fDate, due_date: fDue || null,
         subtotal, discount: discountAmt, vat: vatAmt, total,
-        notes: fNotes || null, items,
+        notes: fNotes || null, items: validItems,
       }
       if (modal === 'edit' && editDoc) {
         await updateDocument(editDoc.id, payload)
