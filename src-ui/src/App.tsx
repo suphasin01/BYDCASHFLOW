@@ -47,16 +47,32 @@ export default function App() {
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
   const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready'; version: string } | null>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     localStorage.setItem('theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
-  useEffect(() => {
-    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready'; version: string }) => void) => void } }).electronAPI
-    api?.onUpdateStatus(data => setUpdateBanner(data))
+  const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
+    const id = Date.now()
+    setToasts(prev => [...prev, { id, msg, type }])
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000)
   }, [])
+
+  useEffect(() => {
+    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready'; version: string }) => void) => void; onUpdateNotAvailable: (cb: () => void) => void } }).electronAPI
+    api?.onUpdateStatus(data => { setUpdateBanner(data); setCheckingUpdate(false) })
+    api?.onUpdateNotAvailable(() => { setCheckingUpdate(false); toast(t('toast_up_to_date')) })
+  }, [t, toast])
+
+  const checkForUpdates = () => {
+    if (checkingUpdate) return
+    setCheckingUpdate(true)
+    const api = (window as unknown as { electronAPI?: { checkForUpdates: () => void } }).electronAPI
+    api?.checkForUpdates()
+    setTimeout(() => setCheckingUpdate(false), 15000)
+  }
 
   const installUpdate = () => {
     const api = (window as unknown as { electronAPI?: { installUpdate: () => void } }).electronAPI
@@ -67,12 +83,6 @@ export default function App() {
     const api = (window as unknown as { electronAPI?: { quitApp: () => void } }).electronAPI
     api?.quitApp()
   }
-
-  const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
-    const id = Date.now()
-    setToasts(prev => [...prev, { id, msg, type }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000)
-  }, [])
 
   const reloadCompany = useCallback(async () => {
     try { setActiveCompany(await getActiveCompany()) } catch {}
@@ -233,6 +243,13 @@ export default function App() {
               <div style={{ height: 60, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'var(--bg-sidebar)', flexShrink: 0 }}>
                 <h1 style={{ fontSize: 15, fontWeight: 600 }}>{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Check for Updates */}
+                  <button onClick={checkForUpdates} disabled={checkingUpdate}
+                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, cursor: checkingUpdate ? 'default' : 'pointer', padding: '6px 10px', fontSize: 13, lineHeight: 1, color: 'var(--text-secondary)', fontFamily: 'inherit', opacity: checkingUpdate ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 5 }}
+                    title={t('btn_check_update')}>
+                    <span style={{ fontSize: 14, display: 'inline-block', animation: checkingUpdate ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
+                  </button>
+                  <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
                   {/* Dark/Light toggle */}
                   <button onClick={() => setDarkMode(d => !d)}
                     style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, cursor: 'pointer', padding: '6px 10px', fontSize: 16, lineHeight: 1, color: 'var(--text-secondary)', fontFamily: 'inherit' }}

@@ -63,6 +63,7 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-not-available', () => {
     log.info('[updater] Already up to date');
+    if (mainWindow) mainWindow.webContents.send('update-not-available');
   });
 
   autoUpdater.on('error', (err) => {
@@ -92,6 +93,17 @@ function setupAutoUpdater() {
     autoUpdater.checkForUpdates().catch(() => {});
   }, 4 * 60 * 60 * 1000);
 }
+
+// ── Check for Updates IPC ─────────────────────────────────────────────
+ipcMain.handle('check-for-updates', () => {
+  if (!app.isPackaged) {
+    if (mainWindow) mainWindow.webContents.send('update-not-available');
+    return;
+  }
+  autoUpdater.checkForUpdates().catch(() => {
+    if (mainWindow) mainWindow.webContents.send('update-not-available');
+  });
+});
 
 // ── Install Update IPC ────────────────────────────────────────────────
 ipcMain.handle('install-update', () => {
