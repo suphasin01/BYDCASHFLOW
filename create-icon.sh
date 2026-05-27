@@ -8,6 +8,10 @@ cd "$DIR"
 
 mkdir -p assets
 
+# ── ถ้ามี icon.png อยู่แล้ว ข้ามขั้นตอน generate ────────────────────
+if [ -f "assets/icon.png" ]; then
+  echo "✅ ใช้ assets/icon.png ที่มีอยู่แล้ว"
+else
 echo "🎨 สร้าง PNG icon (512x512)..."
 python3 - << 'PYEOF'
 import struct, zlib, math
@@ -82,6 +86,7 @@ with open('assets/icon.png', 'wb') as f:
     f.write(png)
 print('  ✅ assets/icon.png')
 PYEOF
+fi  # end if no icon.png
 
 # ── macOS .icns ───────────────────────────────
 echo "🍎 สร้าง icon.icns สำหรับ macOS..."
