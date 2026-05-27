@@ -16,8 +16,14 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies (skip native compile)
+        run: npm install --ignore-scripts
+
+      - name: Download Electron binary
+        run: node ./node_modules/electron/install.js
+
+      - name: Rebuild better-sqlite3 for Electron
+        run: npx @electron/rebuild -f -w better-sqlite3
 
       - name: Build Windows installer
         env:
