@@ -370,6 +370,61 @@ export const businessRepo = {
   },
 };
 
+// ── Export / Import ───────────────────────────────────────────────────────────
+
+export function exportAll(): Record<string, unknown> {
+  return {
+    app: 'fruitbiz',
+    exported_at: new Date().toISOString(),
+    companies: all('SELECT * FROM companies ORDER BY id'),
+    settings: all('SELECT * FROM settings'),
+    contacts: all('SELECT * FROM contacts ORDER BY id'),
+    products: all('SELECT * FROM products ORDER BY id'),
+    documents: all('SELECT * FROM documents ORDER BY id'),
+    document_items: all('SELECT * FROM document_items ORDER BY id'),
+    payments: all('SELECT * FROM payments ORDER BY id'),
+  };
+}
+
+export function importAll(data: Record<string, unknown[]>): void {
+  db.exec('PRAGMA foreign_keys = OFF');
+
+  const doImport = db.transaction(() => {
+    db.exec('DELETE FROM payments');
+    db.exec('DELETE FROM document_items');
+    db.exec('DELETE FROM documents');
+    db.exec('DELETE FROM contacts');
+    db.exec('DELETE FROM products');
+    db.exec('DELETE FROM settings');
+    db.exec('DELETE FROM companies');
+
+    const insert = (table: string, rows: Record<string, unknown>[]) => {
+      if (!rows?.length) return;
+      const keys = Object.keys(rows[0]);
+      const stmt = db.prepare(`INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`);
+      for (const row of rows) stmt.run(Object.values(row));
+    };
+
+    insert('companies', (data.companies || []) as Record<string, unknown>[]);
+    for (const row of (data.settings || []) as Record<string, unknown>[]) {
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(row.key as string, row.value as string);
+    }
+    insert('contacts', (data.contacts || []) as Record<string, unknown>[]);
+    insert('products', (data.products || []) as Record<string, unknown>[]);
+    insert('documents', (data.documents || []) as Record<string, unknown>[]);
+    insert('document_items', (data.document_items || []) as Record<string, unknown>[]);
+    insert('payments', (data.payments || []) as Record<string, unknown>[]);
+
+    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments']) {
+      const r = db.prepare(`SELECT COALESCE(MAX(id), 0) as m FROM ${table}`).get() as { m: number };
+      if (r.m > 0) db.prepare('INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(table, r.m);
+    }
+  });
+
+  doImport();
+  db.exec('PRAGMA foreign_keys = ON');
+}
+
 // ── Reports ───────────────────────────────────────────────────────────────────
 
 export const reportRepo = {

@@ -1,13 +1,15 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
-import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo } from './db';
+import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, exportAll, importAll } from './db';
 
 const app = express();
 const PORT = process.env.PORT ?? 3737;
 
+const appVersion: string = (require('../package.json') as { version: string }).version;
+
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // Serve Web UI
 app.use(express.static(path.join(__dirname, '..', 'web')));
@@ -15,7 +17,22 @@ app.use(express.static(path.join(__dirname, '..', 'web')));
 // ── Health check ─────────────────────────────────────────────────────────────
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '1.0.0', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', version: appVersion, timestamp: new Date().toISOString() });
+});
+
+// ── Export / Import ───────────────────────────────────────────────────────────
+
+app.get('/api/export', (_req, res) => {
+  try { res.json(exportAll()); }
+  catch (e: unknown) { res.status(500).json({ error: String(e) }); }
+});
+
+app.post('/api/import', (req, res) => {
+  try {
+    if (!req.body || req.body.app !== 'fruitbiz') return res.status(400).json({ error: 'Invalid backup file' });
+    importAll(req.body);
+    res.json({ success: true });
+  } catch (e: unknown) { res.status(500).json({ error: String(e) }); }
 });
 
 // ── Contacts ──────────────────────────────────────────────────────────────────

@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('update-not-available');
     ipcRenderer.on('update-not-available', () => cb());
   },
+  getVersion: () => ipcRenderer.invoke('get-version'),
+  exportData: () => ipcRenderer.invoke('export-data'),
+  importData: () => ipcRenderer.invoke('import-data'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   quitApp: () => ipcRenderer.invoke('quit-app'),

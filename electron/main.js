@@ -1,4 +1,5 @@
 const { app, BrowserWindow, shell, Menu, dialog, ipcMain } = require('electron');
+const http = require('http');
 const { autoUpdater } = require('electron-updater');
 const net = require('net');
 const path = require('path');
@@ -93,6 +94,60 @@ function setupAutoUpdater() {
     autoUpdater.checkForUpdates().catch(() => {});
   }, 4 * 60 * 60 * 1000);
 }
+
+// ── Local API helper ──────────────────────────────────────────────────
+function apiRequest(method, path, body) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = body ? JSON.stringify(body) : null;
+    const req = http.request({
+      hostname: '127.0.0.1', port: PORT, path, method,
+      headers: { 'Content-Type': 'application/json', ...(bodyStr ? { 'Content-Length': Buffer.byteLength(bodyStr) } : {}) },
+    }, (res) => {
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => { try { resolve({ status: res.statusCode, body: JSON.parse(data) }); } catch { resolve({ status: res.statusCode, body: data }); } });
+    });
+    req.on('error', reject);
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
+}
+
+// ── Get App Version IPC ───────────────────────────────────────────────
+ipcMain.handle('get-version', () => app.getVersion());
+
+// ── Export Data IPC ───────────────────────────────────────────────────
+ipcMain.handle('export-data', async () => {
+  const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+    title: 'ส่งออกข้อมูล / Export Data',
+    defaultPath: `fruitbiz_backup_${new Date().toISOString().slice(0, 10)}.json`,
+    filters: [{ name: 'FruitBiz Backup', extensions: ['json'] }],
+  });
+  if (canceled || !filePath) return { success: false, canceled: true };
+  try {
+    const result = await apiRequest('GET', '/api/export');
+    fs.writeFileSync(filePath, JSON.stringify(result.body, null, 2), 'utf8');
+    shell.showItemInFolder(filePath);
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+});
+
+// ── Import Data IPC ───────────────────────────────────────────────────
+ipcMain.handle('import-data', async () => {
+  const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
+    title: 'นำเข้าข้อมูล / Import Data',
+    filters: [{ name: 'FruitBiz Backup', extensions: ['json'] }],
+    properties: ['openFile'],
+  });
+  if (canceled || !filePaths?.[0]) return { success: false, canceled: true };
+  try {
+    const content = fs.readFileSync(filePaths[0], 'utf8');
+    const data = JSON.parse(content);
+    const result = await apiRequest('POST', '/api/import', data);
+    if (result.status !== 200) throw new Error(result.body?.error || 'Import failed');
+    return { success: true };
+  } catch (err) { return { success: false, error: String(err) }; }
+});
 
 // ── Check for Updates IPC ─────────────────────────────────────────────
 ipcMain.handle('check-for-updates', () => {

@@ -48,11 +48,17 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
   const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready'; version: string } | null>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [appVersion, setAppVersion] = useState('')
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     localStorage.setItem('theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
+
+  useEffect(() => {
+    const api = (window as unknown as { electronAPI?: { getVersion: () => Promise<string> } }).electronAPI
+    api?.getVersion().then(v => setAppVersion(v)).catch(() => {})
+  }, [])
 
   const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
     const id = Date.now()
@@ -234,6 +240,7 @@ export default function App() {
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: apiOnline ? '#22d3a0' : '#f87171', flexShrink: 0, boxShadow: apiOnline ? '0 0 8px rgba(34,211,160,0.6)' : '0 0 8px rgba(248,113,113,0.5)', display: 'inline-block' }} />
                   <span>{apiOnline ? t('status_connected') : t('status_disconnected')}</span>
                 </div>
+                {appVersion && <span style={{ fontSize: 10, color: '#4a5568', flexShrink: 0, letterSpacing: '0.3px' }}>v{appVersion}</span>}
               </div>
             </aside>
 

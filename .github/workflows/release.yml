@@ -59,6 +59,39 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --publish always
 
+  # ── Windows: build Portable exe ──────────────────────────────────────────────
+  build-windows-portable:
+    needs: create-release
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install root dependencies
+        run: npm install --ignore-scripts
+
+      - name: Download Electron binary
+        run: node ./node_modules/electron/install.js
+
+      - name: Rebuild better-sqlite3 for Electron
+        run: npx @electron/rebuild -f -w better-sqlite3
+
+      - name: Build UI
+        run: cd src-ui && npm install && npm run build
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Build Windows Portable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win portable --publish always
+
   # ── macOS: build DMG ───────────────────────────────────────────────────────
   build-mac:
     needs: create-release
