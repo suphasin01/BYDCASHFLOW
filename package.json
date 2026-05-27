@@ -1,6 +1,6 @@
 {
   "name": "localbiz",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Local offline business document system",
   "author": {
     "name": "Suphasin",
@@ -14,16 +14,17 @@
   "main": "electron/main.js",
   "scripts": {
     "build": "tsc",
+    "build:ui": "cd src-ui && npm install && npm run build",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "start": "node dist/api.js",
     "mcp": "node dist/mcp.js",
-    "electron": "npm run build && electron .",
-    "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win --publish never",
-    "dist:win-portable": "npm run build && electron-builder --win portable --publish never",
-    "dist:mac": "npm run build && electron-builder --mac --publish never",
-    "release:win": "npm run build && electron-builder --win --publish always",
-    "release:mac": "npm run build && electron-builder --mac --publish always"
+    "electron": "npm run build:ui && npm run build && electron .",
+    "dist": "npm run build:ui && npm run build && electron-builder",
+    "dist:win": "npm run build:ui && npm run build && electron-builder --win --publish never",
+    "dist:win-portable": "npm run build:ui && npm run build && electron-builder --win portable --publish never",
+    "dist:mac": "npm run build:ui && npm run build && electron-builder --mac --publish never",
+    "release:win": "npm run build:ui && npm run build && electron-builder --win --publish always",
+    "release:mac": "npm run build:ui && npm run build && electron-builder --mac --publish always"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
