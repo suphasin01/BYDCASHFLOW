@@ -290,11 +290,11 @@ export default function Documents() {
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 64px 56px 100px 90px 32px', gap: 6, alignItems: 'center' }}>
                     <input value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} placeholder={t('lbl_item_ph')}
                       style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                    <input type="number" value={item.qty} onChange={e => updateItem(i, 'qty', Number(e.target.value))} min={0}
+                    <input type="number" value={item.qty === 0 ? '' : item.qty} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} min={0}
                       style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
                     <input value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} placeholder={t('lbl_unit_ph')}
                       style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                    <input type="number" value={item.price} onChange={e => updateItem(i, 'price', Number(e.target.value))} min={0}
+                    <input type="number" value={item.price === 0 ? '' : item.price} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} min={0}
                       style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
                     <span style={{ fontSize: 13, textAlign: 'right', padding: '0 4px' }}>฿{fmt(item.amount)}</span>
                     <button onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}
@@ -310,13 +310,13 @@ export default function Documents() {
               <div style={formRowStyle}>
                 <FormGroup label={t('lbl_discount')}>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <StyledInput type="number" value={fDiscount} onChange={e => setFDiscount(Number(e.target.value))} style={{ flex: 1 }} min={0} />
+                    <StyledInput type="number" value={fDiscount === 0 ? '' : fDiscount} onChange={e => setFDiscount(e.target.value === '' ? 0 : Number(e.target.value))} style={{ flex: 1 }} min={0} />
                     <ModeToggle mode={fDiscountMode} onChange={setFDiscountMode} />
                   </div>
                 </FormGroup>
                 <FormGroup label="VAT">
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <StyledInput type="number" value={fVat} onChange={e => setFVat(Number(e.target.value))} style={{ flex: 1 }} min={0} />
+                    <StyledInput type="number" value={fVat === 0 ? '' : fVat} onChange={e => setFVat(e.target.value === '' ? 0 : Number(e.target.value))} style={{ flex: 1 }} min={0} />
                     <ModeToggle mode={fVatMode} onChange={setFVatMode} />
                   </div>
                 </FormGroup>

@@ -141,7 +141,7 @@ export default function Products() {
               <div style={formRowStyle}>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>{t('lbl_price')}</label>
-                  <input type="number" value={fPrice} onChange={e => setFPrice(Number(e.target.value))} style={inputStyle} />
+                  <input type="number" value={fPrice === 0 ? '' : fPrice} onChange={e => setFPrice(e.target.value === '' ? 0 : Number(e.target.value))} style={inputStyle} />
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>{t('col_unit')}</label>

@@ -121,7 +121,7 @@ export default function Payments() {
               <div style={formRowStyle}>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>{t('lbl_amount')}</label>
-                  <input type="number" value={fAmount} onChange={e => setFAmount(Number(e.target.value))} style={inputStyle} />
+                  <input type="number" value={fAmount === 0 ? '' : fAmount} onChange={e => setFAmount(e.target.value === '' ? 0 : Number(e.target.value))} style={inputStyle} />
                 </div>
                 <div style={{ marginBottom: 16 }}>
                   <label style={labelStyle}>{t('col_date')}</label>
