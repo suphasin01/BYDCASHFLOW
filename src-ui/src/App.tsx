@@ -46,11 +46,17 @@ export default function App() {
   const [showCompanySwitcher, setShowCompanySwitcher] = useState(false)
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
+  const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready'; version: string } | null>(null)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     localStorage.setItem('theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
+
+  useEffect(() => {
+    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready'; version: string }) => void) => void } }).electronAPI
+    api?.onUpdateStatus(data => setUpdateBanner(data))
+  }, [])
 
   const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
     const id = Date.now()
@@ -270,6 +276,22 @@ export default function App() {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Update Banner */}
+            {updateBanner && (
+              <div style={{ position: 'fixed', bottom: 24, left: 260, zIndex: 998, background: updateBanner.type === 'ready' ? 'rgba(34,211,160,0.12)' : 'rgba(96,165,250,0.12)', border: `1px solid ${updateBanner.type === 'ready' ? 'rgba(34,211,160,0.4)' : 'rgba(96,165,250,0.4)'}`, borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+                <span style={{ fontSize: 18 }}>{updateBanner.type === 'ready' ? '✅' : '⬇️'}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: updateBanner.type === 'ready' ? '#22d3a0' : '#60a5fa' }}>
+                    {updateBanner.type === 'ready' ? `v${updateBanner.version} พร้อมแล้ว` : `กำลังดาวน์โหลด v${updateBanner.version}...`}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    {updateBanner.type === 'ready' ? 'จะติดตั้งอัตโนมัติเมื่อปิดโปรแกรม' : 'ดาวน์โหลดอัพเดทในพื้นหลัง'}
+                  </div>
+                </div>
+                <button onClick={() => setUpdateBanner(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 14, padding: '0 4px', fontFamily: 'inherit', marginLeft: 4 }}>✕</button>
               </div>
             )}
 

@@ -57,14 +57,8 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-available', (info) => {
     log.info('[updater] Update available:', info.version);
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      icon: undefined,
-      title: '🆕 มีอัพเดทใหม่',
-      message: `LocalBiz เวอร์ชั่น ${info.version} พร้อมแล้ว!`,
-      detail: 'กำลังดาวน์โหลดในพื้นหลัง จะแจ้งอีกครั้งเมื่อพร้อมติดตั้ง',
-      buttons: ['ตกลง'],
-    });
+    // ดาวน์โหลดเงียบๆ ใน background ไม่ขึ้น popup
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version: info.version });
   });
 
   autoUpdater.on('update-not-available', () => {
@@ -73,7 +67,6 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     log.warn('[updater] Error (non-critical):', err.message);
-    // Fail silently — app works offline fine
   });
 
   autoUpdater.on('download-progress', (progress) => {
@@ -82,23 +75,12 @@ function setupAutoUpdater() {
     if (mainWindow) mainWindow.setProgressBar(pct / 100);
   });
 
-  autoUpdater.on('update-downloaded', async (info) => {
+  autoUpdater.on('update-downloaded', (info) => {
     if (mainWindow) mainWindow.setProgressBar(-1);
     log.info('[updater] Update downloaded:', info.version);
-
-    const { response } = await dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: '✅ อัพเดทพร้อมติดตั้ง',
-      message: `LocalBiz ${info.version} ดาวน์โหลดเสร็จแล้ว`,
-      detail: 'ต้องการรีสตาร์ทแอพเพื่อติดตั้งเดี๋ยวนี้ไหม?',
-      buttons: ['🔄 รีสตาร์ทเดี๋ยวนี้', '⏰ ค่อยทำทีหลัง'],
-      defaultId: 0,
-      cancelId: 1,
-    });
-
-    if (response === 0) {
-      autoUpdater.quitAndInstall(false, true);
-    }
+    // แจ้งใน app แบบ toast เล็กๆ ไม่บล็อค แล้วติดตั้งอัตโนมัติเมื่อปิดโปรแกรม
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: info.version });
+    // ติดตั้งอัตโนมัติเมื่อปิดโปรแกรม (autoInstallOnAppQuit = true ครอบคลุมแล้ว)
   });
 
   // Check 3 seconds after window loads, then every 4 hours
