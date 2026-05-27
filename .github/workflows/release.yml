@@ -40,10 +40,7 @@ jobs:
           node-version: '24'
 
       - name: Install root dependencies
-        run: npm install --ignore-scripts
-
-      - name: Download Electron binary
-        run: node ./node_modules/electron/install.js
+        run: npm install
 
       - name: Rebuild better-sqlite3 for Electron
         run: npx @electron/rebuild -f -w better-sqlite3
@@ -73,10 +70,7 @@ jobs:
           node-version: '24'
 
       - name: Install root dependencies
-        run: npm install --ignore-scripts
-
-      - name: Download Electron binary
-        run: node ./node_modules/electron/install.js
+        run: npm install
 
       - name: Rebuild better-sqlite3 for Electron
         run: npx @electron/rebuild -f -w better-sqlite3
