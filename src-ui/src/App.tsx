@@ -45,6 +45,12 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const [showCompanySwitcher, setShowCompanySwitcher] = useState(false)
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
 
   const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
     const id = Date.now()
@@ -133,11 +139,11 @@ export default function App() {
     <I18nContext.Provider value={i18n}>
       <ToastContext.Provider value={{ toast }}>
         <CompanyContext.Provider value={{ activeCompany, reload: reloadCompany }}>
-          <div className="flex h-screen overflow-hidden" style={{ background: '#0a0f1e', color: '#f0f4ff', fontSize: 14 }}>
+          <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: 14 }}>
             {/* Sidebar */}
-            <aside style={{ width: 240, background: '#111827', borderRight: '1px solid rgba(255,255,255,0.07)', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+            <aside style={{ width: 240, background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
               {/* Logo */}
-              <div style={{ padding: '20px 20px 18px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ padding: '20px 20px 18px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)' }}>
                 <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg,#7c6df3,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>💼</div>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px' }}>LocalBiz</div>
@@ -170,8 +176,8 @@ export default function App() {
               </nav>
 
               {/* Company Switcher */}
-              <div onClick={openCompanySwitcher} style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,0.07)', cursor: 'pointer', transition: 'background .15s' }}
-                onMouseOver={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+              <div onClick={openCompanySwitcher} style={{ padding: '12px 14px', borderTop: '1px solid var(--border)', cursor: 'pointer', transition: 'background .15s' }}
+                onMouseOver={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
                 onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: activeCompany?.logo_url ? '#fff' : 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, padding: activeCompany?.logo_url ? 2 : 0, overflow: 'hidden' }}>
@@ -186,7 +192,7 @@ export default function App() {
               </div>
 
               {/* Status */}
-              <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1a2235', borderRadius: 99, padding: '5px 10px', fontSize: 11, color: '#8892a4', flex: 1 }}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: apiOnline ? '#22d3a0' : '#f87171', flexShrink: 0, boxShadow: apiOnline ? '0 0 8px rgba(34,211,160,0.6)' : '0 0 8px rgba(248,113,113,0.5)', display: 'inline-block' }} />
                   <span>{apiOnline ? t('status_connected') : t('status_disconnected')}</span>
@@ -197,11 +203,17 @@ export default function App() {
             {/* Main */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Topbar */}
-              <div style={{ height: 60, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.07)', background: '#111827', flexShrink: 0 }}>
+              <div style={{ height: 60, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'var(--bg-sidebar)', flexShrink: 0 }}>
                 <h1 style={{ fontSize: 15, fontWeight: 600 }}>{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Dark/Light toggle */}
+                  <button onClick={() => setDarkMode(d => !d)}
+                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, cursor: 'pointer', padding: '6px 10px', fontSize: 16, lineHeight: 1, color: 'var(--text-secondary)', fontFamily: 'inherit' }}
+                    title={darkMode ? 'โหมดกลางวัน' : 'โหมดกลางคืน'}>
+                    {darkMode ? '☀️' : '🌙'}
+                  </button>
                   {/* Lang switcher */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#1a2235', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
                     {(['th', 'en', 'zh'] as Lang[]).map((l, i) => {
                       const flags = ['🇹🇭', '🇬🇧', '🇨🇳']
                       return (

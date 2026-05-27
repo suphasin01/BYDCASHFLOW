@@ -36,7 +36,9 @@ export default function Documents() {
   const [fDate, setFDate] = useState(today())
   const [fDue, setFDue] = useState('')
   const [fDiscount, setFDiscount] = useState(0)
+  const [fDiscountMode, setFDiscountMode] = useState<'amount' | 'percent'>('amount')
   const [fVat, setFVat] = useState(0)
+  const [fVatMode, setFVatMode] = useState<'amount' | 'percent'>('percent')
   const [fNotes, setFNotes] = useState('')
   const [items, setItems] = useState<DocumentItem[]>([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
   const [statusChange, setStatusChange] = useState('')
@@ -66,7 +68,9 @@ export default function Documents() {
   useEffect(() => { load() }, [filterType, filterStatus])
 
   const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0)
-  const total = subtotal - fDiscount + fVat
+  const discountAmt = fDiscountMode === 'percent' ? subtotal * fDiscount / 100 : fDiscount
+  const vatAmt = fVatMode === 'percent' ? (subtotal - discountAmt) * fVat / 100 : fVat
+  const total = subtotal - discountAmt + vatAmt
 
   const updateItem = (i: number, field: keyof DocumentItem, value: string | number) => {
     setItems(prev => {
@@ -85,7 +89,7 @@ export default function Documents() {
     setContacts(cs)
     setEditDoc(null)
     setFType('quotation'); setFNumber(''); setFContactId(''); setFContactName('')
-    setFDate(today()); setFDue(''); setFDiscount(0); setFVat(0); setFNotes('')
+    setFDate(today()); setFDue(''); setFDiscount(0); setFDiscountMode('amount'); setFVat(7); setFVatMode('percent'); setFNotes('')
     setItems([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     setModal('create')
   }
@@ -96,7 +100,7 @@ export default function Documents() {
     setContacts(cs)
     setEditDoc(doc)
     setFType(doc.type); setFNumber(doc.number || ''); setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
-    setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || ''); setFDiscount(doc.discount || 0); setFVat(doc.vat || 0); setFNotes(doc.notes || '')
+    setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || ''); setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
     setItems(doc.items?.length ? doc.items : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     setModal('edit')
   }
@@ -115,7 +119,7 @@ export default function Documents() {
         contact_id: fContactId ? Number(fContactId) : null,
         contact_name: fContactName || null,
         date: fDate, due_date: fDue || null,
-        subtotal, discount: fDiscount, vat: fVat, total,
+        subtotal, discount: discountAmt, vat: vatAmt, total,
         notes: fNotes || null, items,
       }
       if (modal === 'edit' && editDoc) {
@@ -149,7 +153,16 @@ export default function Documents() {
   const generatePDF = async (docId: number) => {
     try {
       const [doc, company] = await Promise.all([getDocument(docId), getActiveCompany()])
-      openPDFWindow(doc, company, t)
+      const html = buildPDFHtml(doc, company, t)
+      const api = (window as unknown as { electronAPI?: { exportPDF: (h: string, f: string) => Promise<{ success: boolean }> } }).electronAPI
+      if (api?.exportPDF) {
+        const filename = `${doc.type}_${doc.number || doc.id}.pdf`
+        await api.exportPDF(html, filename)
+      } else {
+        // fallback for browser/dev mode
+        const win = window.open('', '_blank')
+        if (win) { win.document.write(html); win.document.close() }
+      }
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
@@ -158,13 +171,11 @@ export default function Documents() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-          <select value={filterType} onChange={e => setFilterType(e.target.value)}
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#f0f4ff', fontSize: 13, outline: 'none', minWidth: 130 }}>
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} style={filterSelectStyle}>
             <option value="">{t('all_types')}</option>
             {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 12px', color: '#f0f4ff', fontSize: 13, outline: 'none', minWidth: 130 }}>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={filterSelectStyle}>
             <option value="">{t('all_statuses')}</option>
             {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -293,10 +304,16 @@ export default function Documents() {
 
               <div style={formRowStyle}>
                 <FormGroup label={t('lbl_discount')}>
-                  <StyledInput type="number" value={fDiscount} onChange={e => setFDiscount(Number(e.target.value))} />
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <StyledInput type="number" value={fDiscount} onChange={e => setFDiscount(Number(e.target.value))} style={{ flex: 1 }} min={0} />
+                    <ModeToggle mode={fDiscountMode} onChange={setFDiscountMode} />
+                  </div>
                 </FormGroup>
-                <FormGroup label={t('lbl_vat')}>
-                  <StyledInput type="number" value={fVat} onChange={e => setFVat(Number(e.target.value))} />
+                <FormGroup label="VAT">
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <StyledInput type="number" value={fVat} onChange={e => setFVat(Number(e.target.value))} style={{ flex: 1 }} min={0} />
+                    <ModeToggle mode={fVatMode} onChange={setFVatMode} />
+                  </div>
                 </FormGroup>
               </div>
 
@@ -304,8 +321,8 @@ export default function Documents() {
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '14px 16px', marginTop: 8 }}>
                 {[
                   { label: t('lbl_subtotal'), value: `฿${fmt(subtotal)}`, color: undefined },
-                  { label: t('lbl_discount'), value: `-฿${fmt(fDiscount)}`, color: '#f87171' },
-                  { label: 'VAT', value: `฿${fmt(fVat)}`, color: undefined },
+                  { label: `${t('lbl_discount')}${fDiscountMode === 'percent' ? ` (${fDiscount}%)` : ''}`, value: `-฿${fmt(discountAmt)}`, color: '#f87171' },
+                  { label: `VAT${fVatMode === 'percent' ? ` (${fVat}%)` : ''}`, value: `฿${fmt(vatAmt)}`, color: undefined },
                 ].map((row, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
                     <span style={{ color: '#8892a4' }}>{row.label}</span>
@@ -431,7 +448,7 @@ export default function Documents() {
 }
 
 // ─── PDF Generator ────────────────────────────────────────────────────────────
-function openPDFWindow(doc: Document, company: Company | null, t: (k: string) => string) {
+function buildPDFHtml(doc: Document, company: Company | null, t: (k: string) => string): string {
   const fmtN = (n: number | undefined | null) =>
     new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)
   const fmtD = (d: string | undefined | null) => d ? d.slice(0, 10) : '-'
@@ -525,10 +542,7 @@ function openPDFWindow(doc: Document, company: Company | null, t: (k: string) =>
   </div>
 </div></body></html>`
 
-  const win = window.open('', '_blank')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
+  return html
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
@@ -578,7 +592,18 @@ function StyledTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>
   return <textarea {...props} style={{ ...inputStyle, resize: 'vertical', minHeight: 64, lineHeight: 1.5, ...props.style }} />
 }
 
-const inputStyle: React.CSSProperties = { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '9px 12px', color: '#f0f4ff', fontSize: 13, fontFamily: 'inherit', outline: 'none' }
+function ModeToggle({ mode, onChange }: { mode: 'amount' | 'percent'; onChange: (m: 'amount' | 'percent') => void }) {
+  const base: React.CSSProperties = { border: 'none', cursor: 'pointer', padding: '0 9px', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', height: '100%', transition: 'all .15s', borderRadius: 0 }
+  return (
+    <div style={{ display: 'flex', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
+      <button onClick={() => onChange('amount')} style={{ ...base, borderRadius: '7px 0 0 7px', background: mode === 'amount' ? 'rgba(124,109,243,0.4)' : 'rgba(255,255,255,0.04)', color: mode === 'amount' ? '#c4b5fd' : '#8892a4' }}>฿</button>
+      <button onClick={() => onChange('percent')} style={{ ...base, borderRadius: '0 7px 7px 0', background: mode === 'percent' ? 'rgba(124,109,243,0.4)' : 'rgba(255,255,255,0.04)', color: mode === 'percent' ? '#c4b5fd' : '#8892a4' }}>%</button>
+    </div>
+  )
+}
+
+const filterSelectStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 13, outline: 'none', minWidth: 130, colorScheme: 'inherit' as React.CSSProperties['colorScheme'] }
+const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, padding: '9px 12px', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', colorScheme: 'inherit' as React.CSSProperties['colorScheme'] }
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }
 const formRowStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }
 const tdStyle: React.CSSProperties = { padding: '12px 14px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' }

@@ -1,0 +1,5 @@
+const { contextBridge, ipcRenderer } = require('electron')
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  exportPDF: (html, filename) => ipcRenderer.invoke('export-pdf', html, filename),
+})

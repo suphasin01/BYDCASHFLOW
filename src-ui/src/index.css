@@ -5,6 +5,35 @@
 :root {
   --sidebar-w: 240px;
   --topbar-h: 60px;
+  --bg-main: #0a0f1e;
+  --bg-sidebar: #111827;
+  --bg-card: #111827;
+  --bg-input: rgba(255,255,255,0.04);
+  --border: rgba(255,255,255,0.07);
+  --border-input: rgba(255,255,255,0.12);
+  --text-primary: #f0f4ff;
+  --text-secondary: #8892a4;
+  --text-muted: #6b7685;
+  --bg-hover: rgba(255,255,255,0.04);
+  --bg-row-hover: rgba(255,255,255,0.03);
+  --bg-inset: rgba(255,255,255,0.03);
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg-main: #f0f2f7;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: rgba(0,0,0,0.04);
+  --border: rgba(0,0,0,0.09);
+  --border-input: rgba(0,0,0,0.18);
+  --text-primary: #1a1f36;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --bg-hover: rgba(0,0,0,0.04);
+  --bg-row-hover: rgba(0,0,0,0.02);
+  --bg-inset: rgba(0,0,0,0.03);
+  color-scheme: light;
 }
 
 body {
@@ -16,20 +45,17 @@ body.lang-zh {
   font-family: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Fix select option background in dark mode */
+select option {
+  background: #1a2235;
+  color: #f0f4ff;
+}
+[data-theme="light"] select option {
+  background: #ffffff;
+  color: #1a1f36;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.1);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,255,255,0.18);
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.35); }

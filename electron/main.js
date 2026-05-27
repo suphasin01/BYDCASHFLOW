@@ -1,7 +1,8 @@
-const { app, BrowserWindow, shell, Menu, dialog } = require('electron');
+const { app, BrowserWindow, shell, Menu, dialog, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const net = require('net');
 const path = require('path');
+const fs = require('fs');
 const log = require('electron-log');
 
 const PORT = 3737;
@@ -110,6 +111,29 @@ function setupAutoUpdater() {
   }, 4 * 60 * 60 * 1000);
 }
 
+// ── PDF Export IPC ────────────────────────────────────────────────────
+ipcMain.handle('export-pdf', async (_event, html, filename) => {
+  const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
+    title: 'บันทึก PDF',
+    defaultPath: filename || `document_${Date.now()}.pdf`,
+    filters: [{ name: 'PDF', extensions: ['pdf'] }],
+  });
+  if (canceled || !filePath) return { success: false };
+
+  const tmpFile = path.join(app.getPath('temp'), `lb_pdf_${Date.now()}.html`);
+  fs.writeFileSync(tmpFile, html, 'utf8');
+
+  const pdfWin = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
+  await pdfWin.loadFile(tmpFile);
+  const pdfData = await pdfWin.webContents.printToPDF({ pageSize: 'A4', printBackground: true, margins: { marginType: 'custom', top: 0.4, bottom: 0.5, left: 0.4, right: 0.4 } });
+  pdfWin.close();
+  try { fs.unlinkSync(tmpFile); } catch {}
+
+  fs.writeFileSync(filePath, pdfData);
+  shell.openPath(filePath);
+  return { success: true, filePath };
+});
+
 // ── Main window ───────────────────────────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -122,7 +146,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: true,
+      sandbox: false,
+      preload: path.join(__dirname, 'preload.js'),
     },
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 16 } }
