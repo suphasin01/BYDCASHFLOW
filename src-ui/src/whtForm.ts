@@ -21,11 +21,18 @@ const fmtDateBE = (d: string | null | undefined): string => {
   return `${p[2]}/${p[1]}/${parseInt(p[0]) + 543}`
 }
 
-// Space-group a 13-digit tax id as in the form: X XXXX XXXXX XX X
+// Render a 13-digit tax id as the official form's individual boxes,
+// grouped X-XXXX-XXXXX-XX-X with wider gaps between groups.
 const fmtTaxId = (id: string | null | undefined): string => {
-  const d = String(id ?? '').replace(/\\D/g, '')
+  const d = String(id ?? '').replace(/\D/g, '')
   if (d.length !== 13) return esc(id ?? '')
-  return `${d[0]} ${d.slice(1,5)} ${d.slice(5,10)} ${d.slice(10,12)} ${d[12]}`
+  const groups = [[0, 1], [1, 5], [5, 10], [10, 12], [12, 13]]
+  const box = (ch: string) =>
+    `<span style="display:inline-block;width:11px;height:13px;line-height:13px;border:.8px solid #000;text-align:center;font-size:8.6pt;font-family:'Sarabun','Loma',sans-serif">${ch}</span>`
+  return `<span style="display:inline-flex;align-items:center;gap:5px">` +
+    groups.map(([a, b]) =>
+      `<span style="display:inline-flex;gap:1px">${d.slice(a, b).split('').map(box).join('')}</span>`
+    ).join('') + `</span>`
 }
 
 // Thai baht text
