@@ -74,7 +74,10 @@ function setupAutoUpdater() {
   autoUpdater.on('download-progress', (progress) => {
     const pct = Math.round(progress.percent);
     log.info(`[updater] Downloading update: ${pct}%`);
-    if (mainWindow) mainWindow.setProgressBar(pct / 100);
+    if (mainWindow) {
+      mainWindow.setProgressBar(pct / 100);
+      mainWindow.webContents.send('update-progress', { percent: pct });
+    }
   });
 
   autoUpdater.on('update-downloaded', (info) => {
