@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
-import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, exportAll, importAll } from './db';
+import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, withholdingTaxRepo, exportAll, importAll } from './db';
 
 const app = express();
 const PORT = process.env.PORT ?? 3737;
@@ -241,6 +241,40 @@ app.get('/api/reports/monthly', (req, res) => {
 app.get('/api/reports/top-contacts', (req, res) => {
   const { limit } = req.query as Record<string, string>;
   res.json({ data: reportRepo.topContacts(limit ? Number(limit) : 10) });
+});
+
+// ── Withholding Tax ───────────────────────────────────────────────────────────
+
+app.get('/api/withholding-tax', (_req, res) => {
+  try { res.json({ data: withholdingTaxRepo.list() }); }
+  catch (e: unknown) { res.status(500).json({ error: String(e) }); }
+});
+
+app.get('/api/withholding-tax/:id', (req, res) => {
+  const row = withholdingTaxRepo.get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  res.json(row);
+});
+
+app.post('/api/withholding-tax', (req, res) => {
+  try {
+    const { items, ...data } = req.body;
+    const row = withholdingTaxRepo.create(data, items ?? []);
+    res.status(201).json(row);
+  } catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+});
+
+app.put('/api/withholding-tax/:id', (req, res) => {
+  try {
+    const { items, ...data } = req.body;
+    const row = withholdingTaxRepo.update(Number(req.params.id), data, items);
+    res.json(row);
+  } catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+});
+
+app.delete('/api/withholding-tax/:id', (req, res) => {
+  withholdingTaxRepo.delete(Number(req.params.id));
+  res.json({ success: true });
 });
 
 // ── SPA fallback ──────────────────────────────────────────────────────────────

@@ -87,6 +87,41 @@ export interface Settings {
   address?: string | null
 }
 
+export interface WithholdingTaxItem {
+  id?: number
+  wht_id?: number
+  income_type: string
+  income_type_desc?: string | null
+  pay_date?: string | null
+  amount: number
+  tax_withheld: number
+  sort_order?: number
+}
+
+export interface WithholdingTax {
+  id: number
+  book_no?: string | null
+  cert_no?: string | null
+  issue_date: string
+  form_type?: string | null
+  payer_name: string
+  payer_address?: string | null
+  payer_tax_id?: string | null
+  payee_id?: number | null
+  payee_name: string
+  payee_address?: string | null
+  payee_tax_id?: string | null
+  payer_type: '1' | '2' | '3' | '4'
+  payer_type_other?: string | null
+  fund_gpf?: number
+  fund_sso?: number
+  fund_pvd?: number
+  total_amount: number
+  total_tax: number
+  items?: WithholdingTaxItem[]
+  created_at?: string
+}
+
 export interface ReportSummary {
   revenue: number
   expense: number

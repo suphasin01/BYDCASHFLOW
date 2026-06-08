@@ -1,4 +1,4 @@
-import type { Contact, Product, Document, Payment, Company, Settings, ReportSummary, MonthlyData, TopContact } from './types'
+import type { Contact, Product, Document, Payment, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax } from './types'
 
 const BASE = 'http://localhost:3737/api'
 
@@ -64,6 +64,13 @@ export const activateCompany = (id: number) => POST<Company>('/companies/' + id 
 // Settings / Business
 export const getSettings = () => GET<Settings>('/business')
 export const updateSettings = (data: Partial<Settings>) => PUT<Settings>('/business', data)
+
+// Withholding Tax
+export const getWithholdingTaxList = () => GET<{ data: WithholdingTax[] }>('/withholding-tax')
+export const getWithholdingTax = (id: number) => GET<WithholdingTax>('/withholding-tax/' + id)
+export const createWithholdingTax = (data: Partial<WithholdingTax>) => POST<WithholdingTax>('/withholding-tax', data)
+export const updateWithholdingTax = (id: number, data: Partial<WithholdingTax>) => PUT<WithholdingTax>('/withholding-tax/' + id, data)
+export const deleteWithholdingTax = (id: number) => DEL<void>('/withholding-tax/' + id)
 
 // Reports
 export const getReportSummary = () => GET<ReportSummary>('/reports/summary')

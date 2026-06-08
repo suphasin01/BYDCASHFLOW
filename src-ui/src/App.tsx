@@ -10,6 +10,7 @@ import Products from './pages/Products'
 import Reports from './pages/Reports'
 import Companies from './pages/Companies'
 import Settings from './pages/Settings'
+import WithholdingTaxPage from './pages/WithholdingTax'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 export type ToastItem = { id: number; msg: string; type: 'ok' | 'err' }
@@ -22,7 +23,7 @@ type CompanyCtxType = { activeCompany: Company | null; reload: () => void }
 export const CompanyContext = createContext<CompanyCtxType>({ activeCompany: null, reload: () => {} })
 export const useActiveCompany = () => useContext(CompanyContext)
 
-type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'companies' | 'settings'
+type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'companies' | 'settings'
 
 const NAV_ITEMS: { page: Page; icon: string; key: string }[] = [
   { page: 'dashboard', icon: '🏠', key: 'nav_dashboard' },
@@ -31,6 +32,7 @@ const NAV_ITEMS: { page: Page; icon: string; key: string }[] = [
   { page: 'contacts', icon: '👥', key: 'nav_contacts' },
   { page: 'products', icon: '📦', key: 'nav_products' },
   { page: 'reports', icon: '📈', key: 'nav_reports' },
+  { page: 'withholding_tax', icon: '🧾', key: 'nav_withholding_tax' },
   { page: 'companies', icon: '🏢', key: 'nav_companies' },
   { page: 'settings', icon: '⚙️', key: 'nav_settings' },
 ]
@@ -140,6 +142,7 @@ export default function App() {
       case 'contacts': return <Contacts />
       case 'products': return <Products />
       case 'reports': return <Reports />
+      case 'withholding_tax': return <WithholdingTaxPage />
       case 'companies': return <Companies />
       case 'settings': return <Settings />
     }
@@ -152,6 +155,7 @@ export default function App() {
     contacts: null,
     products: null,
     reports: null,
+    withholding_tax: null,
     companies: null,
     settings: null,
   }
@@ -163,7 +167,7 @@ export default function App() {
   const navSections = [
     { label: t('nav_sec_main'), items: ['dashboard', 'documents', 'payments'] },
     { label: t('nav_sec_data'), items: ['contacts', 'products'] },
-    { label: t('nav_sec_analyze'), items: ['reports'] },
+    { label: t('nav_sec_analyze'), items: ['reports', 'withholding_tax'] },
     { label: '', items: ['companies', 'settings'] },
   ]
 
