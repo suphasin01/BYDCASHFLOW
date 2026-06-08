@@ -165,9 +165,10 @@ export default function App() {
     : <span className="text-xs font-bold text-white">{(activeCompany?.name || 'บ').slice(0, 2)}</span>
 
   const navSections = [
-    { label: t('nav_sec_main'), items: ['dashboard', 'documents', 'payments'] },
+    { label: t('nav_sec_main'), items: ['dashboard', 'payments'] },
+    { label: t('nav_sec_docs'), items: ['documents', 'withholding_tax'] },
     { label: t('nav_sec_data'), items: ['contacts', 'products'] },
-    { label: t('nav_sec_analyze'), items: ['reports', 'withholding_tax'] },
+    { label: t('nav_sec_analyze'), items: ['reports'] },
     { label: '', items: ['companies', 'settings'] },
   ]
 

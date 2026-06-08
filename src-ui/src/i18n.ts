@@ -4,9 +4,10 @@ export type Lang = 'th' | 'en' | 'zh'
 
 const I18N: Record<Lang, Record<string, string | string[]>> = {
   th: {
-    app_subtitle: 'ระบบเอกสารธุรกิจ', nav_sec_main: 'หลัก', nav_sec_data: 'ข้อมูล', nav_sec_analyze: 'วิเคราะห์',
+    app_subtitle: 'ระบบเอกสารธุรกิจ', nav_sec_main: 'หลัก', nav_sec_data: 'ข้อมูล', nav_sec_analyze: 'วิเคราะห์', nav_sec_docs: 'สร้างเอกสาร',
     nav_dashboard: 'Dashboard', nav_documents: 'เอกสาร', nav_payments: 'การชำระเงิน',
     nav_contacts: 'ลูกค้า / ผู้ขาย', nav_products: 'สินค้า / บริการ', nav_reports: 'รายงาน',
+    nav_withholding_tax: 'ภาษีหัก ณ ที่จ่าย',
     nav_companies: 'บริษัทของฉัน', nav_settings: 'ตั้งค่า',
     company_click: 'คลิกเพื่อเปลี่ยนบริษัท',
     status_connecting: 'กำลังเชื่อมต่อ...', status_connected: 'เชื่อมต่อแล้ว (Local)', status_disconnected: 'ไม่ได้เชื่อมต่อ',
@@ -91,9 +92,10 @@ const I18N: Record<Lang, Record<string, string | string[]>> = {
     pdf_tax_prefix: 'เลขภาษี: ', pdf_tel_prefix: 'โทร: ',
   },
   en: {
-    app_subtitle: 'Business Document System', nav_sec_main: 'Main', nav_sec_data: 'Data', nav_sec_analyze: 'Analytics',
+    app_subtitle: 'Business Document System', nav_sec_main: 'Main', nav_sec_data: 'Data', nav_sec_analyze: 'Analytics', nav_sec_docs: 'Create Documents',
     nav_dashboard: 'Dashboard', nav_documents: 'Documents', nav_payments: 'Payments',
     nav_contacts: 'Customers / Vendors', nav_products: 'Products / Services', nav_reports: 'Reports',
+    nav_withholding_tax: 'Withholding Tax',
     nav_companies: 'My Companies', nav_settings: 'Settings',
     company_click: 'Click to switch company',
     status_connecting: 'Connecting...', status_connected: 'Connected (Local)', status_disconnected: 'Disconnected',
@@ -178,9 +180,10 @@ const I18N: Record<Lang, Record<string, string | string[]>> = {
     pdf_tax_prefix: 'Tax ID: ', pdf_tel_prefix: 'Tel: ',
   },
   zh: {
-    app_subtitle: '商业文件系统', nav_sec_main: '主要', nav_sec_data: '数据', nav_sec_analyze: '分析',
+    app_subtitle: '商业文件系统', nav_sec_main: '主要', nav_sec_data: '数据', nav_sec_analyze: '分析', nav_sec_docs: '创建文件',
     nav_dashboard: '仪表板', nav_documents: '文件', nav_payments: '付款',
     nav_contacts: '客户 / 供应商', nav_products: '产品 / 服务', nav_reports: '报告',
+    nav_withholding_tax: '代扣税',
     nav_companies: '我的公司', nav_settings: '设置',
     company_click: '点击切换公司',
     status_connecting: '连接中...', status_connected: '已连接（本地）', status_disconnected: '未连接',
