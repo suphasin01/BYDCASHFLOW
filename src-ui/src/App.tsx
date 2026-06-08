@@ -139,7 +139,7 @@ export default function App() {
   const pageComponent = () => {
     switch (page) {
       case 'dashboard': return <Dashboard onNavigate={navigate} />
-      case 'documents': return <Documents />
+      case 'documents': return <Documents onNavigate={navigate} />
       case 'payments': return <Payments />
       case 'contacts': return <Contacts />
       case 'products': return <Products />

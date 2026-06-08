@@ -13,7 +13,9 @@ const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
   cancelled: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
 }
 
-export default function Documents() {
+type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'companies' | 'settings'
+
+export default function Documents({ onNavigate }: { onNavigate?: (page: Page) => void }) {
   const { t } = useI18n()
   const { toast } = useToast()
 
@@ -47,6 +49,7 @@ export default function Documents() {
     quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
     billing_note: t('type_billing_note'), cash_invoice: t('type_cash_invoice'),
     purchase_order: t('type_purchase_order'), expense: t('type_expense'),
+    withholding_tax: t('nav_withholding_tax'),
   }
   const STATUS_LABELS: Record<string, string> = {
     draft: t('status_draft'), sent: t('status_sent'), approved: t('status_approved'),
@@ -249,7 +252,10 @@ export default function Documents() {
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
               <div style={formRowStyle}>
                 <FormGroup label={t('lbl_doc_type')}>
-                  <StyledSelect value={fType} onChange={e => setFType(e.target.value)}>
+                  <StyledSelect value={fType} onChange={e => {
+                    if (e.target.value === 'withholding_tax') { setModal('none'); onNavigate?.('withholding_tax'); return }
+                    setFType(e.target.value)
+                  }}>
                     {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </StyledSelect>
                 </FormGroup>
