@@ -12,7 +12,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # ── Windows: build NSIS installer — creates the GitHub Release ───────────
+  # ── Windows: build NSIS installer — creates the GitHub Release ─────────────────
   build-windows:
     runs-on: windows-latest
     permissions:
@@ -41,7 +41,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --publish always
 
-  # ── Windows: build Portable exe — uploads after release exists ───────────
+  # ── Windows: build Portable exe — uploads after release exists ─────────────────
   build-windows-portable:
     needs: build-windows
     runs-on: windows-latest
@@ -74,8 +74,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
+          $version = node -e "console.log('v' + require('./package.json').version)"
           $exe = Get-ChildItem release -Filter "*.exe" | Where-Object { $_.Name -notlike "*Setup*" } | Select-Object -First 1
-          if ($exe) { gh release upload "${{ github.ref_name }}" $exe.FullName --clobber }
+          if ($exe) { gh release upload $version $exe.FullName --clobber }
 
   # ── macOS: build DMG — uploads after release exists ──────────────────────
   build-mac:
