@@ -59,7 +59,7 @@ export default function WithholdingTax() {
   const [fBookNo, setFBookNo] = useState('')
   const [fCertNo, setFCertNo] = useState('')
   const [fIssueDate, setFIssueDate] = useState(today())
-  const [fFormType, setFFormType] = useState('nd53')
+  const [fFormType, setFFormType] = useState('')
   const [fPayerName, setFPayerName] = useState('')
   const [fPayerAddress, setFPayerAddress] = useState('')
   const [fPayerTaxId, setFPayerTaxId] = useState('')
@@ -87,7 +87,7 @@ export default function WithholdingTax() {
   const totalTax = fItems.reduce((s, i) => s + (Number(i.tax_withheld) || 0), 0)
 
   const resetForm = () => {
-    setFBookNo(''); setFCertNo(''); setFIssueDate(today()); setFFormType('nd53')
+    setFBookNo(''); setFCertNo(''); setFIssueDate(today()); setFFormType('')
     setFPayerName(activeCompany?.name || ''); setFPayerAddress(activeCompany?.address || '')
     setFPayerTaxId(activeCompany?.tax_id || '')
     setFPayeeId(''); setFPayeeName(''); setFPayeeAddress(''); setFPayeeTaxId('')
@@ -112,7 +112,7 @@ export default function WithholdingTax() {
     setFBookNo(wht.book_no || '')
     setFCertNo(wht.cert_no || '')
     setFIssueDate(wht.issue_date?.slice(0, 10) || today())
-    setFFormType(wht.form_type || 'nd53')
+    setFFormType(wht.form_type || '')
     setFPayerName(wht.payer_name || '')
     setFPayerAddress(wht.payer_address || '')
     setFPayerTaxId(wht.payer_tax_id || '')
@@ -243,7 +243,7 @@ export default function WithholdingTax() {
               ) : list.length > 0 ? list.map(wht => (
                 <tr key={wht.id}>
                   <td style={tdStyle}><span style={{ fontWeight: 600, color: '#7c6df3' }}>{wht.cert_no || `#${wht.id}`}</span></td>
-                  <td style={{ ...tdStyle, color: '#8892a4', fontSize: 12 }}>{formTypeLabel(wht.form_type || 'nd53')}</td>
+                  <td style={{ ...tdStyle, color: '#8892a4', fontSize: 12 }}>{wht.form_type ? formTypeLabel(wht.form_type) : '—'}</td>
                   <td style={{ ...tdStyle, color: '#8892a4' }}>{fmtDate(wht.issue_date)}</td>
                   <td style={{ ...tdStyle, fontWeight: 500 }}>{wht.payee_name || '—'}</td>
                   <td style={tdStyle}><span style={{ color: '#60a5fa', fontWeight: 600 }}>฿{fmt(wht.total_amount)}</span></td>
@@ -291,9 +291,19 @@ export default function WithholdingTax() {
                   <StyledInput type="date" value={fIssueDate} onChange={e => setFIssueDate(e.target.value)} />
                 </FormGroup>
                 <FormGroup label={t('wht_lbl_form_type')}>
-                  <StyledSelect value={fFormType} onChange={e => setFFormType(e.target.value)}>
-                    {FORM_TYPES.map(f => <option key={f.value} value={f.value}>{t(f.key)}</option>)}
-                  </StyledSelect>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {FORM_TYPES.map(f => {
+                      const on = fFormType === f.value
+                      return (
+                        <label key={f.value}
+                          onClick={() => setFFormType(on ? '' : f.value)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, padding: '5px 10px', borderRadius: 8, border: `1px solid ${on ? 'rgba(124,109,243,0.6)' : 'rgba(255,255,255,0.12)'}`, background: on ? 'rgba(124,109,243,0.15)' : 'rgba(255,255,255,0.03)', userSelect: 'none', transition: 'all .15s' }}>
+                          <span style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${on ? '#7c6df3' : '#4a5568'}`, background: on ? '#7c6df3' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', flexShrink: 0 }}>{on ? '✓' : ''}</span>
+                          {t(f.key)}
+                        </label>
+                      )
+                    })}
+                  </div>
                 </FormGroup>
               </div>
 
