@@ -16,7 +16,7 @@ const db = new Database(DB_PATH);
 db.exec("PRAGMA journal_mode = WAL");
 db.exec("PRAGMA foreign_keys = ON");
 
-// ── Schema ─────────────────────────────────────────────────────────────────
+// ── Schema ──────────────────────────────────────────────────────────────────────
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS contacts (
@@ -111,9 +111,44 @@ db.exec(`
 
   INSERT OR IGNORE INTO companies (id, name) VALUES (1, 'บริษัทของฉัน');
   INSERT OR IGNORE INTO settings (key, value) VALUES ('active_company_id', '1');
+
+  CREATE TABLE IF NOT EXISTS withholding_tax (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    book_no          TEXT,
+    cert_no          TEXT,
+    issue_date       TEXT NOT NULL DEFAULT (date('now','localtime')),
+    form_type        TEXT NOT NULL DEFAULT 'nd53',
+    payer_name       TEXT NOT NULL DEFAULT '',
+    payer_address    TEXT,
+    payer_tax_id     TEXT,
+    payee_id         INTEGER REFERENCES contacts(id),
+    payee_name       TEXT NOT NULL DEFAULT '',
+    payee_address    TEXT,
+    payee_tax_id     TEXT,
+    payer_type       TEXT NOT NULL DEFAULT '1',
+    payer_type_other TEXT,
+    fund_gpf         REAL NOT NULL DEFAULT 0,
+    fund_sso         REAL NOT NULL DEFAULT 0,
+    fund_pvd         REAL NOT NULL DEFAULT 0,
+    total_amount     REAL NOT NULL DEFAULT 0,
+    total_tax        REAL NOT NULL DEFAULT 0,
+    created_at       TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at       TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS withholding_tax_items (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    wht_id           INTEGER NOT NULL REFERENCES withholding_tax(id) ON DELETE CASCADE,
+    income_type      TEXT NOT NULL,
+    income_type_desc TEXT,
+    pay_date         TEXT,
+    amount           REAL NOT NULL DEFAULT 0,
+    tax_withheld     REAL NOT NULL DEFAULT 0,
+    sort_order       INTEGER NOT NULL DEFAULT 0
+  );
 `);
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Strip leading colon/at/dollar from named param keys:
 //   { ':id': 5 } → { id: 5 }  (node:sqlite → better-sqlite3 compat)
@@ -137,7 +172,7 @@ function all<T = unknown>(sql: string, ...params: unknown[]): T[] {
   return db.prepare(sql).all(...params) as T[];
 }
 
-// ── Auto-number generator ───────────────────────────────────────────────────
+// ── Auto-number generator ──────────────────────────────────────────────────────────────
 
 const prefixMap: Record<string, string> = {
   quotation: 'QT', invoice: 'INV', receipt: 'REC',
@@ -156,7 +191,7 @@ export function generateDocNumber(type: string): string {
   return `${prefix}${year}${month}-${seq}`;
 }
 
-// ── Contacts ────────────────────────────────────────────────────────────────
+// ── Contacts ─────────────────────────────────────────────────────────────────────
 
 export const contactRepo = {
   list: (type?: string) => type
@@ -185,7 +220,7 @@ export const contactRepo = {
   search: (q: string) => all(`SELECT * FROM contacts WHERE name LIKE ? OR tax_id LIKE ? OR email LIKE ? ORDER BY name`, `%${q}%`, `%${q}%`, `%${q}%`),
 };
 
-// ── Products ─────────────────────────────────────────────────────────────────
+// ── Products ───────────────────────────────────────────────────────────────────
 
 export const productRepo = {
   list: () => all('SELECT * FROM products ORDER BY name'),
@@ -211,7 +246,7 @@ export const productRepo = {
   search: (q: string) => all(`SELECT * FROM products WHERE name LIKE ? OR code LIKE ? ORDER BY name`, `%${q}%`, `%${q}%`),
 };
 
-// ── Documents ─────────────────────────────────────────────────────────────────
+// ── Documents ─────────────────────────────────────────────────────────────────────
 
 export const documentRepo = {
   list: (filters: { type?: string; status?: string; contact_id?: number; limit?: number; offset?: number } = {}) => {
@@ -276,7 +311,7 @@ export const documentRepo = {
   },
 };
 
-// ── Payments ─────────────────────────────────────────────────────────────────
+// ── Payments ───────────────────────────────────────────────────────────────────
 
 export const paymentRepo = {
   list: (document_id?: number) => document_id
@@ -299,7 +334,7 @@ export const paymentRepo = {
   delete: (id: number) => db.prepare('DELETE FROM payments WHERE id = ?').run(id),
 };
 
-// ── Companies ─────────────────────────────────────────────────────────────────
+// ── Companies ───────────────────────────────────────────────────────────────────
 
 export const companyRepo = {
   list: () => all('SELECT * FROM companies ORDER BY id'),
@@ -360,7 +395,7 @@ export const companyRepo = {
   },
 };
 
-// ── Business compat (proxy to active company) ─────────────────────────────────
+// ── Business compat (proxy to active company) ─────────────────────────────────────
 export const businessRepo = {
   get: () => companyRepo.getActive(),
   update: (data: Record<string, unknown>) => {
@@ -370,7 +405,81 @@ export const businessRepo = {
   },
 };
 
-// ── Export / Import ───────────────────────────────────────────────────────────
+// ── Withholding Tax ──────────────────────────────────────────────────────────────
+
+export const withholdingTaxRepo = {
+  list: () => all('SELECT * FROM withholding_tax ORDER BY created_at DESC'),
+
+  get: (id: number) => {
+    const wht = get<Record<string, unknown>>('SELECT * FROM withholding_tax WHERE id = ?', id);
+    if (!wht) return null;
+    const items = all('SELECT * FROM withholding_tax_items WHERE wht_id = ? ORDER BY sort_order', id);
+    return { ...wht, items };
+  },
+
+  create: (data: Record<string, unknown>, items: Record<string, unknown>[] = []) => {
+    const r = run(
+      `INSERT INTO withholding_tax (book_no,cert_no,issue_date,form_type,payer_name,payer_address,payer_tax_id,payee_id,payee_name,payee_address,payee_tax_id,payer_type,payer_type_other,fund_gpf,fund_sso,fund_pvd,total_amount,total_tax)
+       VALUES (:book_no,:cert_no,:issue_date,:form_type,:payer_name,:payer_address,:payer_tax_id,:payee_id,:payee_name,:payee_address,:payee_tax_id,:payer_type,:payer_type_other,:fund_gpf,:fund_sso,:fund_pvd,:total_amount,:total_tax)`,
+      {
+        ':book_no': data.book_no ?? null, ':cert_no': data.cert_no ?? null,
+        ':issue_date': data.issue_date ?? new Date().toISOString().slice(0, 10),
+        ':form_type': data.form_type ?? 'nd53',
+        ':payer_name': data.payer_name ?? '', ':payer_address': data.payer_address ?? null,
+        ':payer_tax_id': data.payer_tax_id ?? null,
+        ':payee_id': data.payee_id ?? null, ':payee_name': data.payee_name ?? '',
+        ':payee_address': data.payee_address ?? null, ':payee_tax_id': data.payee_tax_id ?? null,
+        ':payer_type': data.payer_type ?? '1', ':payer_type_other': data.payer_type_other ?? null,
+        ':fund_gpf': data.fund_gpf ?? 0, ':fund_sso': data.fund_sso ?? 0, ':fund_pvd': data.fund_pvd ?? 0,
+        ':total_amount': data.total_amount ?? 0, ':total_tax': data.total_tax ?? 0,
+      }
+    );
+    const whtId = r.lastInsertRowid as number;
+    items.forEach((item, idx) => {
+      run(
+        `INSERT INTO withholding_tax_items (wht_id,income_type,income_type_desc,pay_date,amount,tax_withheld,sort_order)
+         VALUES (:wht_id,:income_type,:income_type_desc,:pay_date,:amount,:tax_withheld,:sort_order)`,
+        {
+          ':wht_id': whtId, ':income_type': item.income_type ?? '',
+          ':income_type_desc': item.income_type_desc ?? null,
+          ':pay_date': item.pay_date ?? null,
+          ':amount': item.amount ?? 0, ':tax_withheld': item.tax_withheld ?? 0, ':sort_order': idx,
+        }
+      );
+    });
+    return withholdingTaxRepo.get(whtId);
+  },
+
+  update: (id: number, data: Record<string, unknown>, items?: Record<string, unknown>[]) => {
+    const allowed = ['book_no','cert_no','issue_date','form_type','payer_name','payer_address','payer_tax_id','payee_id','payee_name','payee_address','payee_tax_id','payer_type','payer_type_other','fund_gpf','fund_sso','fund_pvd','total_amount','total_tax'];
+    const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');
+    if (fields) {
+      const params: Record<string, unknown> = { ':id': id };
+      Object.keys(data).filter(k => allowed.includes(k)).forEach(k => { params[`:${k}`] = data[k]; });
+      db.prepare(`UPDATE withholding_tax SET ${fields}, updated_at = datetime('now','localtime') WHERE id = :id`).run(np(params));
+    }
+    if (items !== undefined) {
+      db.prepare('DELETE FROM withholding_tax_items WHERE wht_id = ?').run(id);
+      items.forEach((item, idx) => {
+        run(
+          `INSERT INTO withholding_tax_items (wht_id,income_type,income_type_desc,pay_date,amount,tax_withheld,sort_order)
+           VALUES (:wht_id,:income_type,:income_type_desc,:pay_date,:amount,:tax_withheld,:sort_order)`,
+          {
+            ':wht_id': id, ':income_type': item.income_type ?? '',
+            ':income_type_desc': item.income_type_desc ?? null,
+            ':pay_date': item.pay_date ?? null,
+            ':amount': item.amount ?? 0, ':tax_withheld': item.tax_withheld ?? 0, ':sort_order': idx,
+          }
+        );
+      });
+    }
+    return withholdingTaxRepo.get(id);
+  },
+
+  delete: (id: number) => db.prepare('DELETE FROM withholding_tax WHERE id = ?').run(id),
+};
+
+// ── Export / Import ──────────────────────────────────────────────────────────────
 
 export function exportAll(): Record<string, unknown> {
   return {
@@ -383,6 +492,8 @@ export function exportAll(): Record<string, unknown> {
     documents: all('SELECT * FROM documents ORDER BY id'),
     document_items: all('SELECT * FROM document_items ORDER BY id'),
     payments: all('SELECT * FROM payments ORDER BY id'),
+    withholding_tax: all('SELECT * FROM withholding_tax ORDER BY id'),
+    withholding_tax_items: all('SELECT * FROM withholding_tax_items ORDER BY id'),
   };
 }
 
@@ -390,6 +501,8 @@ export function importAll(data: Record<string, unknown[]>): void {
   db.exec('PRAGMA foreign_keys = OFF');
 
   const doImport = db.transaction(() => {
+    db.exec('DELETE FROM withholding_tax_items');
+    db.exec('DELETE FROM withholding_tax');
     db.exec('DELETE FROM payments');
     db.exec('DELETE FROM document_items');
     db.exec('DELETE FROM documents');
@@ -414,8 +527,10 @@ export function importAll(data: Record<string, unknown[]>): void {
     insert('documents', (data.documents || []) as Record<string, unknown>[]);
     insert('document_items', (data.document_items || []) as Record<string, unknown>[]);
     insert('payments', (data.payments || []) as Record<string, unknown>[]);
+    insert('withholding_tax', (data.withholding_tax || []) as Record<string, unknown>[]);
+    insert('withholding_tax_items', (data.withholding_tax_items || []) as Record<string, unknown>[]);
 
-    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments']) {
+    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments', 'withholding_tax', 'withholding_tax_items']) {
       const r = db.prepare(`SELECT COALESCE(MAX(id), 0) as m FROM ${table}`).get() as { m: number };
       if (r.m > 0) db.prepare('INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(table, r.m);
     }
