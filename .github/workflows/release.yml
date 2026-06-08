@@ -106,7 +106,12 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      - name: Build macOS DMG
+      - name: Build macOS arm64 DMG
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx electron-builder --mac --publish always
+        run: npx electron-builder --mac --arch arm64 --publish always
+
+      - name: Build macOS x64 DMG
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --mac --arch x64 --publish always
