@@ -187,7 +187,7 @@ ipcMain.handle('export-pdf', async (_event, html, filename) => {
 
   const pdfWin = new BrowserWindow({ show: false, webPreferences: { nodeIntegration: false, contextIsolation: true } });
   await pdfWin.loadFile(tmpFile);
-  const pdfData = await pdfWin.webContents.printToPDF({ pageSize: 'A4', printBackground: true, margins: { marginType: 'custom', top: 0.4, bottom: 0.5, left: 0.4, right: 0.4 } });
+  const pdfData = await pdfWin.webContents.printToPDF({ pageSize: 'A4', printBackground: true, margins: { marginType: 'custom', top: 0.4, bottom: 0.5, left: 0.3, right: 0.3 } });
   pdfWin.close();
   try { fs.unlinkSync(tmpFile); } catch {}
 
