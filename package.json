@@ -1,6 +1,6 @@
 {
   "name": "fruitbiz",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Local offline business document system",
   "author": {
     "name": "Suphasin",
@@ -73,6 +73,9 @@
       "target": [
         {
           "target": "dmg"
+        },
+        {
+          "target": "zip"
         }
       ],
       "category": "public.app-category.business",

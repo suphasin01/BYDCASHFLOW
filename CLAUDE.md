@@ -27,7 +27,7 @@ Triggered on: push to `main`, push of `v*` tags, `workflow_dispatch`
 
 1. **build-windows** — NSIS installer, `--publish always` (creates the GitHub Release)
 2. **build-windows-portable** — Portable `.exe`, needs build-windows first
-3. **build-mac** — Two sequential DMG steps, needs build-windows first
+3. **build-mac** — Two sequential DMG+zip steps, needs build-windows first
 
 ### Mac DMG Build — CRITICAL RULES
 **Always build arm64 and x64 as separate sequential steps:**
@@ -45,11 +45,14 @@ causing hdiutil mount collision (`/Volumes/FruitBiz` already mounted).
 
 ```json
 // CORRECT — no arch in config, CI flags control it
-"mac": { "target": [{ "target": "dmg" }] }
+"mac": { "target": [{ "target": "dmg" }, { "target": "zip" }] }
 
 // WRONG — causes both arches to build together → hdiutil error
 "mac": { "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }] }
 ```
+
+**Must include `zip` target alongside `dmg`** — electron-updater needs the `.zip` for
+in-place Mac auto-updates. DMG alone → `latest-mac.yml` has no zip path → auto-update fails on Mac.
 
 ### Windows Portable Upload — version tag
 Use package.json version, not `github.ref_name` (which is "main" for branch pushes):
