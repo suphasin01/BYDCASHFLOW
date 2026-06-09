@@ -18,9 +18,24 @@ src-ui/src/             — React frontend
   App.tsx               — Main layout, nav sections, update banner
   i18n.ts               — Translations (th/en/zh)
   pages/                — Page components
+  whtForm.ts            — Builds the 50ทวิ certificate (overlay on official form)
+  whtFormBg.ts          — Official RD blank form as base64 PNG (print background)
+  whtFormFields.ts      — Exact AcroForm field positions (auto-generated)
 package.json            — electron-builder config under "build" field
 .github/workflows/release.yml — CI/CD build pipeline
 ```
+
+## Withholding Tax (50 ทวิ) Certificate — EXACT form match
+The printed certificate IS the official Revenue Department form, not a re-drawn table.
+- `whtFormBg.ts` — the official blank PDF rendered to a 150dpi grayscale PNG (data URI),
+  used as a full-page CSS background. Every line/border/static label is the real form.
+- `whtFormFields.ts` — every data field's exact rectangle, extracted from the official
+  PDF's **AcroForm** (`pypdf` → `/Annots` `/Rect`). PDF origin is bottom-left, so
+  `t = 842 - y1`. Comb fields (`id1`, `tin1`) carry `comb: maxLen` (13-digit id uses a
+  17-cell comb string `"D DDDD DDDDD DD D"`; 10-digit uses 13-cell).
+- `whtForm.ts` overlays data at those positions (pt → mm). Font is `AngsanaUPC` (the
+  form's own font, present on Windows) with web fallbacks.
+- chk1..chk7 = ภ.ง.ด 1ก/1กพิเศษ/2/3/2ก/3ก/53; chk8..11 = payer type.
 
 ## Build Pipeline (GitHub Actions)
 Triggered on: push to `main`, push of `v*` tags, `workflow_dispatch`
