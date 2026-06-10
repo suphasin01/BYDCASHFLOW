@@ -1,4 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import {
+  Button, Card, CardBody, Input, Spinner, Textarea,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+} from '@heroui/react'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
 import { useActiveCompany } from '../App'
@@ -10,6 +15,9 @@ import {
 import type { WithholdingTax, WithholdingTaxItem, Contact } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import { buildWHTForm } from '../whtForm'
+
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
 
 // ─── Income type definitions ────────────────────────────────────────────────────────────
 const INCOME_TYPE_KEYS = [
@@ -206,317 +214,227 @@ export default function WithholdingTax() {
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
-  const incomeTypeLabel = (value: string) => {
-    const def = INCOME_TYPE_KEYS.find(i => i.value === value)
-    return def ? t(def.key) : value
-  }
-
   const formTypeLabel = (value: string) => {
     const def = FORM_TYPES.find(f => f.value === value)
     return def ? t(def.key) : value
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div style={{ fontSize: 13, color: '#8892a4' }}>
+      <div className="flex justify-between items-center">
+        <div className="text-[13px] text-default-500">
           {list.length} {t('records_suffix')}
         </div>
-        <button onClick={openCreate} style={btnPrimaryStyle}>{t('wht_btn_create')}</button>
+        <Button color="primary" onPress={openCreate}>{t('wht_btn_create')}</Button>
       </div>
 
       {/* Table */}
-      <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {[t('wht_col_cert_no'), t('wht_col_form_type'), t('wht_col_issue_date'), t('wht_col_payee'), t('wht_col_total_amount'), t('wht_col_total_tax'), t('col_actions')].map((h, i) => (
-                  <th key={i} style={{ padding: '10px 14px', textAlign: i === 6 ? 'right' : 'left', fontSize: 11, fontWeight: 600, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.5px', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#8892a4' }}>{t('loading')}</td></tr>
-              ) : list.length > 0 ? list.map(wht => (
-                <tr key={wht.id}>
-                  <td style={tdStyle}><span style={{ fontWeight: 600, color: '#7c6df3' }}>{wht.cert_no || `#${wht.id}`}</span></td>
-                  <td style={{ ...tdStyle, color: '#8892a4', fontSize: 12 }}>{wht.form_type ? formTypeLabel(wht.form_type) : '—'}</td>
-                  <td style={{ ...tdStyle, color: '#8892a4' }}>{fmtDate(wht.issue_date)}</td>
-                  <td style={{ ...tdStyle, fontWeight: 500 }}>{wht.payee_name || '—'}</td>
-                  <td style={tdStyle}><span style={{ color: '#60a5fa', fontWeight: 600 }}>฿{fmt(wht.total_amount)}</span></td>
-                  <td style={tdStyle}><span style={{ color: '#f87171', fontWeight: 600 }}>฿{fmt(wht.total_tax)}</span></td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <button onClick={() => generatePDF(wht.id)} style={{ ...btnGhostSmStyle, marginRight: 4 }}>PDF</button>
-                    <button onClick={() => openEdit(wht.id)} style={{ ...btnGhostSmStyle, marginRight: 4 }}>{t('btn_edit')}</button>
-                    <button onClick={() => doDelete(wht.id)} style={btnDangerSmStyle}>{t('btn_delete')}</button>
-                  </td>
-                </tr>
-              )) : (
-                <tr><td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center', color: '#8892a4' }}>
-                  <div style={{ fontSize: 40, marginBottom: 14, opacity: 0.4 }}>📋</div>
+      <Card className="bg-content1 border border-content3" shadow="none">
+        <CardBody className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+          ) : (
+            <Table removeWrapper aria-label={t('wht_btn_create')}
+              classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
+              <TableHeader>
+                <TableColumn>{t('wht_col_cert_no')}</TableColumn>
+                <TableColumn>{t('wht_col_form_type')}</TableColumn>
+                <TableColumn>{t('wht_col_issue_date')}</TableColumn>
+                <TableColumn>{t('wht_col_payee')}</TableColumn>
+                <TableColumn>{t('wht_col_total_amount')}</TableColumn>
+                <TableColumn>{t('wht_col_total_tax')}</TableColumn>
+                <TableColumn align="end">{t('col_actions')}</TableColumn>
+              </TableHeader>
+              <TableBody emptyContent={
+                <div className="py-10 text-default-500">
+                  <div className="text-4xl mb-3.5 opacity-40">📋</div>
                   <p>{t('wht_no_data')}</p>
-                  <p style={{ marginTop: 4, fontSize: 12 }} dangerouslySetInnerHTML={{ __html: t('wht_no_data_hint') }} />
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  <p className="mt-1 text-[12px]" dangerouslySetInnerHTML={{ __html: t('wht_no_data_hint') }} />
+                </div>
+              }>
+                {list.map(wht => (
+                  <TableRow key={wht.id}>
+                    <TableCell><span className="font-semibold text-primary">{wht.cert_no || `#${wht.id}`}</span></TableCell>
+                    <TableCell className="text-default-500">{wht.form_type ? formTypeLabel(wht.form_type) : '—'}</TableCell>
+                    <TableCell className="text-default-500">{fmtDate(wht.issue_date)}</TableCell>
+                    <TableCell className="font-medium">{wht.payee_name || '—'}</TableCell>
+                    <TableCell><span className="text-primary font-semibold">฿{fmt(wht.total_amount)}</span></TableCell>
+                    <TableCell><span className="text-danger font-semibold">฿{fmt(wht.total_tax)}</span></TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="flat" onPress={() => generatePDF(wht.id)}>PDF</Button>
+                        <Button size="sm" variant="flat" onPress={() => openEdit(wht.id)}>{t('btn_edit')}</Button>
+                        <Button size="sm" color="danger" variant="flat" onPress={() => doDelete(wht.id)}>{t('btn_delete')}</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardBody>
+      </Card>
 
       {/* Create/Edit Modal */}
-      {(modal === 'create' || modal === 'edit') && (
-        <ModalOverlay onClose={() => setModal('none')}>
-          <ModalContainer>
-            <ModalHeader
-              title={modal === 'edit' ? t('wht_modal_edit') : t('wht_modal_new')}
-              onClose={() => setModal('none')}
-            />
-            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+      <Modal isOpen={modal === 'create' || modal === 'edit'} onOpenChange={open => { if (!open) setModal('none') }} scrollBehavior="inside" size="3xl">
+        <ModalContent>
+          {onClose => (
+            <>
+              <ModalHeader>{modal === 'edit' ? t('wht_modal_edit') : t('wht_modal_new')}</ModalHeader>
+              <ModalBody>
 
-              {/* ── Section 1: Certificate Info ── */}
-              <SectionLabel label={t('wht_sec_cert')} />
-              <div style={formRowStyle}>
-                <FormGroup label={t('wht_lbl_book_no')}>
-                  <StyledInput value={fBookNo} onChange={e => setFBookNo(e.target.value)} placeholder="เล่มที่..." />
-                </FormGroup>
-                <FormGroup label={t('wht_lbl_cert_no')}>
-                  <StyledInput value={fCertNo} onChange={e => setFCertNo(e.target.value)} placeholder="เลขที่..." />
-                </FormGroup>
-              </div>
-              <div style={formRowStyle}>
-                <FormGroup label={t('wht_lbl_issue_date')}>
-                  <StyledInput type="date" value={fIssueDate} onChange={e => setFIssueDate(e.target.value)} />
-                </FormGroup>
-                <FormGroup label={t('wht_lbl_form_type')}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {FORM_TYPES.map(f => {
-                      const on = fFormType === f.value
-                      return (
-                        <label key={f.value}
-                          onClick={() => setFFormType(on ? '' : f.value)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, padding: '5px 10px', borderRadius: 8, border: `1px solid ${on ? 'rgba(124,109,243,0.6)' : 'rgba(255,255,255,0.12)'}`, background: on ? 'rgba(124,109,243,0.15)' : 'rgba(255,255,255,0.03)', userSelect: 'none', transition: 'all .15s' }}>
-                          <span style={{ width: 14, height: 14, borderRadius: 4, border: `1.5px solid ${on ? '#7c6df3' : '#4a5568'}`, background: on ? '#7c6df3' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', flexShrink: 0 }}>{on ? '✓' : ''}</span>
-                          {t(f.key)}
-                        </label>
-                      )
-                    })}
-                  </div>
-                </FormGroup>
-              </div>
-
-              <Divider />
-
-              {/* ── Section 2: Payer ── */}
-              <SectionLabel label={t('wht_sec_payer')} />
-              <FormGroup label={t('wht_lbl_payer_name')}>
-                <StyledInput value={fPayerName} onChange={e => setFPayerName(e.target.value)}
-                  placeholder="ชื่อบริษัท / บุคคล / นิติบุคคล..." />
-              </FormGroup>
-              <FormGroup label={t('wht_lbl_payer_address')}>
-                <StyledTextarea value={fPayerAddress} onChange={e => setFPayerAddress(e.target.value)}
-                  placeholder="ที่อยู่ อาคาร/หมู่บ้าน เลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด..." />
-              </FormGroup>
-              <FormGroup label={t('wht_lbl_payer_tax_id')}>
-                <StyledInput value={fPayerTaxId} onChange={e => setFPayerTaxId(e.target.value)}
-                  placeholder="0000000000000 (13 หลัก)" maxLength={13} />
-              </FormGroup>
-
-              <Divider />
-
-              {/* ── Section 3: Payee ── */}
-              <SectionLabel label={t('wht_sec_payee')} />
-              <FormGroup label={t('wht_lbl_payee_contact')}>
-                <StyledSelect value={fPayeeId} onChange={e => handlePayeeContactChange(e.target.value)}>
-                  <option value="">{t('lbl_select')}</option>
-                  {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </StyledSelect>
-              </FormGroup>
-              <FormGroup label={t('wht_lbl_payee_name')}>
-                <StyledInput value={fPayeeName} onChange={e => setFPayeeName(e.target.value)}
-                  placeholder="ชื่อบริษัท / บุคคล / นิติบุคคล..." />
-              </FormGroup>
-              <FormGroup label={t('wht_lbl_payee_address')}>
-                <StyledTextarea value={fPayeeAddress} onChange={e => setFPayeeAddress(e.target.value)}
-                  placeholder="ที่อยู่ อาคาร/หมู่บ้าน เลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด..." />
-              </FormGroup>
-              <FormGroup label={t('wht_lbl_payee_tax_id')}>
-                <StyledInput value={fPayeeTaxId} onChange={e => setFPayeeTaxId(e.target.value)}
-                  placeholder="0000000000000 (13 หลัก)" maxLength={13} />
-              </FormGroup>
-
-              <Divider />
-
-              {/* ── Section 4: Income types ── */}
-              <SectionLabel label={t('wht_sec_income')} />
-              <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px', gap: 6, marginBottom: 4, padding: '0 2px' }}>
-                {[t('wht_lbl_income_type'), t('wht_lbl_pay_date'), t('wht_lbl_amount'), t('wht_lbl_tax_withheld'), ''].map((h, i) => (
-                  <span key={i} style={{ fontSize: 10, fontWeight: 500, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.4px' }}>{h}</span>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {fItems.map((item, idx) => {
-                  const def = INCOME_TYPE_KEYS.find(d => d.value === item.income_type)
-                  return (
-                    <div key={idx}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px', gap: 6, alignItems: 'center' }}>
-                        <select value={item.income_type} onChange={e => updateItem(idx, 'income_type', e.target.value)}
-                          style={{ ...inputStyle, padding: '7px 8px', fontSize: 11 }}>
-                          {INCOME_TYPE_KEYS.map(opt => (
-                            <option key={opt.value} value={opt.value}>{t(opt.key)}</option>
-                          ))}
-                        </select>
-                        <input type="date" value={item.pay_date || ''} onChange={e => updateItem(idx, 'pay_date', e.target.value)}
-                          style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                        <input type="number" value={item.amount || ''} min={0}
-                          onChange={e => updateItem(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))}
-                          style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                        <input type="number" value={item.tax_withheld || ''} min={0}
-                          onChange={e => updateItem(idx, 'tax_withheld', e.target.value === '' ? 0 : Number(e.target.value))}
-                          style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                        <button onClick={() => setFItems(prev => prev.filter((_, j) => j !== idx))}
-                          style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 6, cursor: 'pointer', padding: '5px', color: '#f87171', fontSize: 12, fontFamily: 'inherit' }}>✕</button>
-                      </div>
-                      {def?.hasDesc && (
-                        <input value={item.income_type_desc || ''} onChange={e => updateItem(idx, 'income_type_desc', e.target.value)}
-                          placeholder={t('wht_lbl_income_desc')}
-                          style={{ ...inputStyle, padding: '6px 8px', fontSize: 11, marginTop: 4, width: '60%' }} />
-                      )}
+                {/* ── Section 1: Certificate Info ── */}
+                <SectionLabel label={t('wht_sec_cert')} />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_book_no')}
+                    placeholder="เล่มที่..." value={fBookNo} onChange={e => setFBookNo(e.target.value)} />
+                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_cert_no')}
+                    placeholder="เลขที่..." value={fCertNo} onChange={e => setFCertNo(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-4 items-start">
+                  <Input size="sm" variant="flat" labelPlacement="outside" type="date" label={t('wht_lbl_issue_date')}
+                    value={fIssueDate} onChange={e => setFIssueDate(e.target.value)} />
+                  <div>
+                    <label className={LABEL_CLASS}>{t('wht_lbl_form_type')}</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {FORM_TYPES.map(f => {
+                        const on = fFormType === f.value
+                        return (
+                          <button key={f.value} type="button"
+                            onClick={() => setFFormType(on ? '' : f.value)}
+                            className={`flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-lg border transition-colors select-none ${on ? 'border-primary/60 bg-primary/15' : 'border-content3 bg-content2'}`}>
+                            <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] text-white flex-shrink-0 border-[1.5px] ${on ? 'border-primary bg-primary' : 'border-default-400 bg-transparent'}`}>{on ? '✓' : ''}</span>
+                            {t(f.key)}
+                          </button>
+                        )
+                      })}
                     </div>
-                  )
-                })}
-              </div>
-              <button onClick={() => setFItems(prev => [...prev, emptyItem()])}
-                style={{ ...btnGhostSmStyle, marginTop: 10 }}>{t('wht_btn_add_income')}</button>
-
-              {/* Totals summary */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '12px 16px', marginTop: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
-                  <span style={{ color: '#8892a4' }}>{t('wht_lbl_total_amount')}</span>
-                  <span style={{ color: '#60a5fa', fontWeight: 600 }}>฿{fmt(totalAmount)}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
-                  <span style={{ color: '#8892a4' }}>{t('wht_lbl_total_tax')}</span>
-                  <span style={{ color: '#f87171', fontWeight: 600 }}>฿{fmt(totalTax)}</span>
+
+                <SectionLabel label={t('wht_sec_payer')} />
+                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payer_name')}
+                  placeholder="ชื่อบริษัท / บุคคล / นิติบุคคล..." value={fPayerName} onChange={e => setFPayerName(e.target.value)} />
+                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('wht_lbl_payer_address')}
+                  placeholder="ที่อยู่ อาคาร/หมู่บ้าน เลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด..."
+                  value={fPayerAddress} onChange={e => setFPayerAddress(e.target.value)} />
+                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payer_tax_id')}
+                  placeholder="0000000000000 (13 หลัก)" maxLength={13} value={fPayerTaxId} onChange={e => setFPayerTaxId(e.target.value)} />
+
+                <SectionLabel label={t('wht_sec_payee')} />
+                <div>
+                  <label className={LABEL_CLASS}>{t('wht_lbl_payee_contact')}</label>
+                  <select value={fPayeeId} onChange={e => handlePayeeContactChange(e.target.value)} className={SELECT_CLASS}>
+                    <option value="">{t('lbl_select')}</option>
+                    {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
                 </div>
-              </div>
+                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payee_name')}
+                  placeholder="ชื่อบริษัท / บุคคล / นิติบุคคล..." value={fPayeeName} onChange={e => setFPayeeName(e.target.value)} />
+                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('wht_lbl_payee_address')}
+                  placeholder="ที่อยู่ อาคาร/หมู่บ้าน เลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด..."
+                  value={fPayeeAddress} onChange={e => setFPayeeAddress(e.target.value)} />
+                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payee_tax_id')}
+                  placeholder="0000000000000 (13 หลัก)" maxLength={13} value={fPayeeTaxId} onChange={e => setFPayeeTaxId(e.target.value)} />
 
-              <Divider />
+                {/* ── Section 4: Income types ── */}
+                <SectionLabel label={t('wht_sec_income')} />
+                <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px' }}>
+                  {[t('wht_lbl_income_type'), t('wht_lbl_pay_date'), t('wht_lbl_amount'), t('wht_lbl_tax_withheld'), ''].map((h, i) => (
+                    <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {fItems.map((item, idx) => {
+                    const def = INCOME_TYPE_KEYS.find(d => d.value === item.income_type)
+                    return (
+                      <div key={idx}>
+                        <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px' }}>
+                          <select value={item.income_type} onChange={e => updateItem(idx, 'income_type', e.target.value)}
+                            className={`${SELECT_CLASS} text-[11px] py-1.5`}>
+                            {INCOME_TYPE_KEYS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{t(opt.key)}</option>
+                            ))}
+                          </select>
+                          <Input size="sm" variant="flat" type="date" value={item.pay_date || ''}
+                            onChange={e => updateItem(idx, 'pay_date', e.target.value)} />
+                          <Input size="sm" variant="flat" type="number" min={0} value={item.amount ? String(item.amount) : ''}
+                            onChange={e => updateItem(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} />
+                          <Input size="sm" variant="flat" type="number" min={0} value={item.tax_withheld ? String(item.tax_withheld) : ''}
+                            onChange={e => updateItem(idx, 'tax_withheld', e.target.value === '' ? 0 : Number(e.target.value))} />
+                          <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => setFItems(prev => prev.filter((_, j) => j !== idx))}>✕</Button>
+                        </div>
+                        {def?.hasDesc && (
+                          <Input size="sm" variant="flat" className="mt-1 w-[60%]" placeholder={t('wht_lbl_income_desc')}
+                            value={item.income_type_desc || ''} onChange={e => updateItem(idx, 'income_type_desc', e.target.value)} />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div>
+                  <Button size="sm" variant="flat" onPress={() => setFItems(prev => [...prev, emptyItem()])}>{t('wht_btn_add_income')}</Button>
+                </div>
 
-              {/* ── Section 5: Payer type ── */}
-              <SectionLabel label={t('wht_sec_payer_type')} />
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 12 }}>
-                {(['1', '2', '3', '4'] as const).map(pt => (
-                  <label key={pt} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, padding: '6px 12px', borderRadius: 8, border: `1px solid ${fPayerType === pt ? 'rgba(124,109,243,0.5)' : 'rgba(255,255,255,0.12)'}`, background: fPayerType === pt ? 'rgba(124,109,243,0.15)' : 'rgba(255,255,255,0.03)' }}>
-                    <input type="radio" name="payer_type" value={pt} checked={fPayerType === pt} onChange={() => setFPayerType(pt)}
-                      style={{ accentColor: '#7c6df3' }} />
-                    {t(`wht_payer_type_${pt}`)}
-                  </label>
-                ))}
-              </div>
-              {fPayerType === '4' && (
-                <FormGroup label={t('wht_lbl_payer_type_other')}>
-                  <StyledInput value={fPayerTypeOther} onChange={e => setFPayerTypeOther(e.target.value)} placeholder="ระบุ..." />
-                </FormGroup>
-              )}
+                {/* Totals summary */}
+                <div className="bg-content2 border border-content3 rounded-lg px-4 py-3">
+                  <div className="flex justify-between text-[13px] py-0.5">
+                    <span className="text-default-500">{t('wht_lbl_total_amount')}</span>
+                    <span className="text-primary font-semibold">฿{fmt(totalAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-[13px] py-0.5">
+                    <span className="text-default-500">{t('wht_lbl_total_tax')}</span>
+                    <span className="text-danger font-semibold">฿{fmt(totalTax)}</span>
+                  </div>
+                </div>
 
-              <Divider />
+                {/* ── Section 5: Payer type ── */}
+                <SectionLabel label={t('wht_sec_payer_type')} />
+                <div className="flex gap-2 flex-wrap">
+                  {(['1', '2', '3', '4'] as const).map(pt => (
+                    <label key={pt}
+                      className={`flex items-center gap-1.5 cursor-pointer text-[13px] px-3 py-1.5 rounded-lg border ${fPayerType === pt ? 'border-primary/50 bg-primary/15' : 'border-content3 bg-content2'}`}>
+                      <input type="radio" name="payer_type" value={pt} checked={fPayerType === pt} onChange={() => setFPayerType(pt)}
+                        style={{ accentColor: '#7c6df3' }} />
+                      {t(`wht_payer_type_${pt}`)}
+                    </label>
+                  ))}
+                </div>
+                {fPayerType === '4' && (
+                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payer_type_other')}
+                    placeholder="ระบุ..." value={fPayerTypeOther} onChange={e => setFPayerTypeOther(e.target.value)} />
+                )}
 
-              {/* ── Section 6: Funds ── */}
-              <SectionLabel label={t('wht_sec_funds')} />
-              <FormGroup label={t('wht_lbl_fund_gpf')}>
-                <StyledInput type="number" value={fFundGpf || ''} min={0}
-                  onChange={e => setFFundGpf(e.target.value === '' ? 0 : Number(e.target.value))} />
-              </FormGroup>
-              <FormGroup label={t('wht_lbl_fund_sso')}>
-                <StyledInput type="number" value={fFundSso || ''} min={0}
-                  onChange={e => setFFundSso(e.target.value === '' ? 0 : Number(e.target.value))} />
-              </FormGroup>
-              <FormGroup label={t('wht_lbl_fund_pvd')}>
-                <StyledInput type="number" value={fFundPvd || ''} min={0}
-                  onChange={e => setFFundPvd(e.target.value === '' ? 0 : Number(e.target.value))} />
-              </FormGroup>
+                {/* ── Section 6: Funds ── */}
+                <SectionLabel label={t('wht_sec_funds')} />
+                <Input size="sm" variant="flat" labelPlacement="outside" type="number" min={0} label={t('wht_lbl_fund_gpf')}
+                  value={fFundGpf ? String(fFundGpf) : ''} onChange={e => setFFundGpf(e.target.value === '' ? 0 : Number(e.target.value))} />
+                <Input size="sm" variant="flat" labelPlacement="outside" type="number" min={0} label={t('wht_lbl_fund_sso')}
+                  value={fFundSso ? String(fFundSso) : ''} onChange={e => setFFundSso(e.target.value === '' ? 0 : Number(e.target.value))} />
+                <Input size="sm" variant="flat" labelPlacement="outside" type="number" min={0} label={t('wht_lbl_fund_pvd')}
+                  value={fFundPvd ? String(fFundPvd) : ''} onChange={e => setFFundPvd(e.target.value === '' ? 0 : Number(e.target.value))} />
 
-            </div>
-            <div style={{ padding: '14px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => setModal('none')} style={btnGhostStyle}>{t('btn_cancel')}</button>
-              <button onClick={save} style={btnPrimaryStyle}>{t('btn_save')}</button>
-            </div>
-          </ModalContainer>
-        </ModalOverlay>
-      )}
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
+                <Button color="primary" onPress={save}>{t('btn_save')}</Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   )
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────────────
-function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-      <div onClick={e => e.stopPropagation()} style={{ display: 'contents' }}>{children}</div>
-    </div>
-  )
-}
-
-function ModalContainer({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, width: 700, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-      {children}
-    </div>
-  )
-}
-
-function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
-  return (
-    <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 600 }}>{title}</h2>
-      <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer', padding: '5px 11px', color: '#8892a4', fontSize: 13, fontFamily: 'inherit' }}>✕</button>
-    </div>
-  )
-}
-
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div style={{ fontSize: 11, fontWeight: 600, color: '#7c6df3', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 10, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, height: 1, background: 'rgba(124,109,243,0.2)' }} />
+    <div className="flex items-center gap-2 text-[11px] font-semibold text-primary uppercase tracking-wide mt-2">
+      <div className="flex-1 h-px bg-primary/20" />
       {label}
-      <div style={{ flex: 1, height: 1, background: 'rgba(124,109,243,0.2)' }} />
+      <div className="flex-1 h-px bg-primary/20" />
     </div>
   )
 }
-
-function Divider() {
-  return <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '16px 0' }} />
-}
-
-function FormGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={labelStyle}>{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function StyledInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} style={{ ...inputStyle, ...props.style }} />
-}
-
-function StyledSelect({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} style={{ ...inputStyle, ...props.style }}>{children}</select>
-}
-
-function StyledTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} style={{ ...inputStyle, resize: 'vertical', minHeight: 56, lineHeight: 1.5, ...props.style }} />
-}
-
-const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, padding: '9px 12px', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', colorScheme: 'inherit' as React.CSSProperties['colorScheme'] }
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }
-const formRowStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }
-const tdStyle: React.CSSProperties = { padding: '12px 14px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' }
-const btnPrimaryStyle: React.CSSProperties = { background: 'linear-gradient(135deg,#7c6df3,#a855f7)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
-const btnGhostStyle: React.CSSProperties = { background: 'rgba(255,255,255,0.04)', color: '#8892a4', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }
-const btnGhostSmStyle: React.CSSProperties = { ...btnGhostStyle, padding: '5px 11px', fontSize: 12, borderRadius: 6 }
-const btnDangerSmStyle: React.CSSProperties = { background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 6, padding: '5px 11px', cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }

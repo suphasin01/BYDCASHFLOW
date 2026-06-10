@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react'
+import {
+  Button, Card, CardBody, Chip, Divider, Input, Spinner, Textarea,
+  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
+} from '@heroui/react'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
 import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany } from '../api'
 import type { Document, DocumentItem, Contact, Company } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 
-const STATUS_BADGE: Record<string, { bg: string; color: string }> = {
-  draft: { bg: 'rgba(139,148,158,0.12)', color: '#8b949e' },
-  sent: { bg: 'rgba(96,165,250,0.12)', color: '#60a5fa' },
-  approved: { bg: 'rgba(34,211,160,0.12)', color: '#22d3a0' },
-  paid: { bg: 'rgba(34,211,160,0.18)', color: '#6ee7b7' },
-  cancelled: { bg: 'rgba(248,113,113,0.12)', color: '#f87171' },
+type ChipColor = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'
+const STATUS_COLOR: Record<string, ChipColor> = {
+  draft: 'default', sent: 'primary', approved: 'success', paid: 'success', cancelled: 'danger',
 }
+
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
 type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'companies' | 'settings'
 
@@ -174,286 +178,302 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const paidAmount = viewDoc ? (viewDoc.payments || []).reduce((s, p) => s + p.amount, 0) : 0
+
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} style={filterSelectStyle}>
+      <div className="flex justify-between items-center">
+        <div className="flex gap-2 flex-wrap">
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
             <option value="">{t('all_types')}</option>
             {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={filterSelectStyle}>
+          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
             <option value="">{t('all_statuses')}</option>
             {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
-        <button onClick={openCreate} style={btnPrimaryStyle}>{t('btn_create_doc')}</button>
+        <Button color="primary" onPress={openCreate}>{t('btn_create_doc')}</Button>
       </div>
 
       {/* Table */}
-      <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                {[t('col_number'), t('col_type'), t('col_contact'), t('col_date'), t('col_due_date'), t('col_amount'), t('col_status'), t('col_actions')].map((h, i) => (
-                  <th key={i} style={{ padding: '10px 14px', textAlign: i === 7 ? 'right' : 'left', fontSize: 11, fontWeight: 600, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.5px', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#8892a4' }}>{t('loading')}</td></tr>
-              ) : docs.length > 0 ? docs.map(doc => {
-                const badge = STATUS_BADGE[doc.status] || STATUS_BADGE.draft
-                return (
-                  <tr key={doc.id}>
-                    <td style={tdStyle}><span style={{ fontWeight: 600, color: '#7c6df3' }}>{doc.number || '—'}</span></td>
-                    <td style={{ ...tdStyle, color: '#8892a4', fontSize: 12 }}>{DOC_TYPES[doc.type] || doc.type}</td>
-                    <td style={{ ...tdStyle, fontWeight: 500 }}>{doc.contact_name || '—'}</td>
-                    <td style={{ ...tdStyle, color: '#8892a4' }}>{fmtDate(doc.date)}</td>
-                    <td style={{ ...tdStyle, color: '#8892a4' }}>{fmtDate(doc.due_date)}</td>
-                    <td style={tdStyle}><span style={{ color: '#22d3a0', fontWeight: 600 }}>฿{fmt(doc.total)}</span></td>
-                    <td style={tdStyle}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 500, background: badge.bg, color: badge.color }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: badge.color, display: 'inline-block' }} />
-                        {STATUS_LABELS[doc.status] || doc.status}
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <button onClick={() => openView(doc.id)} style={btnGhostSmStyle}>{t('btn_view')}</button>
-                      {' '}
-                      <button onClick={() => generatePDF(doc.id)} style={{ ...btnGhostSmStyle, margin: '0 4px' }}>PDF</button>
-                      {' '}
-                      <button onClick={() => openEdit(doc.id)} style={{ ...btnGhostSmStyle, marginRight: 4 }}>{t('btn_edit')}</button>
-                      {' '}
-                      <button onClick={() => doDelete(doc.id)} style={btnDangerSmStyle}>{t('btn_delete')}</button>
-                    </td>
-                  </tr>
-                )
-              }) : (
-                <tr><td colSpan={8} style={{ padding: '60px 20px', textAlign: 'center', color: '#8892a4' }}>
-                  <div style={{ fontSize: 40, marginBottom: 14, opacity: 0.4 }}>📄</div>
+      <Card className="bg-content1 border border-content3" shadow="none">
+        <CardBody className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+          ) : (
+            <Table removeWrapper aria-label={t('btn_create_doc')}
+              classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
+              <TableHeader>
+                <TableColumn>{t('col_number')}</TableColumn>
+                <TableColumn>{t('col_type')}</TableColumn>
+                <TableColumn>{t('col_contact')}</TableColumn>
+                <TableColumn>{t('col_date')}</TableColumn>
+                <TableColumn>{t('col_due_date')}</TableColumn>
+                <TableColumn>{t('col_amount')}</TableColumn>
+                <TableColumn>{t('col_status')}</TableColumn>
+                <TableColumn align="end">{t('col_actions')}</TableColumn>
+              </TableHeader>
+              <TableBody emptyContent={
+                <div className="py-10 text-default-500">
+                  <div className="text-4xl mb-3.5 opacity-40">📄</div>
                   <p>{t('no_documents')}</p>
-                  <p style={{ marginTop: 4, fontSize: 12 }} dangerouslySetInnerHTML={{ __html: t('no_documents_hint') }} />
-                </td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  <p className="mt-1 text-[12px]" dangerouslySetInnerHTML={{ __html: t('no_documents_hint') }} />
+                </div>
+              }>
+                {docs.map(doc => (
+                  <TableRow key={doc.id}>
+                    <TableCell><span className="font-semibold text-primary">{doc.number || '—'}</span></TableCell>
+                    <TableCell className="text-default-500">{DOC_TYPES[doc.type] || doc.type}</TableCell>
+                    <TableCell className="font-medium">{doc.contact_name || '—'}</TableCell>
+                    <TableCell className="text-default-500">{fmtDate(doc.date)}</TableCell>
+                    <TableCell className="text-default-500">{fmtDate(doc.due_date)}</TableCell>
+                    <TableCell><span className="text-success font-semibold">฿{fmt(doc.total)}</span></TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat" color={STATUS_COLOR[doc.status] || 'default'}>
+                        {STATUS_LABELS[doc.status] || doc.status}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="flat" onPress={() => openView(doc.id)}>{t('btn_view')}</Button>
+                        <Button size="sm" variant="flat" onPress={() => generatePDF(doc.id)}>PDF</Button>
+                        <Button size="sm" variant="flat" onPress={() => openEdit(doc.id)}>{t('btn_edit')}</Button>
+                        <Button size="sm" color="danger" variant="flat" onPress={() => doDelete(doc.id)}>{t('btn_delete')}</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardBody>
+      </Card>
 
       {/* Create/Edit Modal */}
-      {(modal === 'create' || modal === 'edit') && (
-        <ModalOverlay onClose={() => setModal('none')}>
-          <ModalContainer>
-            <ModalHeader title={modal === 'edit' ? t('modal_edit_doc') : t('modal_new_doc')} onClose={() => setModal('none')} />
-            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
-              <div style={formRowStyle}>
-                <FormGroup label={t('lbl_doc_type')}>
-                  <StyledSelect value={fType} onChange={e => {
-                    if (e.target.value === 'withholding_tax') { setModal('none'); onNavigate?.('withholding_tax'); return }
-                    setFType(e.target.value)
-                  }}>
-                    {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </StyledSelect>
-                </FormGroup>
-                <FormGroup label={t('lbl_doc_number')}>
-                  <StyledInput value={fNumber} onChange={e => setFNumber(e.target.value)} placeholder={t('lbl_auto_number')} />
-                </FormGroup>
-              </div>
-              <div style={formRowStyle}>
-                <FormGroup label={t('lbl_contact_select')}>
-                  <StyledSelect value={fContactId} onChange={e => setFContactId(e.target.value)}>
-                    <option value="">{t('lbl_select')}</option>
-                    {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </StyledSelect>
-                </FormGroup>
-                <FormGroup label={t('lbl_contact_name')}>
-                  <StyledInput value={fContactName} onChange={e => setFContactName(e.target.value)} placeholder={t('lbl_name_ph')} />
-                </FormGroup>
-              </div>
-              <div style={formRowStyle}>
-                <FormGroup label={t('lbl_date')}>
-                  <StyledInput type="date" value={fDate} onChange={e => setFDate(e.target.value)} />
-                </FormGroup>
-                <FormGroup label={t('lbl_due_date')}>
-                  <StyledInput type="date" value={fDue} onChange={e => setFDue(e.target.value)} />
-                </FormGroup>
-              </div>
-
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '16px 0' }} />
-
-              {/* Items */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 64px 56px 100px 90px 32px', gap: 6, marginBottom: 4, padding: '0 2px' }}>
-                {[t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
-                  <span key={i} style={{ fontSize: 10, fontWeight: 500, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.4px' }}>{h}</span>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {items.map((item, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 64px 56px 100px 90px 32px', gap: 6, alignItems: 'center' }}>
-                    <input value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} placeholder={t('lbl_item_ph')}
-                      style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                    <input type="number" value={item.qty === 0 ? '' : item.qty} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} min={0}
-                      style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                    <input value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} placeholder={t('lbl_unit_ph')}
-                      style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                    <input type="number" value={item.price === 0 ? '' : item.price} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} min={0}
-                      style={{ ...inputStyle, padding: '7px 8px', fontSize: 12 }} />
-                    <span style={{ fontSize: 13, textAlign: 'right', padding: '0 4px' }}>฿{fmt(item.amount)}</span>
-                    <button onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}
-                      style={{ background: 'rgba(248,113,113,0.15)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 6, cursor: 'pointer', padding: '5px', color: '#f87171', fontSize: 12, fontFamily: 'inherit' }}>✕</button>
+      <Modal isOpen={modal === 'create' || modal === 'edit'} onOpenChange={open => { if (!open) setModal('none') }} scrollBehavior="inside" size="2xl">
+        <ModalContent>
+          {onClose => (
+            <>
+              <ModalHeader>{modal === 'edit' ? t('modal_edit_doc') : t('modal_new_doc')}</ModalHeader>
+              <ModalBody>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_doc_type')}</label>
+                    <select value={fType} className={SELECT_CLASS} onChange={e => {
+                      if (e.target.value === 'withholding_tax') { setModal('none'); onNavigate?.('withholding_tax'); return }
+                      setFType(e.target.value)
+                    }}>
+                      {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
                   </div>
-                ))}
-              </div>
-              <button onClick={() => setItems(prev => [...prev, { description: '', qty: 1, unit: '', price: 0, amount: 0 }])}
-                style={{ ...btnGhostSmStyle, marginTop: 10 }}>{t('btn_add_item')}</button>
-
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '16px 0' }} />
-
-              <div style={formRowStyle}>
-                <FormGroup label={t('lbl_discount')}>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <StyledInput type="number" value={fDiscount === 0 ? '' : fDiscount} onChange={e => setFDiscount(e.target.value === '' ? 0 : Number(e.target.value))} style={{ flex: 1 }} min={0} />
-                    <ModeToggle mode={fDiscountMode} onChange={setFDiscountMode} />
-                  </div>
-                </FormGroup>
-                <FormGroup label="VAT">
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <StyledInput type="number" value={fVat === 0 ? '' : fVat} onChange={e => setFVat(e.target.value === '' ? 0 : Number(e.target.value))} style={{ flex: 1 }} min={0} />
-                    <ModeToggle mode={fVatMode} onChange={setFVatMode} />
-                  </div>
-                </FormGroup>
-              </div>
-
-              {/* Totals */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '14px 16px', marginTop: 8 }}>
-                {[
-                  { label: t('lbl_subtotal'), value: `฿${fmt(subtotal)}`, color: undefined },
-                  { label: `${t('lbl_discount')}${fDiscountMode === 'percent' ? ` (${fDiscount}%)` : ''}`, value: `-฿${fmt(discountAmt)}`, color: '#f87171' },
-                  { label: `VAT${fVatMode === 'percent' ? ` (${fVat}%)` : ''}`, value: `฿${fmt(vatAmt)}`, color: undefined },
-                ].map((row, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}>
-                    <span style={{ color: '#8892a4' }}>{row.label}</span>
-                    <span style={{ color: row.color }}>{row.value}</span>
-                  </div>
-                ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 700, borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 6, paddingTop: 10 }}>
-                  <span>{t('lbl_grand_total')}</span>
-                  <span style={{ color: '#22d3a0' }}>฿{fmt(total)}</span>
+                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_doc_number')}
+                    placeholder={t('lbl_auto_number')} value={fNumber} onChange={e => setFNumber(e.target.value)} />
                 </div>
-              </div>
-
-              <FormGroup label={t('lbl_notes')} style={{ marginTop: 14 }}>
-                <StyledTextarea value={fNotes} onChange={e => setFNotes(e.target.value)} />
-              </FormGroup>
-            </div>
-            <div style={{ padding: '14px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => setModal('none')} style={btnGhostStyle}>{t('btn_cancel')}</button>
-              <button onClick={save} style={btnPrimaryStyle}>{t('btn_save')}</button>
-            </div>
-          </ModalContainer>
-        </ModalOverlay>
-      )}
-
-      {/* View Modal */}
-      {modal === 'view' && viewDoc && (
-        <ModalOverlay onClose={() => setModal('none')}>
-          <ModalContainer wide>
-            <ModalHeader title={`${DOC_TYPES[viewDoc.type] || viewDoc.type} — ${viewDoc.number || ''}`} onClose={() => setModal('none')} />
-            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div><label style={labelStyle}>{t('lbl_contact_select')}</label><div style={{ fontWeight: 600 }}>{viewDoc.contact_name || '—'}</div></div>
-                <div>
-                  <label style={labelStyle}>{t('col_status')}</label>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 99, fontSize: 11, fontWeight: 500, background: STATUS_BADGE[viewDoc.status]?.bg, color: STATUS_BADGE[viewDoc.status]?.color }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: STATUS_BADGE[viewDoc.status]?.color, display: 'inline-block' }} />
-                    {STATUS_LABELS[viewDoc.status] || viewDoc.status}
-                  </span>
-                </div>
-                <div><label style={labelStyle}>{t('lbl_date')}</label><div>{fmtDate(viewDoc.date)}</div></div>
-                <div><label style={labelStyle}>{t('lbl_due_date')}</label><div>{fmtDate(viewDoc.due_date)}</div></div>
-              </div>
-
-              <div style={{ overflowX: 'auto', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, marginBottom: 16 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-                      {[t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col')].map((h, i) => (
-                        <th key={i} style={{ padding: '10px 14px', textAlign: i === 4 ? 'right' : 'left', fontSize: 11, fontWeight: 600, color: '#8892a4', textTransform: 'uppercase' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(viewDoc.items || []).length > 0 ? viewDoc.items!.map((item, i) => (
-                      <tr key={i}>
-                        <td style={{ padding: '10px 14px', fontSize: 13, fontWeight: 500 }}>{item.description}</td>
-                        <td style={{ padding: '10px 14px', fontSize: 13 }}>{item.qty}</td>
-                        <td style={{ padding: '10px 14px', fontSize: 13, color: '#8892a4' }}>{item.unit || '—'}</td>
-                        <td style={{ padding: '10px 14px', fontSize: 13 }}>฿{fmt(item.price)}</td>
-                        <td style={{ padding: '10px 14px', fontSize: 13, textAlign: 'right', fontWeight: 600 }}>฿{fmt(item.amount)}</td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#8892a4' }}>{t('no_items')}</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Totals */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}><span style={{ color: '#8892a4' }}>{t('lbl_subtotal')}</span><span>฿{fmt(viewDoc.subtotal)}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}><span style={{ color: '#8892a4' }}>{t('lbl_discount')}</span><span style={{ color: '#f87171' }}>-฿{fmt(viewDoc.discount)}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0' }}><span style={{ color: '#8892a4' }}>VAT</span><span>฿{fmt(viewDoc.vat)}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 700, borderTop: '1px solid rgba(255,255,255,0.07)', marginTop: 6, paddingTop: 10 }}>
-                  <span>{t('lbl_grand_total')}</span><span style={{ color: '#22d3a0' }}>฿{fmt(viewDoc.total)}</span>
-                </div>
-                {((viewDoc.payments || []).reduce((s, p) => s + p.amount, 0)) > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 6 }}>
-                    <span style={{ color: '#8892a4' }}>{t('paid_amount')}</span>
-                    <span style={{ color: '#22d3a0' }}>฿{fmt((viewDoc.payments || []).reduce((s, p) => s + p.amount, 0))}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_contact_select')}</label>
+                    <select value={fContactId} onChange={e => setFContactId(e.target.value)} className={SELECT_CLASS}>
+                      <option value="">{t('lbl_select')}</option>
+                      {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
                   </div>
-                )}
-              </div>
+                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_contact_name')}
+                    placeholder={t('lbl_name_ph')} value={fContactName} onChange={e => setFContactName(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input size="sm" variant="flat" labelPlacement="outside" type="date" label={t('lbl_date')}
+                    value={fDate} onChange={e => setFDate(e.target.value)} />
+                  <Input size="sm" variant="flat" labelPlacement="outside" type="date" label={t('lbl_due_date')}
+                    value={fDue} onChange={e => setFDue(e.target.value)} />
+                </div>
 
-              {viewDoc.notes && (
-                <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, fontSize: 12, color: '#8892a4', marginBottom: 16 }}>💬 {viewDoc.notes}</div>
-              )}
+                <Divider className="my-1" />
 
-              {/* Payment History */}
-              {(viewDoc.payments || []).length > 0 && (
-                <div>
-                  <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '0 0 12px' }} />
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 10 }}>{t('payment_history')}</div>
-                  {viewDoc.payments!.map((p, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.07)', fontSize: 13 }}>
-                      <span style={{ color: '#8892a4' }}>{fmtDate(p.date)} · {p.method}</span>
-                      <span style={{ color: '#22d3a0', fontWeight: 600 }}>฿{fmt(p.amount)}</span>
+                {/* Items */}
+                <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '1fr 64px 56px 100px 90px 32px' }}>
+                  {[t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
+                    <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {items.map((item, i) => (
+                    <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '1fr 64px 56px 100px 90px 32px' }}>
+                      <Input size="sm" variant="flat" placeholder={t('lbl_item_ph')}
+                        value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
+                      <Input size="sm" variant="flat" type="number" min={0}
+                        value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
+                      <Input size="sm" variant="flat" placeholder={t('lbl_unit_ph')}
+                        value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} />
+                      <Input size="sm" variant="flat" type="number" min={0}
+                        value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
+                      <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
+                      <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Button>
                     </div>
                   ))}
                 </div>
-              )}
+                <div>
+                  <Button size="sm" variant="flat" onPress={() => setItems(prev => [...prev, { description: '', qty: 1, unit: '', price: 0, amount: 0 }])}>{t('btn_add_item')}</Button>
+                </div>
 
-              {/* Change Status */}
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '16px 0' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label style={{ fontSize: 13, fontWeight: 500, textTransform: 'none' }}>{t('change_status')}</label>
-                <select value={statusChange} onChange={e => setStatusChange(e.target.value)}
-                  style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '9px 12px', color: '#f0f4ff', fontSize: 13, outline: 'none' }}>
-                  {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-                <button onClick={() => doChangeStatus(viewDoc.id)} style={btnPrimarySmStyle}>{t('btn_update')}</button>
-              </div>
-            </div>
-            <div style={{ padding: '14px 24px', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => setModal('none')} style={btnGhostStyle}>{t('btn_close')}</button>
-              <button onClick={() => generatePDF(viewDoc.id)} style={btnPrimaryStyle}>{t('btn_print_pdf')}</button>
-            </div>
-          </ModalContainer>
-        </ModalOverlay>
-      )}
+                <Divider className="my-1" />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_discount')}</label>
+                    <div className="flex gap-1.5">
+                      <Input size="sm" variant="flat" type="number" min={0} className="flex-1"
+                        value={fDiscount === 0 ? '' : String(fDiscount)} onChange={e => setFDiscount(e.target.value === '' ? 0 : Number(e.target.value))} />
+                      <ModeToggle mode={fDiscountMode} onChange={setFDiscountMode} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">VAT</label>
+                    <div className="flex gap-1.5">
+                      <Input size="sm" variant="flat" type="number" min={0} className="flex-1"
+                        value={fVat === 0 ? '' : String(fVat)} onChange={e => setFVat(e.target.value === '' ? 0 : Number(e.target.value))} />
+                      <ModeToggle mode={fVatMode} onChange={setFVatMode} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Totals */}
+                <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5">
+                  {[
+                    { label: t('lbl_subtotal'), value: `฿${fmt(subtotal)}`, color: '' },
+                    { label: `${t('lbl_discount')}${fDiscountMode === 'percent' ? ` (${fDiscount}%)` : ''}`, value: `-฿${fmt(discountAmt)}`, color: 'text-danger' },
+                    { label: `VAT${fVatMode === 'percent' ? ` (${fVat}%)` : ''}`, value: `฿${fmt(vatAmt)}`, color: '' },
+                  ].map((row, i) => (
+                    <div key={i} className="flex justify-between text-[13px] py-0.5">
+                      <span className="text-default-500">{row.label}</span>
+                      <span className={row.color}>{row.value}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between text-[16px] font-bold border-t border-content3 mt-1.5 pt-2.5">
+                    <span>{t('lbl_grand_total')}</span>
+                    <span className="text-success">฿{fmt(total)}</span>
+                  </div>
+                </div>
+
+                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_notes')}
+                  value={fNotes} onChange={e => setFNotes(e.target.value)} />
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
+                <Button color="primary" onPress={save}>{t('btn_save')}</Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* View Modal */}
+      <Modal isOpen={modal === 'view'} onOpenChange={open => { if (!open) setModal('none') }} scrollBehavior="inside" size="3xl">
+        <ModalContent>
+          {onClose => viewDoc ? (
+            <>
+              <ModalHeader>{`${DOC_TYPES[viewDoc.type] || viewDoc.type} — ${viewDoc.number || ''}`}</ModalHeader>
+              <ModalBody>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_contact_select')}</label>
+                    <div className="font-semibold">{viewDoc.contact_name || '—'}</div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('col_status')}</label>
+                    <Chip size="sm" variant="flat" color={STATUS_COLOR[viewDoc.status] || 'default'}>
+                      {STATUS_LABELS[viewDoc.status] || viewDoc.status}
+                    </Chip>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_date')}</label>
+                    <div>{fmtDate(viewDoc.date)}</div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_due_date')}</label>
+                    <div>{fmtDate(viewDoc.due_date)}</div>
+                  </div>
+                </div>
+
+                <Card className="bg-content2 border border-content3" shadow="none">
+                  <CardBody className="p-0">
+                    <Table removeWrapper aria-label={t('lbl_items_col')}
+                      classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
+                      <TableHeader>
+                        <TableColumn>{t('lbl_items_col')}</TableColumn>
+                        <TableColumn>{t('lbl_qty')}</TableColumn>
+                        <TableColumn>{t('lbl_unit')}</TableColumn>
+                        <TableColumn>{t('lbl_price_per')}</TableColumn>
+                        <TableColumn align="end">{t('lbl_total_col')}</TableColumn>
+                      </TableHeader>
+                      <TableBody emptyContent={<div className="py-5 text-default-500">{t('no_items')}</div>}>
+                        {(viewDoc.items || []).map((item, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium">{item.description}</TableCell>
+                            <TableCell>{item.qty}</TableCell>
+                            <TableCell className="text-default-500">{item.unit || '—'}</TableCell>
+                            <TableCell>฿{fmt(item.price)}</TableCell>
+                            <TableCell><div className="text-right font-semibold">฿{fmt(item.amount)}</div></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardBody>
+                </Card>
+
+                {/* Totals */}
+                <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5">
+                  <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('lbl_subtotal')}</span><span>฿{fmt(viewDoc.subtotal)}</span></div>
+                  <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('lbl_discount')}</span><span className="text-danger">-฿{fmt(viewDoc.discount)}</span></div>
+                  <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">VAT</span><span>฿{fmt(viewDoc.vat)}</span></div>
+                  <div className="flex justify-between text-[16px] font-bold border-t border-content3 mt-1.5 pt-2.5">
+                    <span>{t('lbl_grand_total')}</span><span className="text-success">฿{fmt(viewDoc.total)}</span>
+                  </div>
+                  {paidAmount > 0 && (
+                    <div className="flex justify-between text-[12px] mt-1.5">
+                      <span className="text-default-500">{t('paid_amount')}</span>
+                      <span className="text-success">฿{fmt(paidAmount)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {viewDoc.notes && (
+                  <div className="px-3 py-2.5 bg-content2 rounded-lg text-[12px] text-default-500">💬 {viewDoc.notes}</div>
+                )}
+
+                {/* Payment History */}
+                {(viewDoc.payments || []).length > 0 && (
+                  <div>
+                    <Divider className="mb-3" />
+                    <div className="text-[12px] font-semibold text-default-500 uppercase tracking-wide mb-2.5">{t('payment_history')}</div>
+                    {viewDoc.payments!.map((p, i) => (
+                      <div key={i} className="flex justify-between py-1.5 border-b border-content3 text-[13px]">
+                        <span className="text-default-500">{fmtDate(p.date)} · {p.method}</span>
+                        <span className="text-success font-semibold">฿{fmt(p.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Change Status */}
+                <Divider className="my-1" />
+                <div className="flex items-center gap-2">
+                  <label className="text-[13px] font-medium">{t('change_status')}</label>
+                  <select value={statusChange} onChange={e => setStatusChange(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                  <Button size="sm" color="primary" onPress={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</Button>
+                </div>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="bordered" onPress={onClose}>{t('btn_close')}</Button>
+                <Button color="primary" onPress={() => generatePDF(viewDoc.id)}>{t('btn_print_pdf')}</Button>
+              </ModalFooter>
+            </>
+          ) : <ModalBody><div /></ModalBody>}
+        </ModalContent>
+      </Modal>
     </div>
   )
 }
@@ -555,69 +575,13 @@ function buildPDFHtml(doc: Document, company: Company | null, t: (k: string) => 
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
-function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-      <div onClick={e => e.stopPropagation()} style={{ display: 'contents' }}>{children}</div>
-    </div>
-  )
-}
-
-function ModalContainer({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
-  return (
-    <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, width: wide ? 640 : 560, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-      {children}
-    </div>
-  )
-}
-
-function ModalHeader({ title, onClose }: { title: string; onClose: () => void }) {
-  return (
-    <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-      <h2 style={{ fontSize: 15, fontWeight: 600 }}>{title}</h2>
-      <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer', padding: '5px 11px', color: '#8892a4', fontSize: 13, fontFamily: 'inherit' }}>✕</button>
-    </div>
-  )
-}
-
-function FormGroup({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div style={{ marginBottom: 16, ...style }}>
-      <label style={labelStyle}>{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function StyledInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} style={{ ...inputStyle, ...props.style }} />
-}
-
-function StyledSelect({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} style={{ ...inputStyle, ...props.style }}>{children}</select>
-}
-
-function StyledTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...props} style={{ ...inputStyle, resize: 'vertical', minHeight: 64, lineHeight: 1.5, ...props.style }} />
-}
-
 function ModeToggle({ mode, onChange }: { mode: 'amount' | 'percent'; onChange: (m: 'amount' | 'percent') => void }) {
-  const base: React.CSSProperties = { border: 'none', cursor: 'pointer', padding: '0 9px', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', height: '100%', transition: 'all .15s', borderRadius: 0 }
   return (
-    <div style={{ display: 'flex', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden', flexShrink: 0 }}>
-      <button onClick={() => onChange('amount')} style={{ ...base, borderRadius: '7px 0 0 7px', background: mode === 'amount' ? 'rgba(124,109,243,0.4)' : 'rgba(255,255,255,0.04)', color: mode === 'amount' ? '#c4b5fd' : '#8892a4' }}>฿</button>
-      <button onClick={() => onChange('percent')} style={{ ...base, borderRadius: '0 7px 7px 0', background: mode === 'percent' ? 'rgba(124,109,243,0.4)' : 'rgba(255,255,255,0.04)', color: mode === 'percent' ? '#c4b5fd' : '#8892a4' }}>%</button>
+    <div className="flex border border-content3 rounded-lg overflow-hidden flex-shrink-0">
+      <button onClick={() => onChange('amount')}
+        className={`px-2.5 text-[12px] font-semibold transition-colors ${mode === 'amount' ? 'bg-primary/40 text-primary-300' : 'bg-content2 text-default-500'}`}>฿</button>
+      <button onClick={() => onChange('percent')}
+        className={`px-2.5 text-[12px] font-semibold transition-colors ${mode === 'percent' ? 'bg-primary/40 text-primary-300' : 'bg-content2 text-default-500'}`}>%</button>
     </div>
   )
 }
-
-const filterSelectStyle: React.CSSProperties = { background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-primary)', fontSize: 13, outline: 'none', minWidth: 130, colorScheme: 'inherit' as React.CSSProperties['colorScheme'] }
-const inputStyle: React.CSSProperties = { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, padding: '9px 12px', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', colorScheme: 'inherit' as React.CSSProperties['colorScheme'] }
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }
-const formRowStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }
-const tdStyle: React.CSSProperties = { padding: '12px 14px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.05)', whiteSpace: 'nowrap' }
-const btnPrimaryStyle: React.CSSProperties = { background: 'linear-gradient(135deg,#7c6df3,#a855f7)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }
-const btnPrimarySmStyle: React.CSSProperties = { ...btnPrimaryStyle, padding: '5px 11px', fontSize: 12, borderRadius: 6 }
-const btnGhostStyle: React.CSSProperties = { background: 'rgba(255,255,255,0.04)', color: '#8892a4', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }
-const btnGhostSmStyle: React.CSSProperties = { ...btnGhostStyle, padding: '5px 11px', fontSize: 12, borderRadius: 6 }
-const btnDangerSmStyle: React.CSSProperties = { background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 6, padding: '5px 11px', cursor: 'pointer', fontSize: 12, fontWeight: 500, fontFamily: 'inherit' }
