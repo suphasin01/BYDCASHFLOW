@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  Card, CardBody, Chip, Input, Spinner, Textarea,
+  Card, CardBody, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../api'
@@ -77,8 +78,8 @@ export default function Products() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
-        <Input
-          size="sm" variant="flat" className="max-w-[280px]"
+        <TextField
+          className="max-w-[280px]"
           placeholder={t('search_product')}
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
@@ -145,15 +146,15 @@ export default function Products() {
         </>}>
         <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_product_code')}
+                  <TextField label={t('lbl_product_code')}
                     value={fCode} onChange={e => setFCode(e.target.value)} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_product_name')}
+                  <TextField label={t('lbl_product_name')}
                     value={fName} onChange={e => setFName(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="number" label={t('lbl_price')}
+                  <TextField type="number" label={t('lbl_price')}
                     value={fPrice === 0 ? '' : String(fPrice)} onChange={e => setFPrice(e.target.value === '' ? 0 : Number(e.target.value))} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('col_unit')}
+                  <TextField label={t('col_unit')}
                     placeholder={t('lbl_unit_size_ph')} value={fUnit} onChange={e => setFUnit(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -165,10 +166,10 @@ export default function Products() {
                       <option value="none">{t('vat_none')}</option>
                     </select>
                   </div>
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('col_category')}
+                  <TextField label={t('col_category')}
                     value={fCategory} onChange={e => setFCategory(e.target.value)} />
                 </div>
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_description')}
+                <TextAreaField label={t('lbl_description')}
                   value={fDescription} onChange={e => setFDescription(e.target.value)} />
         </div>
       </Modal>

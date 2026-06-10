@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
 import {
-  Avatar, Card, CardBody, Chip, Input, Spinner, Textarea,
+  Avatar, Card, CardBody, Chip, Spinner,
 } from '@heroui/react'
+import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
 import { getCompanies, getActiveCompany, createCompany, updateCompany, deleteCompany, activateCompany } from '../api'
@@ -162,25 +163,25 @@ export default function Companies() {
                   </div>
                 </div>
 
-                <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_company_name')}
+                <TextField label={t('lbl_company_name')}
                   placeholder={t('lbl_company_name_ph')} value={fName} onChange={e => setFName(e.target.value)} />
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_tax_number')}
+                  <TextField label={t('lbl_tax_number')}
                     placeholder="0000000000000" value={fTax} onChange={e => setFTax(e.target.value)} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_company_branch')}
+                  <TextField label={t('lbl_company_branch')}
                     placeholder={t('lbl_branch_ph')} value={fBranch} onChange={e => setFBranch(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_company_phone')}
+                  <TextField label={t('lbl_company_phone')}
                     value={fPhone} onChange={e => setFPhone(e.target.value)} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="email" label={t('lbl_company_email')}
+                  <TextField type="email" label={t('lbl_company_email')}
                     value={fEmail} onChange={e => setFEmail(e.target.value)} />
                 </div>
-                <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_company_website')}
+                <TextField label={t('lbl_company_website')}
                   placeholder="https://" value={fWebsite} onChange={e => setFWebsite(e.target.value)} />
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_company_address')}
+                <TextAreaField label={t('lbl_company_address')}
                   value={fAddress} onChange={e => setFAddress(e.target.value)} />
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_company_note')}
+                <TextAreaField label={t('lbl_company_note')}
                   value={fNote} onChange={e => setFNote(e.target.value)} />
         </div>
       </Modal>

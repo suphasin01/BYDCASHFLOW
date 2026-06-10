@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  Card, CardBody, Chip, Input, Spinner, Textarea,
+  Card, CardBody, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
 import { getPayments, createPayment, deletePayment, getDocuments } from '../api'
@@ -130,9 +131,9 @@ export default function Payments() {
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="number" label={t('lbl_amount')}
+                  <TextField type="number" label={t('lbl_amount')}
                     value={fAmount === 0 ? '' : String(fAmount)} onChange={e => setFAmount(e.target.value === '' ? 0 : Number(e.target.value))} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="date" label={t('col_date')}
+                  <TextField type="date" label={t('col_date')}
                     value={fDate} onChange={e => setFDate(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -145,10 +146,10 @@ export default function Payments() {
                       <option value="credit_card">{t('method_credit_card')}</option>
                     </select>
                   </div>
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_reference')}
+                  <TextField label={t('lbl_reference')}
                     placeholder={t('lbl_ref_ph')} value={fRef} onChange={e => setFRef(e.target.value)} />
                 </div>
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_notes')}
+                <TextAreaField label={t('lbl_notes')}
                   value={fNotes} onChange={e => setFNotes(e.target.value)} />
         </div>
       </Modal>

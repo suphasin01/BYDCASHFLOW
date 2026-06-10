@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  Card, CardBody, Chip, Divider, Input, Spinner, Textarea,
+  Card, CardBody, Chip, Divider, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
 import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany } from '../api'
@@ -270,7 +271,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                       {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
                   </div>
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_doc_number')}
+                  <TextField label={t('lbl_doc_number')}
                     placeholder={t('lbl_auto_number')} value={fNumber} onChange={e => setFNumber(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -281,13 +282,13 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                       {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_contact_name')}
+                  <TextField label={t('lbl_contact_name')}
                     placeholder={t('lbl_name_ph')} value={fContactName} onChange={e => setFContactName(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="date" label={t('lbl_date')}
+                  <TextField type="date" label={t('lbl_date')}
                     value={fDate} onChange={e => setFDate(e.target.value)} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="date" label={t('lbl_due_date')}
+                  <TextField type="date" label={t('lbl_due_date')}
                     value={fDue} onChange={e => setFDue(e.target.value)} />
                 </div>
 
@@ -302,13 +303,13 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                 <div className="flex flex-col gap-1.5">
                   {items.map((item, i) => (
                     <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '1fr 64px 56px 100px 90px 32px' }}>
-                      <Input size="sm" variant="flat" placeholder={t('lbl_item_ph')}
+                      <TextField placeholder={t('lbl_item_ph')}
                         value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
-                      <Input size="sm" variant="flat" type="number" min={0}
+                      <TextField type="number" min={0}
                         value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
-                      <Input size="sm" variant="flat" placeholder={t('lbl_unit_ph')}
+                      <TextField placeholder={t('lbl_unit_ph')}
                         value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} />
-                      <Input size="sm" variant="flat" type="number" min={0}
+                      <TextField type="number" min={0}
                         value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
                       <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
                       <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Btn>
@@ -325,7 +326,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                   <div>
                     <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_discount')}</label>
                     <div className="flex gap-1.5">
-                      <Input size="sm" variant="flat" type="number" min={0} className="flex-1"
+                      <TextField type="number" min={0} className="flex-1"
                         value={fDiscount === 0 ? '' : String(fDiscount)} onChange={e => setFDiscount(e.target.value === '' ? 0 : Number(e.target.value))} />
                       <ModeToggle mode={fDiscountMode} onChange={setFDiscountMode} />
                     </div>
@@ -333,7 +334,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                   <div>
                     <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">VAT</label>
                     <div className="flex gap-1.5">
-                      <Input size="sm" variant="flat" type="number" min={0} className="flex-1"
+                      <TextField type="number" min={0} className="flex-1"
                         value={fVat === 0 ? '' : String(fVat)} onChange={e => setFVat(e.target.value === '' ? 0 : Number(e.target.value))} />
                       <ModeToggle mode={fVatMode} onChange={setFVatMode} />
                     </div>
@@ -358,7 +359,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                   </div>
                 </div>
 
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_notes')}
+                <TextAreaField label={t('lbl_notes')}
                   value={fNotes} onChange={e => setFNotes(e.target.value)} />
         </div>
       </Modal>

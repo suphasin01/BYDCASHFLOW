@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  Card, CardBody, Input, Spinner, Textarea,
+  Card, CardBody, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
 import { useActiveCompany } from '../App'
@@ -289,13 +290,13 @@ export default function WithholdingTax() {
                 {/* ── Section 1: Certificate Info ── */}
                 <SectionLabel label={t('wht_sec_cert')} />
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_book_no')}
+                  <TextField label={t('wht_lbl_book_no')}
                     placeholder="เล่มที่..." value={fBookNo} onChange={e => setFBookNo(e.target.value)} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_cert_no')}
+                  <TextField label={t('wht_lbl_cert_no')}
                     placeholder="เลขที่..." value={fCertNo} onChange={e => setFCertNo(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4 items-start">
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="date" label={t('wht_lbl_issue_date')}
+                  <TextField type="date" label={t('wht_lbl_issue_date')}
                     value={fIssueDate} onChange={e => setFIssueDate(e.target.value)} />
                   <div>
                     <label className={LABEL_CLASS}>{t('wht_lbl_form_type')}</label>
@@ -316,12 +317,12 @@ export default function WithholdingTax() {
                 </div>
 
                 <SectionLabel label={t('wht_sec_payer')} />
-                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payer_name')}
+                <TextField label={t('wht_lbl_payer_name')}
                   placeholder="ชื่อบริษัท / บุคคล / นิติบุคคล..." value={fPayerName} onChange={e => setFPayerName(e.target.value)} />
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('wht_lbl_payer_address')}
+                <TextAreaField label={t('wht_lbl_payer_address')}
                   placeholder="ที่อยู่ อาคาร/หมู่บ้าน เลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด..."
                   value={fPayerAddress} onChange={e => setFPayerAddress(e.target.value)} />
-                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payer_tax_id')}
+                <TextField label={t('wht_lbl_payer_tax_id')}
                   placeholder="0000000000000 (13 หลัก)" maxLength={13} value={fPayerTaxId} onChange={e => setFPayerTaxId(e.target.value)} />
 
                 <SectionLabel label={t('wht_sec_payee')} />
@@ -332,12 +333,12 @@ export default function WithholdingTax() {
                     {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
-                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payee_name')}
+                <TextField label={t('wht_lbl_payee_name')}
                   placeholder="ชื่อบริษัท / บุคคล / นิติบุคคล..." value={fPayeeName} onChange={e => setFPayeeName(e.target.value)} />
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('wht_lbl_payee_address')}
+                <TextAreaField label={t('wht_lbl_payee_address')}
                   placeholder="ที่อยู่ อาคาร/หมู่บ้าน เลขที่ ซอย ถนน แขวง/ตำบล เขต/อำเภอ จังหวัด..."
                   value={fPayeeAddress} onChange={e => setFPayeeAddress(e.target.value)} />
-                <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payee_tax_id')}
+                <TextField label={t('wht_lbl_payee_tax_id')}
                   placeholder="0000000000000 (13 หลัก)" maxLength={13} value={fPayeeTaxId} onChange={e => setFPayeeTaxId(e.target.value)} />
 
                 {/* ── Section 4: Income types ── */}
@@ -359,16 +360,16 @@ export default function WithholdingTax() {
                               <option key={opt.value} value={opt.value}>{t(opt.key)}</option>
                             ))}
                           </select>
-                          <Input size="sm" variant="flat" type="date" value={item.pay_date || ''}
+                          <TextField type="date" value={item.pay_date || ''}
                             onChange={e => updateItem(idx, 'pay_date', e.target.value)} />
-                          <Input size="sm" variant="flat" type="number" min={0} value={item.amount ? String(item.amount) : ''}
+                          <TextField type="number" min={0} value={item.amount ? String(item.amount) : ''}
                             onChange={e => updateItem(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} />
-                          <Input size="sm" variant="flat" type="number" min={0} value={item.tax_withheld ? String(item.tax_withheld) : ''}
+                          <TextField type="number" min={0} value={item.tax_withheld ? String(item.tax_withheld) : ''}
                             onChange={e => updateItem(idx, 'tax_withheld', e.target.value === '' ? 0 : Number(e.target.value))} />
                           <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setFItems(prev => prev.filter((_, j) => j !== idx))}>✕</Btn>
                         </div>
                         {def?.hasDesc && (
-                          <Input size="sm" variant="flat" className="mt-1 w-[60%]" placeholder={t('wht_lbl_income_desc')}
+                          <TextField className="mt-1 w-[60%]" placeholder={t('wht_lbl_income_desc')}
                             value={item.income_type_desc || ''} onChange={e => updateItem(idx, 'income_type_desc', e.target.value)} />
                         )}
                       </div>
@@ -404,17 +405,17 @@ export default function WithholdingTax() {
                   ))}
                 </div>
                 {fPayerType === '4' && (
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('wht_lbl_payer_type_other')}
+                  <TextField label={t('wht_lbl_payer_type_other')}
                     placeholder="ระบุ..." value={fPayerTypeOther} onChange={e => setFPayerTypeOther(e.target.value)} />
                 )}
 
                 {/* ── Section 6: Funds ── */}
                 <SectionLabel label={t('wht_sec_funds')} />
-                <Input size="sm" variant="flat" labelPlacement="outside" type="number" min={0} label={t('wht_lbl_fund_gpf')}
+                <TextField type="number" min={0} label={t('wht_lbl_fund_gpf')}
                   value={fFundGpf ? String(fFundGpf) : ''} onChange={e => setFFundGpf(e.target.value === '' ? 0 : Number(e.target.value))} />
-                <Input size="sm" variant="flat" labelPlacement="outside" type="number" min={0} label={t('wht_lbl_fund_sso')}
+                <TextField type="number" min={0} label={t('wht_lbl_fund_sso')}
                   value={fFundSso ? String(fFundSso) : ''} onChange={e => setFFundSso(e.target.value === '' ? 0 : Number(e.target.value))} />
-                <Input size="sm" variant="flat" labelPlacement="outside" type="number" min={0} label={t('wht_lbl_fund_pvd')}
+                <TextField type="number" min={0} label={t('wht_lbl_fund_pvd')}
                   value={fFundPvd ? String(fFundPvd) : ''} onChange={e => setFFundPvd(e.target.value === '' ? 0 : Number(e.target.value))} />
 
         </div>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
-  Avatar, Card, CardBody, Chip, Input, Spinner, Textarea,
+  Avatar, Card, CardBody, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
 import { getContacts, createContact, updateContact, deleteContact } from '../api'
@@ -69,8 +70,8 @@ export default function Contacts() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-between items-center">
-        <Input
-          size="sm" variant="flat" className="max-w-[280px]"
+        <TextField
+          className="max-w-[280px]"
           placeholder={t('search_contact')}
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
@@ -144,24 +145,24 @@ export default function Contacts() {
                       <option value="vendor">{t('contact_vendor')}</option>
                     </select>
                   </div>
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_name')}
+                  <TextField label={t('lbl_name')}
                     placeholder={t('lbl_name_ph')} value={fName} onChange={e => setFName(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('col_tax_id')}
+                  <TextField label={t('col_tax_id')}
                     value={fTax} onChange={e => setFTax(e.target.value)} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_branch')}
+                  <TextField label={t('lbl_branch')}
                     placeholder={t('lbl_branch_ph')} value={fBranch} onChange={e => setFBranch(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input size="sm" variant="flat" labelPlacement="outside" type="email" label={t('lbl_email')}
+                  <TextField type="email" label={t('lbl_email')}
                     value={fEmail} onChange={e => setFEmail(e.target.value)} />
-                  <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_phone')}
+                  <TextField label={t('lbl_phone')}
                     value={fPhone} onChange={e => setFPhone(e.target.value)} />
                 </div>
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_address')}
+                <TextAreaField label={t('lbl_address')}
                   value={fAddress} onChange={e => setFAddress(e.target.value)} />
-                <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_note')}
+                <TextAreaField label={t('lbl_note')}
                   value={fNote} onChange={e => setFNote(e.target.value)} />
         </div>
       </Modal>
