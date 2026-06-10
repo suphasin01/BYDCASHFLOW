@@ -17,6 +17,7 @@ import { fmt, fmtDate, today } from '../utils'
 import { buildWHTForm } from '../whtForm'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
+import PreviewModal from '../ui/PreviewModal'
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
@@ -64,6 +65,7 @@ export default function WithholdingTax() {
   const [modal, setModal] = useState<'none' | 'create' | 'edit'>('none')
   const [editId, setEditId] = useState<number | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [preview, setPreview] = useState<{ html: string; id: number } | null>(null)
 
   // Form fields
   const [fBookNo, setFBookNo] = useState('')
@@ -216,6 +218,11 @@ export default function WithholdingTax() {
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const openPreview = async (id: number) => {
+    try { const wht = await getWithholdingTax(id); setPreview({ html: buildWHTForm(wht), id }) }
+    catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
   const formTypeLabel = (value: string) => {
     const def = FORM_TYPES.find(f => f.value === value)
     return def ? t(def.key) : value
@@ -228,11 +235,11 @@ export default function WithholdingTax() {
         <div className="text-[13px] text-default-500">
           {list.length} {t('records_suffix')}
         </div>
-        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('wht_btn_create')}</Btn>
+        <Btn variant="primary" onClick={openCreate}>{t('wht_btn_create')}</Btn>
       </div>
 
       {/* Table */}
-      <Card className="bg-content1 border border-content3" shadow="none">
+      <Card className="bg-content1 border border-content3 rounded-xl" shadow="none">
         <CardBody className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
@@ -265,6 +272,7 @@ export default function WithholdingTax() {
                     <TableCell><span className="text-danger font-semibold">฿{fmt(wht.total_tax)}</span></TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Btn size="sm" variant="ghost" onClick={() => openPreview(wht.id)}>{t('btn_preview')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => generatePDF(wht.id)}>PDF</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openEdit(wht.id)}>{t('btn_edit')}</Btn>
                         <Btn size="sm" variant="danger" onClick={() => doDelete(wht.id)}>{t('btn_delete')}</Btn>
@@ -420,6 +428,11 @@ export default function WithholdingTax() {
 
         </div>
       </Modal>
+
+      <PreviewModal open={!!preview} onClose={() => setPreview(null)}
+        title={t('btn_preview')} html={preview?.html || ''}
+        onDownload={() => { if (preview) generatePDF(preview.id) }}
+        downloadLabel={t('btn_print_pdf')} closeLabel={t('btn_close')} />
     </div>
   )
 }

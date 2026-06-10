@@ -95,7 +95,7 @@ export default function Companies() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_company')}</Btn>
+        <Btn variant="primary" onClick={openCreate}>{t('btn_add_company')}</Btn>
       </div>
 
       <div className="flex flex-col gap-3.5">

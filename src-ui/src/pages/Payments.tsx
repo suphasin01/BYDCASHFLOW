@@ -68,7 +68,7 @@ export default function Payments() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_record_payment')}</Btn>
+        <Btn variant="primary" onClick={openCreate}>{t('btn_record_payment')}</Btn>
       </div>
 
       <Card className="bg-content1 border border-content3" shadow="none">

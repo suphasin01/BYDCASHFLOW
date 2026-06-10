@@ -11,6 +11,7 @@ import type { Document, DocumentItem, Contact, Company } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
+import PreviewModal from '../ui/PreviewModal'
 
 type ChipColor = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'
 const STATUS_COLOR: Record<string, ChipColor> = {
@@ -35,6 +36,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const [editDoc, setEditDoc] = useState<Document | null>(null)
   const [viewDoc, setViewDoc] = useState<Document | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [preview, setPreview] = useState<{ html: string; id: number } | null>(null)
 
   // Form state
   const [fType, setFType] = useState('quotation')
@@ -180,6 +182,13 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const openPreview = async (docId: number) => {
+    try {
+      const [doc, company] = await Promise.all([getDocument(docId), getActiveCompany()])
+      setPreview({ html: buildPDFHtml(doc, company, t), id: docId })
+    } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
   const paidAmount = viewDoc ? (viewDoc.payments || []).reduce((s, p) => s + p.amount, 0) : 0
 
   return (
@@ -196,11 +205,11 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
             {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
-        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_create_doc')}</Btn>
+        <Btn variant="primary" onClick={openCreate}>{t('btn_create_doc')}</Btn>
       </div>
 
       {/* Table */}
-      <Card className="bg-content1 border border-content3" shadow="none">
+      <Card className="bg-content1 border border-content3 rounded-xl" shadow="none">
         <CardBody className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
@@ -240,6 +249,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Btn size="sm" variant="ghost" onClick={() => openView(doc.id)}>{t('btn_view')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => openPreview(doc.id)}>{t('btn_preview')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => generatePDF(doc.id)}>PDF</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openEdit(doc.id)}>{t('btn_edit')}</Btn>
                         <Btn size="sm" variant="danger" onClick={() => doDelete(doc.id)}>{t('btn_delete')}</Btn>
@@ -369,6 +379,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
         title={viewDoc ? `${DOC_TYPES[viewDoc.type] || viewDoc.type} — ${viewDoc.number || ''}` : ''}
         footer={viewDoc ? <>
           <Btn variant="ghost" onClick={() => setModal('none')}>{t('btn_close')}</Btn>
+          <Btn variant="ghost" onClick={() => openPreview(viewDoc.id)}>{t('btn_preview')}</Btn>
           <Btn variant="primary" onClick={() => generatePDF(viewDoc.id)}>{t('btn_print_pdf')}</Btn>
         </> : undefined}>
         {viewDoc && (
@@ -466,6 +477,11 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
           </div>
         )}
       </Modal>
+
+      <PreviewModal open={!!preview} onClose={() => setPreview(null)}
+        title={t('btn_preview')} html={preview?.html || ''}
+        onDownload={() => { if (preview) generatePDF(preview.id) }}
+        downloadLabel={t('btn_print_pdf')} closeLabel={t('btn_close')} />
     </div>
   )
 }

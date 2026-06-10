@@ -83,7 +83,7 @@ export default function Products() {
           placeholder={t('search_product')}
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
-        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_product')}</Btn>
+        <Btn variant="primary" onClick={openCreate}>{t('btn_add_product')}</Btn>
       </div>
 
       <Card className="bg-content1 border border-content3" shadow="none">

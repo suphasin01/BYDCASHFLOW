@@ -6,10 +6,10 @@ interface ModalProps {
   title?: ReactNode
   children: ReactNode
   footer?: ReactNode
-  size?: 'md' | 'lg' | 'xl'
+  size?: 'md' | 'lg' | 'xl' | '3xl' | '4xl'
 }
 
-const WIDTHS = { md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' }
+const WIDTHS = { md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl', '3xl': 'max-w-3xl', '4xl': 'max-w-4xl' }
 
 export default function Modal({ open, onClose, title, children, footer, size = 'xl' }: ModalProps) {
   useEffect(() => {
