@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  Button, Card, CardBody, Chip, Divider, Input, Spinner, Textarea,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Card, CardBody, Chip, Divider, Input, Spinner, Textarea,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
 import { useI18n } from '../i18n'
@@ -9,7 +8,8 @@ import { useToast } from '../App'
 import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany } from '../api'
 import type { Document, DocumentItem, Contact, Company } from '../types'
 import { fmt, fmtDate, today } from '../utils'
-import GradientButton from '../ui/GradientButton'
+import Btn from '../ui/Btn'
+import Modal from '../ui/Modal'
 
 type ChipColor = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'
 const STATUS_COLOR: Record<string, ChipColor> = {
@@ -195,7 +195,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
             {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
-        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_create_doc')}</GradientButton>
+        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_create_doc')}</Btn>
       </div>
 
       {/* Table */}
@@ -238,10 +238,10 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="flat" onPress={() => openView(doc.id)}>{t('btn_view')}</Button>
-                        <Button size="sm" variant="flat" onPress={() => generatePDF(doc.id)}>PDF</Button>
-                        <Button size="sm" variant="flat" onPress={() => openEdit(doc.id)}>{t('btn_edit')}</Button>
-                        <Button size="sm" color="danger" variant="flat" onPress={() => doDelete(doc.id)}>{t('btn_delete')}</Button>
+                        <Btn size="sm" variant="ghost" onClick={() => openView(doc.id)}>{t('btn_view')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => generatePDF(doc.id)}>PDF</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => openEdit(doc.id)}>{t('btn_edit')}</Btn>
+                        <Btn size="sm" variant="danger" onClick={() => doDelete(doc.id)}>{t('btn_delete')}</Btn>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -253,12 +253,13 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal isOpen={modal === 'create' || modal === 'edit'} onOpenChange={open => { if (!open) setModal('none') }} scrollBehavior="inside" size="2xl">
-        <ModalContent>
-          {onClose => (
-            <>
-              <ModalHeader>{modal === 'edit' ? t('modal_edit_doc') : t('modal_new_doc')}</ModalHeader>
-              <ModalBody>
+      <Modal open={modal === 'create' || modal === 'edit'} onClose={() => setModal('none')} size="xl"
+        title={modal === 'edit' ? t('modal_edit_doc') : t('modal_new_doc')}
+        footer={<>
+          <Btn variant="ghost" onClick={() => setModal('none')}>{t('btn_cancel')}</Btn>
+          <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
+        </>}>
+        <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_doc_type')}</label>
@@ -310,12 +311,12 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                       <Input size="sm" variant="flat" type="number" min={0}
                         value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
                       <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
-                      <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Button>
+                      <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Btn>
                     </div>
                   ))}
                 </div>
                 <div>
-                  <Button size="sm" variant="flat" onPress={() => setItems(prev => [...prev, { description: '', qty: 1, unit: '', price: 0, amount: 0 }])}>{t('btn_add_item')}</Button>
+                  <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description: '', qty: 1, unit: '', price: 0, amount: 0 }])}>{t('btn_add_item')}</Btn>
                 </div>
 
                 <Divider className="my-1" />
@@ -359,23 +360,18 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
 
                 <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_notes')}
                   value={fNotes} onChange={e => setFNotes(e.target.value)} />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
+        </div>
       </Modal>
 
       {/* View Modal */}
-      <Modal isOpen={modal === 'view'} onOpenChange={open => { if (!open) setModal('none') }} scrollBehavior="inside" size="3xl">
-        <ModalContent>
-          {onClose => viewDoc ? (
-            <>
-              <ModalHeader>{`${DOC_TYPES[viewDoc.type] || viewDoc.type} — ${viewDoc.number || ''}`}</ModalHeader>
-              <ModalBody>
+      <Modal open={modal === 'view' && !!viewDoc} onClose={() => setModal('none')} size="xl"
+        title={viewDoc ? `${DOC_TYPES[viewDoc.type] || viewDoc.type} — ${viewDoc.number || ''}` : ''}
+        footer={viewDoc ? <>
+          <Btn variant="ghost" onClick={() => setModal('none')}>{t('btn_close')}</Btn>
+          <Btn variant="primary" onClick={() => generatePDF(viewDoc.id)}>{t('btn_print_pdf')}</Btn>
+        </> : undefined}>
+        {viewDoc && (
+          <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_contact_select')}</label>
@@ -464,16 +460,10 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                   <select value={statusChange} onChange={e => setStatusChange(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
                     {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
-                  <GradientButton size="sm" onPress={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</GradientButton>
+                  <Btn size="sm" variant="primary" onClick={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</Btn>
                 </div>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="bordered" onPress={onClose}>{t('btn_close')}</Button>
-                <GradientButton onPress={() => generatePDF(viewDoc.id)}>{t('btn_print_pdf')}</GradientButton>
-              </ModalFooter>
-            </>
-          ) : <ModalBody><div /></ModalBody>}
-        </ModalContent>
+          </div>
+        )}
       </Modal>
     </div>
   )

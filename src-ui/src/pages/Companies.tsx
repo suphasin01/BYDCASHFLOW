@@ -1,13 +1,13 @@
 import { useEffect, useState, useRef } from 'react'
 import {
-  Avatar, Button, Card, CardBody, Chip, Input, Spinner, Textarea,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Avatar, Card, CardBody, Chip, Input, Spinner, Textarea,
 } from '@heroui/react'
 import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
 import { getCompanies, getActiveCompany, createCompany, updateCompany, deleteCompany, activateCompany } from '../api'
 import type { Company } from '../types'
-import GradientButton from '../ui/GradientButton'
+import Btn from '../ui/Btn'
+import Modal from '../ui/Modal'
 
 export default function Companies() {
   const { t } = useI18n()
@@ -94,7 +94,7 @@ export default function Companies() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_company')}</GradientButton>
+        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_company')}</Btn>
       </div>
 
       <div className="flex flex-col gap-3.5">
@@ -120,9 +120,9 @@ export default function Companies() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  {!isActive && <Button size="sm" color="success" variant="flat" onPress={() => doActivate(c.id)}>{t('btn_use')}</Button>}
-                  <Button size="sm" variant="flat" onPress={() => openEdit(c)}>{t('btn_edit')}</Button>
-                  {companies.length > 1 && <Button size="sm" color="danger" variant="flat" onPress={() => doDelete(c.id)}>{t('btn_delete')}</Button>}
+                  {!isActive && <Btn size="sm" variant="success" onClick={() => doActivate(c.id)}>{t('btn_use')}</Btn>}
+                  <Btn size="sm" variant="ghost" onClick={() => openEdit(c)}>{t('btn_edit')}</Btn>
+                  {companies.length > 1 && <Btn size="sm" variant="danger" onClick={() => doDelete(c.id)}>{t('btn_delete')}</Btn>}
                 </div>
               </CardBody>
             </Card>
@@ -137,12 +137,13 @@ export default function Companies() {
         )}
       </div>
 
-      <Modal isOpen={modal} onOpenChange={open => { if (!open) setModal(false) }} scrollBehavior="inside" size="2xl">
-        <ModalContent>
-          {onClose => (
-            <>
-              <ModalHeader>{editing ? t('modal_edit_company') : t('modal_new_company')}</ModalHeader>
-              <ModalBody>
+      <Modal open={modal} onClose={() => setModal(false)} size="xl"
+        title={editing ? t('modal_edit_company') : t('modal_new_company')}
+        footer={<>
+          <Btn variant="ghost" onClick={() => setModal(false)}>{t('btn_cancel')}</Btn>
+          <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
+        </>}>
+        <div className="flex flex-col gap-4">
                 {/* Logo */}
                 <div>
                   <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_logo')}</label>
@@ -153,8 +154,8 @@ export default function Companies() {
                     <div className="flex-1">
                       <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleLogoChange} />
                       <div className="flex gap-2">
-                        <Button size="sm" variant="flat" onPress={() => fileInputRef.current?.click()}>{t('btn_select_logo')}</Button>
-                        {fLogo && <Button size="sm" color="danger" variant="flat" onPress={() => setFLogo('')}>{t('btn_remove_logo')}</Button>}
+                        <Btn size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()}>{t('btn_select_logo')}</Btn>
+                        {fLogo && <Btn size="sm" variant="danger" onClick={() => setFLogo('')}>{t('btn_remove_logo')}</Btn>}
                       </div>
                       <div className="text-[11px] text-default-500 mt-1.5">{t('logo_hint')}</div>
                     </div>
@@ -181,14 +182,7 @@ export default function Companies() {
                   value={fAddress} onChange={e => setFAddress(e.target.value)} />
                 <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_company_note')}
                   value={fNote} onChange={e => setFNote(e.target.value)} />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
+        </div>
       </Modal>
     </div>
   )

@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react'
-import {
-  Avatar, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Progress, useDisclosure,
-} from '@heroui/react'
+import { Avatar, Progress } from '@heroui/react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
 import ErrorBoundary from './ErrorBoundary'
+import Btn from './ui/Btn'
+import Modal from './ui/Modal'
 import type { Company } from './types'
 import { getHealth, getActiveCompany, activateCompany as apiActivateCompany, getCompanies } from './api'
 import Dashboard from './pages/Dashboard'
@@ -50,7 +49,7 @@ export default function App() {
   const [apiOnline, setApiOnline] = useState(false)
   const [activeCompany, setActiveCompany] = useState<Company | null>(null)
   const [toasts, setToasts] = useState<ToastItem[]>([])
-  const switcher = useDisclosure()
+  const [switcherOpen, setSwitcherOpen] = useState(false)
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
   const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready'; version: string } | null>(null)
@@ -139,7 +138,7 @@ export default function App() {
     try {
       const { data } = await getCompanies()
       setAllCompanies(data)
-      switcher.onOpen()
+      setSwitcherOpen(true)
     } catch {}
   }
 
@@ -147,7 +146,7 @@ export default function App() {
     try {
       await apiActivateCompany(id)
       await reloadCompany()
-      switcher.onClose()
+      setSwitcherOpen(false)
       const c = allCompanies.find(c => c.id === id)
       toast(t('toast_company_changed') + (c?.name || ''))
     } catch (e: unknown) {
@@ -251,11 +250,11 @@ export default function App() {
 
               {/* Exit Button */}
               <div className="px-3.5 py-2 border-t border-content3">
-                <Button onPress={quitApp} color="danger" variant="flat" size="sm" radius="md"
-                  className="w-full justify-start gap-2 font-medium"
+                <Btn onClick={quitApp} variant="danger" size="sm"
+                  className="w-full justify-start"
                   startContent={<span className="text-sm">🚪</span>}>
                   {t('btn_exit_app')}
-                </Button>
+                </Btn>
               </div>
 
               {/* Status */}
@@ -275,16 +274,18 @@ export default function App() {
                 <h1 className="text-[15px] font-semibold">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
                 <div className="flex items-center gap-2.5">
                   {/* Check for Updates */}
-                  <Button isIconOnly size="sm" variant="flat" radius="md" isDisabled={checkingUpdate}
-                    onPress={checkForUpdates} title={t('btn_check_update')}>
+                  <button disabled={checkingUpdate}
+                    onClick={checkForUpdates} title={t('btn_check_update')}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-600 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
                     <span className={`text-sm inline-block ${checkingUpdate ? 'animate-spin' : ''}`}>🔄</span>
-                  </Button>
+                  </button>
                   {/* Dark/Light toggle */}
-                  <Button isIconOnly size="sm" variant="flat" radius="md"
-                    onPress={() => setDarkMode(d => !d)}
-                    title={darkMode ? 'โหมดกลางวัน' : 'โหมดกลางคืน'}>
+                  <button
+                    onClick={() => setDarkMode(d => !d)}
+                    title={darkMode ? 'โหมดกลางวัน' : 'โหมดกลางคืน'}
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-600 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer">
                     <span className="text-base">{darkMode ? '☀️' : '🌙'}</span>
-                  </Button>
+                  </button>
                   {/* Lang switcher */}
                   <div className="flex items-center gap-0.5 bg-content2 border border-content3 rounded-lg p-0.5">
                     {(['th', 'en', 'zh'] as Lang[]).map((l, i) => {
@@ -310,40 +311,31 @@ export default function App() {
             </div>
 
             {/* Company Switcher Modal */}
-            <Modal isOpen={switcher.isOpen} onOpenChange={switcher.onOpenChange} scrollBehavior="inside" size="lg"
-              classNames={{ base: 'bg-content1 border border-content3' }}>
-              <ModalContent>
-                {(onClose) => (
-                  <>
-                    <ModalHeader className="text-[15px] font-semibold">{t('company_switcher_title')}</ModalHeader>
-                    <ModalBody>
-                      <div className="flex flex-col gap-2">
-                        {allCompanies.map(c => {
-                          const isActive = activeCompany?.id === c.id
-                          return (
-                            <button key={c.id} onClick={() => handleSwitchCompany(c.id)}
-                              className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all border ${isActive ? 'border-primary/50 bg-primary/10' : 'border-content3 hover:bg-content2'}`}>
-                              <Avatar name={(c.name || '').slice(0, 2)} radius="md"
-                                className="w-9 h-9 flex-shrink-0 text-sm font-bold bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-[13px] font-semibold truncate">{c.name}</div>
-                                <div className="text-[11px] text-default-500 mt-0.5 truncate">{c.tax_id ? t('company_tax_prefix') + c.tax_id : c.email || t('no_extra_info')}</div>
-                              </div>
-                              {isActive && <span className="text-xs text-primary font-semibold">{t('company_active_sw')}</span>}
-                            </button>
-                          )
-                        })}
-                        {allCompanies.length === 0 && <p className="text-center text-default-500 py-5">{t('no_companies_sw')}</p>}
+            <Modal open={switcherOpen} onClose={() => setSwitcherOpen(false)} size="lg"
+              title={t('company_switcher_title')}
+              footer={
+                <Btn variant="ghost" className="w-full justify-center" onClick={() => { setSwitcherOpen(false); setPage('companies') }}>
+                  {t('company_manage')}
+                </Btn>
+              }>
+              <div className="flex flex-col gap-2">
+                {allCompanies.map(c => {
+                  const isActive = activeCompany?.id === c.id
+                  return (
+                    <button key={c.id} onClick={() => handleSwitchCompany(c.id)}
+                      className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all border ${isActive ? 'border-primary/50 bg-primary/10' : 'border-content3 hover:bg-content2'}`}>
+                      <Avatar name={(c.name || '').slice(0, 2)} radius="md"
+                        className="w-9 h-9 flex-shrink-0 text-sm font-bold bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold truncate">{c.name}</div>
+                        <div className="text-[11px] text-default-500 mt-0.5 truncate">{c.tax_id ? t('company_tax_prefix') + c.tax_id : c.email || t('no_extra_info')}</div>
                       </div>
-                    </ModalBody>
-                    <ModalFooter>
-                      <Button variant="flat" className="w-full" onPress={() => { onClose(); setPage('companies') }}>
-                        {t('company_manage')}
-                      </Button>
-                    </ModalFooter>
-                  </>
-                )}
-              </ModalContent>
+                      {isActive && <span className="text-xs text-primary font-semibold">{t('company_active_sw')}</span>}
+                    </button>
+                  )
+                })}
+                {allCompanies.length === 0 && <p className="text-center text-default-500 py-5">{t('no_companies_sw')}</p>}
+              </div>
             </Modal>
 
             {/* Update Banner */}
@@ -366,11 +358,12 @@ export default function App() {
                   )}
                 </div>
                 {updateBanner.type === 'ready' && (
-                  <Button size="sm" color="success" variant="flat" onPress={installUpdate} isLoading={installing} className="font-semibold whitespace-nowrap">
+                  <Btn size="sm" variant="success" onClick={installUpdate} isLoading={installing} className="whitespace-nowrap">
                     {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
-                  </Button>
+                  </Btn>
                 )}
-                <Button isIconOnly size="sm" variant="light" onPress={() => setUpdateBanner(null)} className="text-default-500 min-w-6 w-6 h-6">✕</Button>
+                <button onClick={() => setUpdateBanner(null)}
+                  className="w-6 h-6 flex items-center justify-center rounded-md text-default-500 hover:text-foreground hover:bg-content3 transition-colors cursor-pointer flex-shrink-0">✕</button>
               </div>
             )}
 

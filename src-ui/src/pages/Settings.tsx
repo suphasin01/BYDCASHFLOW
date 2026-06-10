@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@heroui/react'
 import { useI18n } from '../i18n'
+import Btn from '../ui/Btn'
 import { useToast, useActiveCompany } from '../App'
 import { getSettings, updateSettings } from '../api'
 import type { Settings } from '../types'
@@ -148,10 +148,10 @@ export default function Settings() {
               <span style={{ fontSize: 11, color: '#6b7685' }}>ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</span>
             </div>
             {/* Export action */}
-            <Button color="success" variant="flat" onClick={handleExport} isDisabled={exporting} isLoading={exporting}
+            <Btn variant="success" className="w-full justify-center" onClick={handleExport} disabled={exporting} isLoading={exporting}
               startContent={!exporting ? <span style={{ fontSize: 15 }}>📤</span> : undefined}>
               {t('btn_export_data')}
-            </Button>
+            </Btn>
           </div>
         </div>
       </div>

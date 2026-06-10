@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  Button, Card, CardBody, Chip, Input, Spinner, Textarea,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Card, CardBody, Chip, Input, Spinner, Textarea,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
 import { useI18n } from '../i18n'
@@ -9,7 +8,8 @@ import { useToast } from '../App'
 import { getPayments, createPayment, deletePayment, getDocuments } from '../api'
 import type { Payment, Document } from '../types'
 import { fmt, fmtDate, today } from '../utils'
-import GradientButton from '../ui/GradientButton'
+import Btn from '../ui/Btn'
+import Modal from '../ui/Modal'
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
@@ -67,7 +67,7 @@ export default function Payments() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_record_payment')}</GradientButton>
+        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_record_payment')}</Btn>
       </div>
 
       <Card className="bg-content1 border border-content3" shadow="none">
@@ -104,7 +104,7 @@ export default function Payments() {
                     <TableCell className="text-default-500">{p.notes || '—'}</TableCell>
                     <TableCell>
                       <div className="flex justify-end">
-                        <Button size="sm" color="danger" variant="flat" onPress={() => doDelete(p.id)}>{t('btn_delete')}</Button>
+                        <Btn size="sm" variant="danger" onClick={() => doDelete(p.id)}>{t('btn_delete')}</Btn>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -115,12 +115,13 @@ export default function Payments() {
         </CardBody>
       </Card>
 
-      <Modal isOpen={modal} onOpenChange={open => { if (!open) setModal(false) }} scrollBehavior="inside" size="2xl">
-        <ModalContent>
-          {onClose => (
-            <>
-              <ModalHeader>{t('modal_record_payment')}</ModalHeader>
-              <ModalBody>
+      <Modal open={modal} onClose={() => setModal(false)} size="xl"
+        title={t('modal_record_payment')}
+        footer={<>
+          <Btn variant="ghost" onClick={() => setModal(false)}>{t('btn_cancel')}</Btn>
+          <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
+        </>}>
+        <div className="flex flex-col gap-4">
                 <div>
                   <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_doc_select')}</label>
                   <select value={fDocId} onChange={e => setFDocId(e.target.value)} className={SELECT_CLASS}>
@@ -149,14 +150,7 @@ export default function Payments() {
                 </div>
                 <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_notes')}
                   value={fNotes} onChange={e => setFNotes(e.target.value)} />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
+        </div>
       </Modal>
     </div>
   )

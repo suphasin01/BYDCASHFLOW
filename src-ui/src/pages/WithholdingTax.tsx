@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  Button, Card, CardBody, Input, Spinner, Textarea,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Card, CardBody, Input, Spinner, Textarea,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
 import { useI18n } from '../i18n'
@@ -15,7 +14,8 @@ import {
 import type { WithholdingTax, WithholdingTaxItem, Contact } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import { buildWHTForm } from '../whtForm'
-import GradientButton from '../ui/GradientButton'
+import Btn from '../ui/Btn'
+import Modal from '../ui/Modal'
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
@@ -227,7 +227,7 @@ export default function WithholdingTax() {
         <div className="text-[13px] text-default-500">
           {list.length} {t('records_suffix')}
         </div>
-        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('wht_btn_create')}</GradientButton>
+        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('wht_btn_create')}</Btn>
       </div>
 
       {/* Table */}
@@ -264,9 +264,9 @@ export default function WithholdingTax() {
                     <TableCell><span className="text-danger font-semibold">฿{fmt(wht.total_tax)}</span></TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="flat" onPress={() => generatePDF(wht.id)}>PDF</Button>
-                        <Button size="sm" variant="flat" onPress={() => openEdit(wht.id)}>{t('btn_edit')}</Button>
-                        <Button size="sm" color="danger" variant="flat" onPress={() => doDelete(wht.id)}>{t('btn_delete')}</Button>
+                        <Btn size="sm" variant="ghost" onClick={() => generatePDF(wht.id)}>PDF</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => openEdit(wht.id)}>{t('btn_edit')}</Btn>
+                        <Btn size="sm" variant="danger" onClick={() => doDelete(wht.id)}>{t('btn_delete')}</Btn>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -278,12 +278,13 @@ export default function WithholdingTax() {
       </Card>
 
       {/* Create/Edit Modal */}
-      <Modal isOpen={modal === 'create' || modal === 'edit'} onOpenChange={open => { if (!open) setModal('none') }} scrollBehavior="inside" size="3xl">
-        <ModalContent>
-          {onClose => (
-            <>
-              <ModalHeader>{modal === 'edit' ? t('wht_modal_edit') : t('wht_modal_new')}</ModalHeader>
-              <ModalBody>
+      <Modal open={modal === 'create' || modal === 'edit'} onClose={() => setModal('none')} size="xl"
+        title={modal === 'edit' ? t('wht_modal_edit') : t('wht_modal_new')}
+        footer={<>
+          <Btn variant="ghost" onClick={() => setModal('none')}>{t('btn_cancel')}</Btn>
+          <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
+        </>}>
+        <div className="flex flex-col gap-4">
 
                 {/* ── Section 1: Certificate Info ── */}
                 <SectionLabel label={t('wht_sec_cert')} />
@@ -364,7 +365,7 @@ export default function WithholdingTax() {
                             onChange={e => updateItem(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} />
                           <Input size="sm" variant="flat" type="number" min={0} value={item.tax_withheld ? String(item.tax_withheld) : ''}
                             onChange={e => updateItem(idx, 'tax_withheld', e.target.value === '' ? 0 : Number(e.target.value))} />
-                          <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => setFItems(prev => prev.filter((_, j) => j !== idx))}>✕</Button>
+                          <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setFItems(prev => prev.filter((_, j) => j !== idx))}>✕</Btn>
                         </div>
                         {def?.hasDesc && (
                           <Input size="sm" variant="flat" className="mt-1 w-[60%]" placeholder={t('wht_lbl_income_desc')}
@@ -375,7 +376,7 @@ export default function WithholdingTax() {
                   })}
                 </div>
                 <div>
-                  <Button size="sm" variant="flat" onPress={() => setFItems(prev => [...prev, emptyItem()])}>{t('wht_btn_add_income')}</Button>
+                  <Btn size="sm" variant="ghost" onClick={() => setFItems(prev => [...prev, emptyItem()])}>{t('wht_btn_add_income')}</Btn>
                 </div>
 
                 {/* Totals summary */}
@@ -416,14 +417,7 @@ export default function WithholdingTax() {
                 <Input size="sm" variant="flat" labelPlacement="outside" type="number" min={0} label={t('wht_lbl_fund_pvd')}
                   value={fFundPvd ? String(fFundPvd) : ''} onChange={e => setFFundPvd(e.target.value === '' ? 0 : Number(e.target.value))} />
 
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
+        </div>
       </Modal>
     </div>
   )

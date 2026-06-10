@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import {
-  Button, Card, CardBody, CardHeader, Chip, Spinner,
+  Card, CardBody, CardHeader, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
 import { useI18n } from '../i18n'
+import Btn from '../ui/Btn'
 import { getReportSummary, getReportMonthly, getDocuments, getReportTopContacts } from '../api'
 import type { ReportSummary, MonthlyData, Document, TopContact } from '../types'
 import { fmt, fmtShort, fmtDate } from '../utils'
@@ -139,7 +140,7 @@ export default function Dashboard({ onNavigate }: Props) {
       <Card className="bg-content1 border border-content3" shadow="none">
         <CardHeader className="flex justify-between items-center">
           <div className="text-[13px] font-semibold">🕐 {t('dash_recent_docs')}</div>
-          <Button size="sm" variant="flat" onPress={() => onNavigate('documents')}>{t('dash_view_all')}</Button>
+          <Btn size="sm" variant="ghost" onClick={() => onNavigate('documents')}>{t('dash_view_all')}</Btn>
         </CardHeader>
         <CardBody className="pt-0">
           <Table removeWrapper aria-label={t('dash_recent_docs')}

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  Button, Card, CardBody, Chip, Input, Spinner, Textarea,
-  Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Card, CardBody, Chip, Input, Spinner, Textarea,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
 import { useI18n } from '../i18n'
@@ -9,7 +8,8 @@ import { useToast } from '../App'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../api'
 import type { Product } from '../types'
 import { fmt } from '../utils'
-import GradientButton from '../ui/GradientButton'
+import Btn from '../ui/Btn'
+import Modal from '../ui/Modal'
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
@@ -82,7 +82,7 @@ export default function Products() {
           placeholder={t('search_product')}
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
-        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_product')}</GradientButton>
+        <Btn variant="primary" onClick={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_product')}</Btn>
       </div>
 
       <Card className="bg-content1 border border-content3" shadow="none">
@@ -124,8 +124,8 @@ export default function Products() {
                       <TableCell className="text-default-500">{p.category || '—'}</TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="flat" onPress={() => openEdit(p)}>{t('btn_edit')}</Button>
-                          <Button size="sm" color="danger" variant="flat" onPress={() => doDelete(p.id)}>{t('btn_delete')}</Button>
+                          <Btn size="sm" variant="ghost" onClick={() => openEdit(p)}>{t('btn_edit')}</Btn>
+                          <Btn size="sm" variant="danger" onClick={() => doDelete(p.id)}>{t('btn_delete')}</Btn>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -137,12 +137,13 @@ export default function Products() {
         </CardBody>
       </Card>
 
-      <Modal isOpen={modal} onOpenChange={open => { if (!open) setModal(false) }} scrollBehavior="inside" size="2xl">
-        <ModalContent>
-          {onClose => (
-            <>
-              <ModalHeader>{editing ? t('modal_edit_product') : t('modal_new_product')}</ModalHeader>
-              <ModalBody>
+      <Modal open={modal} onClose={() => setModal(false)} size="xl"
+        title={editing ? t('modal_edit_product') : t('modal_new_product')}
+        footer={<>
+          <Btn variant="ghost" onClick={() => setModal(false)}>{t('btn_cancel')}</Btn>
+          <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
+        </>}>
+        <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <Input size="sm" variant="flat" labelPlacement="outside" label={t('lbl_product_code')}
                     value={fCode} onChange={e => setFCode(e.target.value)} />
@@ -169,14 +170,7 @@ export default function Products() {
                 </div>
                 <Textarea size="sm" variant="flat" labelPlacement="outside" minRows={2} label={t('lbl_description')}
                   value={fDescription} onChange={e => setFDescription(e.target.value)} />
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
+        </div>
       </Modal>
     </div>
   )
