@@ -4,6 +4,7 @@ import {
   Progress, useDisclosure,
 } from '@heroui/react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
+import ErrorBoundary from './ErrorBoundary'
 import type { Company } from './types'
 import { getHealth, getActiveCompany, activateCompany as apiActivateCompany, getCompanies } from './api'
 import Dashboard from './pages/Dashboard'
@@ -302,7 +303,9 @@ export default function App() {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-7 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,109,243,.06),transparent)]">
-                {pageComponent()}
+                <ErrorBoundary key={page}>
+                  {pageComponent()}
+                </ErrorBoundary>
               </div>
             </div>
 

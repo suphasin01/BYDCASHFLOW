@@ -9,6 +9,7 @@ import { useToast } from '../App'
 import { getProducts, createProduct, updateProduct, deleteProduct } from '../api'
 import type { Product } from '../types'
 import { fmt } from '../utils'
+import GradientButton from '../ui/GradientButton'
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
@@ -81,7 +82,7 @@ export default function Products() {
           placeholder={t('search_product')}
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
-        <Button color="primary" onPress={openCreate}>{t('btn_add_product')}</Button>
+        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_product')}</GradientButton>
       </div>
 
       <Card className="bg-content1 border border-content3" shadow="none">
@@ -109,7 +110,7 @@ export default function Products() {
                 {products.map(p => {
                   const vb = vatBadge(p.vat_type)
                   return (
-                    <TableRow key={p.id}>
+                    <TableRow key={p.id} className="hover:bg-content2/60 transition-colors">
                       <TableCell className="text-default-500">{p.code || '—'}</TableCell>
                       <TableCell>
                         <div className="font-medium">{p.name}</div>
@@ -171,7 +172,7 @@ export default function Products() {
               </ModalBody>
               <ModalFooter>
                 <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <Button color="primary" onPress={save}>{t('btn_save')}</Button>
+                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
               </ModalFooter>
             </>
           )}

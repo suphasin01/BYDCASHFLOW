@@ -7,6 +7,7 @@ import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
 import { getCompanies, getActiveCompany, createCompany, updateCompany, deleteCompany, activateCompany } from '../api'
 import type { Company } from '../types'
+import GradientButton from '../ui/GradientButton'
 
 export default function Companies() {
   const { t } = useI18n()
@@ -93,7 +94,7 @@ export default function Companies() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Button color="primary" onPress={openCreate}>{t('btn_add_company')}</Button>
+        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_add_company')}</GradientButton>
       </div>
 
       <div className="flex flex-col gap-3.5">
@@ -183,7 +184,7 @@ export default function Companies() {
               </ModalBody>
               <ModalFooter>
                 <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <Button color="primary" onPress={save}>{t('btn_save')}</Button>
+                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
               </ModalFooter>
             </>
           )}

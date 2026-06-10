@@ -52,9 +52,9 @@ export default function Reports() {
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
         {statCards.map((card, i) => (
-          <Card key={i} className="bg-content1 border border-content3" shadow="none">
+          <Card key={i} className="bg-content1 border border-content3 rounded-xl hover:border-primary/30 transition-colors" shadow="none">
             <CardBody className="p-5">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg mb-3 ${card.glow}`}>{card.icon}</div>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg mb-3 ${card.glow}`}>{card.icon}</div>
               <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-2.5">{card.label}</div>
               <div className={`text-[22px] font-bold tracking-tight ${card.color}`}>{card.value}</div>
             </CardBody>
@@ -98,7 +98,7 @@ export default function Reports() {
             </TableHeader>
             <TableBody emptyContent={<div className="py-10 text-default-500">{t('no_data')}</div>}>
               {topContacts.map((c, i) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} className="hover:bg-content2/60 transition-colors">
                   <TableCell className="text-default-500">{i + 1}</TableCell>
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell>

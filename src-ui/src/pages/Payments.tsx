@@ -9,6 +9,7 @@ import { useToast } from '../App'
 import { getPayments, createPayment, deletePayment, getDocuments } from '../api'
 import type { Payment, Document } from '../types'
 import { fmt, fmtDate, today } from '../utils'
+import GradientButton from '../ui/GradientButton'
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
@@ -66,7 +67,7 @@ export default function Payments() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Button color="primary" onPress={openCreate}>{t('btn_record_payment')}</Button>
+        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_record_payment')}</GradientButton>
       </div>
 
       <Card className="bg-content1 border border-content3" shadow="none">
@@ -92,7 +93,7 @@ export default function Payments() {
                 </div>
               }>
                 {payments.map(p => (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} className="hover:bg-content2/60 transition-colors">
                     <TableCell className="text-default-500">{fmtDate(p.date)}</TableCell>
                     <TableCell><span className="text-primary font-semibold">#{p.document_id}</span></TableCell>
                     <TableCell>
@@ -151,7 +152,7 @@ export default function Payments() {
               </ModalBody>
               <ModalFooter>
                 <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <Button color="primary" onPress={save}>{t('btn_save')}</Button>
+                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
               </ModalFooter>
             </>
           )}

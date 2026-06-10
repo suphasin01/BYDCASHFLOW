@@ -9,6 +9,7 @@ import { useToast } from '../App'
 import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany } from '../api'
 import type { Document, DocumentItem, Contact, Company } from '../types'
 import { fmt, fmtDate, today } from '../utils'
+import GradientButton from '../ui/GradientButton'
 
 type ChipColor = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'
 const STATUS_COLOR: Record<string, ChipColor> = {
@@ -194,7 +195,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
             {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
-        <Button color="primary" onPress={openCreate}>{t('btn_create_doc')}</Button>
+        <GradientButton onPress={openCreate} startContent={<span className="text-base leading-none">+</span>}>{t('btn_create_doc')}</GradientButton>
       </div>
 
       {/* Table */}
@@ -223,7 +224,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                 </div>
               }>
                 {docs.map(doc => (
-                  <TableRow key={doc.id}>
+                  <TableRow key={doc.id} className="hover:bg-content2/60 transition-colors">
                     <TableCell><span className="font-semibold text-primary">{doc.number || '—'}</span></TableCell>
                     <TableCell className="text-default-500">{DOC_TYPES[doc.type] || doc.type}</TableCell>
                     <TableCell className="font-medium">{doc.contact_name || '—'}</TableCell>
@@ -361,7 +362,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
               </ModalBody>
               <ModalFooter>
                 <Button variant="bordered" onPress={onClose}>{t('btn_cancel')}</Button>
-                <Button color="primary" onPress={save}>{t('btn_save')}</Button>
+                <GradientButton onPress={save}>{t('btn_save')}</GradientButton>
               </ModalFooter>
             </>
           )}
@@ -463,12 +464,12 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                   <select value={statusChange} onChange={e => setStatusChange(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
                     {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
-                  <Button size="sm" color="primary" onPress={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</Button>
+                  <GradientButton size="sm" onPress={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</GradientButton>
                 </div>
               </ModalBody>
               <ModalFooter>
                 <Button variant="bordered" onPress={onClose}>{t('btn_close')}</Button>
-                <Button color="primary" onPress={() => generatePDF(viewDoc.id)}>{t('btn_print_pdf')}</Button>
+                <GradientButton onPress={() => generatePDF(viewDoc.id)}>{t('btn_print_pdf')}</GradientButton>
               </ModalFooter>
             </>
           ) : <ModalBody><div /></ModalBody>}
