@@ -76,7 +76,19 @@ jobs:
         run: |
           $version = node -e "console.log('v' + require('./package.json').version)"
           $exe = Get-ChildItem release -Filter "*.exe" | Where-Object { $_.Name -notlike "*Setup*" } | Select-Object -First 1
-          if ($exe) { gh release upload $version $exe.FullName --clobber }
+          if (-not $exe) { Write-Host "No portable exe found, skipping."; exit 0 }
+          # GitHub's release API occasionally returns a transient 401 right after
+          # the release is created by the build-windows job. Retry with backoff.
+          $ok = $false
+          foreach ($attempt in 1..6) {
+            Write-Host "Upload attempt $attempt for $($exe.Name) -> $version"
+            gh release upload $version $exe.FullName --clobber
+            if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+            $wait = [math]::Pow(2, $attempt)
+            Write-Host "Upload failed (exit $LASTEXITCODE). Retrying in $wait s..."
+            Start-Sleep -Seconds $wait
+          }
+          if (-not $ok) { Write-Error "Portable upload failed after retries"; exit 1 }
 
   # ── macOS: build DMG — uploads after release exists ──────────────────────
   build-mac:
