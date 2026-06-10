@@ -10,6 +10,7 @@ const PORT = 3737;
 const API_URL = `http://localhost:${PORT}`;
 
 let mainWindow = null;
+let isQuittingForUpdate = false;
 
 // ── Logging ───────────────────────────────────────────────────────────
 log.transports.file.level = 'info';
@@ -68,7 +69,11 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on('error', (err) => {
-    log.warn('[updater] Error (non-critical):', err.message);
+    log.warn('[updater] Error:', err == null ? '(unknown)' : (err.stack || err.message || String(err)));
+    // If an install was in progress, clear the guard and surface the failure
+    // so the renderer can stop showing "installing" and tell the user.
+    if (isQuittingForUpdate) isQuittingForUpdate = false;
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'error', message: String(err && err.message || err) });
   });
 
   autoUpdater.on('download-progress', (progress) => {
@@ -165,7 +170,23 @@ ipcMain.handle('check-for-updates', () => {
 
 // ── Install Update IPC ────────────────────────────────────────────────
 ipcMain.handle('install-update', () => {
-  autoUpdater.quitAndInstall();
+  log.info('[updater] install-update requested → quitAndInstall');
+  isQuittingForUpdate = true;
+  // Defer so the IPC reply is sent before the app starts tearing down.
+  // Calling quitAndInstall synchronously inside the handler can leave the
+  // invoke() pending and the quit/relaunch silently not happening.
+  setImmediate(() => {
+    try {
+      // isSilent=false (show installer UI on Windows), isForceRunAfter=true
+      // (relaunch the app after the update is applied).
+      autoUpdater.quitAndInstall(false, true);
+    } catch (err) {
+      isQuittingForUpdate = false;
+      log.error('[updater] quitAndInstall failed:', err);
+      if (mainWindow) mainWindow.webContents.send('update-status', { type: 'error', message: String(err && err.message || err) });
+    }
+  });
+  return { ok: true };
 });
 
 // ── Quit App IPC ──────────────────────────────────────────────────────
@@ -309,5 +330,8 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  // When quitAndInstall() closes the windows to apply an update, let
+  // electron-updater drive the quit/relaunch — don't race it with app.quit().
+  if (isQuittingForUpdate) return;
   if (process.platform !== 'darwin') app.quit();
 });

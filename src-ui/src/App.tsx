@@ -55,6 +55,7 @@ export default function App() {
   const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready'; version: string } | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [installing, setInstalling] = useState(false)
   const [appVersion, setAppVersion] = useState('')
 
   useEffect(() => {
@@ -75,8 +76,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready'; version: string }) => void) => void; onUpdateNotAvailable: (cb: () => void) => void; onUpdateProgress: (cb: (d: { percent: number }) => void) => void } }).electronAPI
-    api?.onUpdateStatus(data => { setUpdateBanner(data); setCheckingUpdate(false); if (data.type === 'ready') setDownloadProgress(null) })
+    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error'; version?: string; message?: string }) => void) => void; onUpdateNotAvailable: (cb: () => void) => void; onUpdateProgress: (cb: (d: { percent: number }) => void) => void } }).electronAPI
+    api?.onUpdateStatus(data => {
+      setCheckingUpdate(false)
+      if (data.type === 'error') {
+        setInstalling(false)
+        toast(t('toast_update_failed') + (data.message ? ': ' + data.message : ''), 'err')
+        return
+      }
+      setUpdateBanner({ type: data.type, version: data.version || '' })
+      if (data.type === 'ready') setDownloadProgress(null)
+    })
     api?.onUpdateNotAvailable(() => { setCheckingUpdate(false); toast(t('toast_up_to_date')) })
     api?.onUpdateProgress(data => setDownloadProgress(data.percent))
   }, [t, toast])
@@ -90,8 +100,13 @@ export default function App() {
   }
 
   const installUpdate = () => {
+    if (installing) return
+    setInstalling(true)
     const api = (window as unknown as { electronAPI?: { installUpdate: () => void } }).electronAPI
     api?.installUpdate()
+    // If the app hasn't quit/relaunched within a few seconds, the install
+    // silently failed (e.g. unsigned build) — let the user retry.
+    setTimeout(() => setInstalling(false), 8000)
   }
 
   const quitApp = () => {
@@ -348,8 +363,8 @@ export default function App() {
                   )}
                 </div>
                 {updateBanner.type === 'ready' && (
-                  <Button size="sm" color="success" variant="flat" onPress={installUpdate} className="font-semibold whitespace-nowrap">
-                    ติดตั้งเดี๋ยวนี้
+                  <Button size="sm" color="success" variant="flat" onPress={installUpdate} isLoading={installing} className="font-semibold whitespace-nowrap">
+                    {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
                   </Button>
                 )}
                 <Button isIconOnly size="sm" variant="light" onPress={() => setUpdateBanner(null)} className="text-default-500 min-w-6 w-6 h-6">✕</Button>
