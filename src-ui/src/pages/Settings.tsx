@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Button } from '@heroui/react'
 import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
 import { getSettings, updateSettings } from '../api'
@@ -17,6 +18,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
 
   const [fName, setFName] = useState('')
   const [fTax, setFTax] = useState('')
@@ -128,17 +130,28 @@ export default function Settings() {
           <div style={{ fontSize: 11, color: '#6b7685', marginBottom: 14, lineHeight: 1.6 }}>
             ส่งออก / นำเข้าข้อมูลทั้งหมด เพื่อย้ายข้อมูลระหว่างเครื่อง
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button onClick={handleExport} disabled={exporting}
-              style={{ ...btnDataStyle, background: 'rgba(34,211,160,0.08)', border: '1px solid rgba(34,211,160,0.25)', color: '#22d3a0' }}>
-              <span style={{ fontSize: 15 }}>📤</span>
-              <span>{exporting ? '...' : t('btn_export_data')}</span>
-            </button>
-            <button onClick={handleImport} disabled={importing}
-              style={{ ...btnDataStyle, background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.25)', color: '#60a5fa' }}>
-              <span style={{ fontSize: 15 }}>📥</span>
-              <span>{importing ? '...' : t('btn_import_data')}</span>
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Import drop zone */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => { if (!importing) handleImport() }}
+              onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={e => { e.preventDefault(); setIsDragging(false); if (!importing) handleImport() }}
+              className={`border-2 border-dashed rounded-xl px-4 py-6 flex flex-col items-center justify-center gap-2 text-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'border-content4 hover:border-primary hover:bg-primary/5'}`}
+            >
+              <span style={{ fontSize: 26 }}>📥</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#60a5fa' }}>
+                {importing ? '...' : t('btn_import_data')}
+              </span>
+              <span style={{ fontSize: 11, color: '#6b7685' }}>ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</span>
+            </div>
+            {/* Export action */}
+            <Button color="success" variant="flat" onClick={handleExport} isDisabled={exporting} isLoading={exporting}
+              startContent={!exporting ? <span style={{ fontSize: 15 }}>📤</span> : undefined}>
+              {t('btn_export_data')}
+            </Button>
           </div>
         </div>
       </div>
@@ -150,4 +163,3 @@ const inputStyle: React.CSSProperties = { width: '100%', background: 'rgba(255,2
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight: 500, color: '#8892a4', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 5 }
 const formRowStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }
 const btnPrimaryStyle: React.CSSProperties = { background: 'linear-gradient(135deg,#7c6df3,#a855f7)', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }
-const btnDataStyle: React.CSSProperties = { borderRadius: 8, cursor: 'pointer', padding: '9px 14px', fontSize: 13, fontWeight: 500, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, transition: 'opacity .15s' }

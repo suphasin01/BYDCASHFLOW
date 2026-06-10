@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react'
+import {
+  Avatar, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Progress, useDisclosure,
+} from '@heroui/react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
 import type { Company } from './types'
 import { getHealth, getActiveCompany, activateCompany as apiActivateCompany, getCompanies } from './api'
@@ -45,7 +49,7 @@ export default function App() {
   const [apiOnline, setApiOnline] = useState(false)
   const [activeCompany, setActiveCompany] = useState<Company | null>(null)
   const [toasts, setToasts] = useState<ToastItem[]>([])
-  const [showCompanySwitcher, setShowCompanySwitcher] = useState(false)
+  const switcher = useDisclosure()
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
   const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready'; version: string } | null>(null)
@@ -55,6 +59,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    document.documentElement.classList.toggle('dark', darkMode)
     localStorage.setItem('theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
@@ -118,7 +123,7 @@ export default function App() {
     try {
       const { data } = await getCompanies()
       setAllCompanies(data)
-      setShowCompanySwitcher(true)
+      switcher.onOpen()
     } catch {}
   }
 
@@ -126,7 +131,7 @@ export default function App() {
     try {
       await apiActivateCompany(id)
       await reloadCompany()
-      setShowCompanySwitcher(false)
+      switcher.onClose()
       const c = allCompanies.find(c => c.id === id)
       toast(t('toast_company_changed') + (c?.name || ''))
     } catch (e: unknown) {
@@ -162,10 +167,6 @@ export default function App() {
     settings: null,
   }
 
-  const avatarEl = activeCompany?.logo_url
-    ? <img src={activeCompany.logo_url} className="w-full h-full object-contain rounded-lg" />
-    : <span className="text-xs font-bold text-white">{(activeCompany?.name || 'บ').slice(0, 2)}</span>
-
   const navSections = [
     { label: t('nav_sec_main'), items: ['dashboard', 'payments'] },
     { label: t('nav_sec_docs'), items: ['documents', 'withholding_tax'] },
@@ -178,24 +179,24 @@ export default function App() {
     <I18nContext.Provider value={i18n}>
       <ToastContext.Provider value={{ toast }}>
         <CompanyContext.Provider value={{ activeCompany, reload: reloadCompany }}>
-          <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: 14 }}>
+          <div className="flex h-screen overflow-hidden text-foreground text-sm">
             {/* Sidebar */}
-            <aside style={{ width: 240, background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border)', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+            <aside className="w-60 flex-shrink-0 flex flex-col bg-content1 border-r border-content3">
               {/* Logo */}
-              <div style={{ padding: '20px 20px 18px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid var(--border)' }}>
-                <div style={{ width: 34, height: 34, borderRadius: 9, background: 'linear-gradient(135deg,#7c6df3,#a855f7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>💼</div>
+              <div className="px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3">
+                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-base flex-shrink-0 bg-gradient-to-br from-[#7c6df3] to-[#a855f7] shadow-lg shadow-primary/20">💼</div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.3px' }}>FruitBiz</div>
-                  <div style={{ fontSize: 10, color: '#8892a4', marginTop: 1 }}>{t('app_subtitle')}</div>
+                  <div className="text-[15px] font-bold tracking-tight">FruitBiz</div>
+                  <div className="text-[10px] text-default-500 mt-px">{t('app_subtitle')}</div>
                 </div>
               </div>
 
               {/* Navigation */}
-              <nav style={{ flex: 1, padding: '12px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <nav className="flex-1 px-2.5 py-3 overflow-y-auto flex flex-col gap-0.5">
                 {navSections.map((section, si) => (
                   <div key={si}>
                     {section.label && (
-                      <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7685', letterSpacing: '.8px', textTransform: 'uppercase', padding: '12px 12px 4px', marginTop: 4 }}>
+                      <div className="text-[10px] font-semibold text-default-400 tracking-wider uppercase px-3 pt-3 pb-1 mt-1">
                         {section.label}
                       </div>
                     )}
@@ -203,11 +204,11 @@ export default function App() {
                       const item = NAV_ITEMS.find(n => n.page === p)!
                       const active = page === p
                       return (
-                        <a key={p} onClick={() => setPage(p as Page)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', borderRadius: 9, color: active ? '#a78bfa' : '#8892a4', textDecoration: 'none', cursor: 'pointer', transition: 'all .18s', fontSize: 13, fontWeight: 500, background: active ? 'rgba(124,109,243,0.15)' : 'transparent' }}>
-                          <span style={{ fontSize: 17, opacity: active ? 1 : 0.8, flexShrink: 0 }}>{item.icon}</span>
+                        <button key={p} onClick={() => setPage(p as Page)}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${active ? 'bg-primary/15 text-primary' : 'text-default-500 hover:bg-content2 hover:text-foreground'}`}>
+                          <span className={`text-[17px] flex-shrink-0 ${active ? 'opacity-100' : 'opacity-80'}`}>{item.icon}</span>
                           <span>{t(item.key)}</span>
-                        </a>
+                        </button>
                       )
                     })}
                   </div>
@@ -215,68 +216,66 @@ export default function App() {
               </nav>
 
               {/* Company Switcher */}
-              <div onClick={openCompanySwitcher} style={{ padding: '12px 14px', borderTop: '1px solid var(--border)', cursor: 'pointer', transition: 'background .15s' }}
-                onMouseOver={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: activeCompany?.logo_url ? '#fff' : 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0, padding: activeCompany?.logo_url ? 2 : 0, overflow: 'hidden' }}>
-                    {avatarEl}
+              <button onClick={openCompanySwitcher}
+                className="px-3.5 py-3 border-t border-content3 cursor-pointer transition-colors hover:bg-content2 text-left">
+                <div className="flex items-center gap-2.5">
+                  <Avatar
+                    src={activeCompany?.logo_url || undefined}
+                    name={(activeCompany?.name || 'บ').slice(0, 2)}
+                    radius="md"
+                    className="w-8 h-8 flex-shrink-0 text-xs font-bold bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-semibold truncate">{activeCompany?.name || t('loading')}</div>
+                    <div className="text-[10px] text-default-500 mt-px">{t('company_click')}</div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeCompany?.name || t('loading')}</div>
-                    <div style={{ fontSize: 10, color: '#8892a4', marginTop: 1 }}>{t('company_click')}</div>
-                  </div>
-                  <div style={{ fontSize: 10, color: '#6b7685' }}>▼</div>
+                  <span className="text-[10px] text-default-400">▼</span>
                 </div>
-              </div>
+              </button>
 
               {/* Exit Button */}
-              <div style={{ padding: '8px 14px', borderTop: '1px solid var(--border)' }}>
-                <button onClick={quitApp}
-                  style={{ width: '100%', background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 8, cursor: 'pointer', padding: '8px 12px', color: '#f87171', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, transition: 'background .15s' }}
-                  onMouseOver={e => (e.currentTarget.style.background = 'rgba(248,113,113,0.15)')}
-                  onMouseOut={e => (e.currentTarget.style.background = 'rgba(248,113,113,0.07)')}>
-                  <span style={{ fontSize: 14 }}>🚪</span>
-                  <span>{t('btn_exit_app')}</span>
-                </button>
+              <div className="px-3.5 py-2 border-t border-content3">
+                <Button onPress={quitApp} color="danger" variant="flat" size="sm" radius="md"
+                  className="w-full justify-start gap-2 font-medium"
+                  startContent={<span className="text-sm">🚪</span>}>
+                  {t('btn_exit_app')}
+                </Button>
               </div>
 
               {/* Status */}
-              <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1a2235', borderRadius: 99, padding: '5px 10px', fontSize: 11, color: '#8892a4', flex: 1 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: apiOnline ? '#22d3a0' : '#f87171', flexShrink: 0, boxShadow: apiOnline ? '0 0 8px rgba(34,211,160,0.6)' : '0 0 8px rgba(248,113,113,0.5)', display: 'inline-block' }} />
+              <div className="px-3.5 py-3 border-t border-content3 flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-content2 rounded-full px-2.5 py-1.5 text-[11px] text-default-500 flex-1">
+                  <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 inline-block ${apiOnline ? 'bg-success shadow-[0_0_8px_rgba(34,211,160,0.6)]' : 'bg-danger shadow-[0_0_8px_rgba(248,113,113,0.5)]'}`} />
                   <span>{apiOnline ? t('status_connected') : t('status_disconnected')}</span>
                 </div>
-                {appVersion && <span style={{ fontSize: 10, color: '#4a5568', flexShrink: 0, letterSpacing: '0.3px' }}>v{appVersion}</span>}
+                {appVersion && <span className="text-[10px] text-default-400 flex-shrink-0 tracking-wide">v{appVersion}</span>}
               </div>
             </aside>
 
             {/* Main */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="flex-1 flex flex-col overflow-hidden">
               {/* Topbar */}
-              <div style={{ height: 60, padding: '0 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', background: 'var(--bg-sidebar)', flexShrink: 0 }}>
-                <h1 style={{ fontSize: 15, fontWeight: 600 }}>{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="h-[60px] px-7 flex items-center justify-between border-b border-content3 bg-content1 flex-shrink-0">
+                <h1 className="text-[15px] font-semibold">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
+                <div className="flex items-center gap-2.5">
                   {/* Check for Updates */}
-                  <button onClick={checkForUpdates} disabled={checkingUpdate}
-                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, cursor: checkingUpdate ? 'default' : 'pointer', padding: '6px 10px', fontSize: 13, lineHeight: 1, color: 'var(--text-secondary)', fontFamily: 'inherit', opacity: checkingUpdate ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 5 }}
-                    title={t('btn_check_update')}>
-                    <span style={{ fontSize: 14, display: 'inline-block', animation: checkingUpdate ? 'spin 1s linear infinite' : 'none' }}>🔄</span>
-                  </button>
-                  <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+                  <Button isIconOnly size="sm" variant="flat" radius="md" isDisabled={checkingUpdate}
+                    onPress={checkForUpdates} title={t('btn_check_update')}>
+                    <span className={`text-sm inline-block ${checkingUpdate ? 'animate-spin' : ''}`}>🔄</span>
+                  </Button>
                   {/* Dark/Light toggle */}
-                  <button onClick={() => setDarkMode(d => !d)}
-                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: 8, cursor: 'pointer', padding: '6px 10px', fontSize: 16, lineHeight: 1, color: 'var(--text-secondary)', fontFamily: 'inherit' }}
+                  <Button isIconOnly size="sm" variant="flat" radius="md"
+                    onPress={() => setDarkMode(d => !d)}
                     title={darkMode ? 'โหมดกลางวัน' : 'โหมดกลางคืน'}>
-                    {darkMode ? '☀️' : '🌙'}
-                  </button>
+                    <span className="text-base">{darkMode ? '☀️' : '🌙'}</span>
+                  </Button>
                   {/* Lang switcher */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+                  <div className="flex items-center gap-0.5 bg-content2 border border-content3 rounded-lg p-0.5">
                     {(['th', 'en', 'zh'] as Lang[]).map((l, i) => {
                       const flags = ['🇹🇭', '🇬🇧', '🇨🇳']
                       return (
                         <button key={l} onClick={() => switchLang(l)}
-                          style={{ background: lang === l ? 'rgba(124,109,243,0.3)' : 'none', border: 'none', cursor: 'pointer', padding: '4px 7px', borderRadius: 5, fontSize: 15, lineHeight: 1, opacity: lang === l ? 1 : 0.6, transition: 'all .15s' }}>
+                          className={`px-1.5 py-1 rounded text-[15px] leading-none transition-all ${lang === l ? 'bg-primary/30 opacity-100' : 'opacity-60 hover:opacity-90'}`}>
                           {flags[i]}
                         </button>
                       )
@@ -287,85 +286,81 @@ export default function App() {
               </div>
 
               {/* Content */}
-              <div style={{ flex: 1, overflowY: 'auto', padding: 28, background: 'radial-gradient(ellipse 80% 50% at 50% -20%,rgba(124,109,243,.06),transparent)' }}>
+              <div className="flex-1 overflow-y-auto p-7 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,109,243,.06),transparent)]">
                 {pageComponent()}
               </div>
             </div>
 
             {/* Company Switcher Modal */}
-            {showCompanySwitcher && (
-              <div onClick={() => setShowCompanySwitcher(false)}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-                <div onClick={e => e.stopPropagation()}
-                  style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 16, width: 460, maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.5)' }}>
-                  <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <h2 style={{ fontSize: 15, fontWeight: 600 }}>{t('company_switcher_title')}</h2>
-                    <button onClick={() => setShowCompanySwitcher(false)} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer', padding: '5px 11px', color: '#8892a4', fontSize: 13 }}>✕</button>
-                  </div>
-                  <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                      {allCompanies.map(c => {
-                        const isActive = activeCompany?.id === c.id
-                        return (
-                          <div key={c.id} onClick={() => handleSwitchCompany(c.id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 10, cursor: 'pointer', border: `1px solid ${isActive ? 'rgba(124,109,243,0.5)' : 'rgba(255,255,255,0.07)'}`, background: isActive ? 'rgba(124,109,243,0.1)' : 'transparent', transition: 'all .15s' }}
-                            onMouseOver={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.05)' }}
-                            onMouseOut={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}>
-                            <div style={{ width: 38, height: 38, borderRadius: 9, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(c.name || '').slice(0, 2)}</div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 600 }}>{c.name}</div>
-                              <div style={{ fontSize: 11, color: '#8892a4', marginTop: 2 }}>{c.tax_id ? t('company_tax_prefix') + c.tax_id : c.email || t('no_extra_info')}</div>
-                            </div>
-                            {isActive && <span style={{ fontSize: 12, color: '#a78bfa', fontWeight: 600 }}>{t('company_active_sw')}</span>}
-                          </div>
-                        )
-                      })}
-                      {allCompanies.length === 0 && <p style={{ textAlign: 'center', color: '#8892a4', padding: 20 }}>{t('no_companies_sw')}</p>}
-                    </div>
-                    <button onClick={() => { setShowCompanySwitcher(false); setPage('companies') }}
-                      style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer', padding: '9px 16px', color: '#8892a4', fontSize: 13, fontWeight: 500, fontFamily: 'inherit' }}>
-                      {t('company_manage')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <Modal isOpen={switcher.isOpen} onOpenChange={switcher.onOpenChange} scrollBehavior="inside" size="lg"
+              classNames={{ base: 'bg-content1 border border-content3' }}>
+              <ModalContent>
+                {(onClose) => (
+                  <>
+                    <ModalHeader className="text-[15px] font-semibold">{t('company_switcher_title')}</ModalHeader>
+                    <ModalBody>
+                      <div className="flex flex-col gap-2">
+                        {allCompanies.map(c => {
+                          const isActive = activeCompany?.id === c.id
+                          return (
+                            <button key={c.id} onClick={() => handleSwitchCompany(c.id)}
+                              className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-all border ${isActive ? 'border-primary/50 bg-primary/10' : 'border-content3 hover:bg-content2'}`}>
+                              <Avatar name={(c.name || '').slice(0, 2)} radius="md"
+                                className="w-9 h-9 flex-shrink-0 text-sm font-bold bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[13px] font-semibold truncate">{c.name}</div>
+                                <div className="text-[11px] text-default-500 mt-0.5 truncate">{c.tax_id ? t('company_tax_prefix') + c.tax_id : c.email || t('no_extra_info')}</div>
+                              </div>
+                              {isActive && <span className="text-xs text-primary font-semibold">{t('company_active_sw')}</span>}
+                            </button>
+                          )
+                        })}
+                        {allCompanies.length === 0 && <p className="text-center text-default-500 py-5">{t('no_companies_sw')}</p>}
+                      </div>
+                    </ModalBody>
+                    <ModalFooter>
+                      <Button variant="flat" className="w-full" onPress={() => { onClose(); setPage('companies') }}>
+                        {t('company_manage')}
+                      </Button>
+                    </ModalFooter>
+                  </>
+                )}
+              </ModalContent>
+            </Modal>
 
             {/* Update Banner */}
             {updateBanner && (
-              <div style={{ position: 'fixed', bottom: 24, left: 260, zIndex: 998, background: updateBanner.type === 'ready' ? 'rgba(34,211,160,0.12)' : 'rgba(96,165,250,0.12)', border: `1px solid ${updateBanner.type === 'ready' ? 'rgba(34,211,160,0.4)' : 'rgba(96,165,250,0.4)'}`, borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', minWidth: 280 }}>
-                <span style={{ fontSize: 18 }}>{updateBanner.type === 'ready' ? '✅' : '⬇️'}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: updateBanner.type === 'ready' ? '#22d3a0' : '#60a5fa', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className={`fixed bottom-6 left-[260px] z-[998] rounded-xl px-4 py-2.5 flex items-center gap-2.5 shadow-2xl min-w-[280px] border ${updateBanner.type === 'ready' ? 'bg-success/10 border-success/40' : 'bg-[#60a5fa]/10 border-[#60a5fa]/40'}`}>
+                <span className="text-lg">{updateBanner.type === 'ready' ? '✅' : '⬇️'}</span>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-[13px] font-semibold flex items-center justify-between ${updateBanner.type === 'ready' ? 'text-success' : 'text-[#60a5fa]'}`}>
                     <span>{updateBanner.type === 'ready' ? `v${updateBanner.version} พร้อมแล้ว` : `กำลังดาวน์โหลด v${updateBanner.version}...`}</span>
                     {updateBanner.type === 'downloading' && downloadProgress !== null && (
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', marginLeft: 8 }}>{downloadProgress}%</span>
+                      <span className="text-xs font-bold text-[#60a5fa] ml-2">{downloadProgress}%</span>
                     )}
                   </div>
                   {updateBanner.type === 'downloading' && downloadProgress !== null ? (
-                    <div style={{ marginTop: 6, height: 4, borderRadius: 2, background: 'rgba(96,165,250,0.15)', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${downloadProgress}%`, background: '#60a5fa', borderRadius: 2, transition: 'width 0.3s ease' }} />
-                    </div>
+                    <Progress aria-label="download" size="sm" color="primary" value={downloadProgress} className="mt-1.5" />
                   ) : (
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                    <div className="text-[11px] text-default-500 mt-0.5">
                       {updateBanner.type === 'ready' ? 'ดาวน์โหลดเสร็จแล้ว พร้อมติดตั้ง' : 'ดาวน์โหลดอัพเดทในพื้นหลัง'}
                     </div>
                   )}
                 </div>
                 {updateBanner.type === 'ready' && (
-                  <button onClick={installUpdate}
-                    style={{ background: 'rgba(34,211,160,0.2)', border: '1px solid rgba(34,211,160,0.5)', borderRadius: 7, cursor: 'pointer', padding: '5px 12px', color: '#22d3a0', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  <Button size="sm" color="success" variant="flat" onPress={installUpdate} className="font-semibold whitespace-nowrap">
                     ติดตั้งเดี๋ยวนี้
-                  </button>
+                  </Button>
                 )}
-                <button onClick={() => setUpdateBanner(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 14, padding: '0 4px', fontFamily: 'inherit', marginLeft: 4 }}>✕</button>
+                <Button isIconOnly size="sm" variant="light" onPress={() => setUpdateBanner(null)} className="text-default-500 min-w-6 w-6 h-6">✕</Button>
               </div>
             )}
 
             {/* Toasts */}
-            <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
+            <div className="fixed bottom-6 right-6 z-[999] flex flex-col gap-2 pointer-events-none">
               {toasts.map(item => (
-                <div key={item.id} style={{ background: '#1a2235', border: `1px solid ${item.type === 'ok' ? 'rgba(34,211,160,0.3)' : 'rgba(248,113,113,0.3)'}`, borderRadius: 10, padding: '11px 16px', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, maxWidth: 320, boxShadow: '0 8px 24px rgba(0,0,0,0.4)', color: item.type === 'ok' ? '#22d3a0' : '#f87171' }}>
+                <div key={item.id}
+                  className={`bg-content2 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2 max-w-80 shadow-2xl border ${item.type === 'ok' ? 'border-success/30 text-success' : 'border-danger/30 text-danger'}`}>
                   <span>{item.type === 'ok' ? '✓' : '✕'}</span>
                   {item.msg}
                 </div>
