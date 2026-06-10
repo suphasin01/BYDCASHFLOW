@@ -248,7 +248,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Btn size="sm" variant="ghost" onClick={() => openView(doc.id)}>{t('btn_view')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => openView(doc.id)}>{t('btn_update')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openPreview(doc.id)}>{t('btn_preview')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => generatePDF(doc.id)}>PDF</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openEdit(doc.id)}>{t('btn_edit')}</Btn>
