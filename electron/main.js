@@ -12,6 +12,7 @@ const API_URL = `http://localhost:${PORT}`;
 
 let mainWindow = null;
 let isQuittingForUpdate = false;
+let autoInstallTimer = null;
 
 // ── Logging ───────────────────────────────────────────────────────────
 log.transports.file.level = 'info';
@@ -151,8 +152,21 @@ function setupAutoUpdater() {
 
   autoUpdater.on('update-downloaded', (info) => {
     if (mainWindow) mainWindow.setProgressBar(-1);
-    log.info('[updater] Update downloaded:', info.version);
+    log.info('[updater] Update downloaded:', info.version, '— auto-installing in 10s');
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: info.version });
+
+    let countdown = 10;
+    autoInstallTimer = setInterval(() => {
+      countdown--;
+      if (mainWindow) mainWindow.webContents.send('update-countdown', { seconds: countdown, version: info.version });
+      if (countdown <= 0) {
+        clearInterval(autoInstallTimer);
+        autoInstallTimer = null;
+        log.info('[updater] Auto-installing update...');
+        isQuittingForUpdate = true;
+        try { autoUpdater.quitAndInstall(false, true); } catch (e) { log.error('[updater] quitAndInstall failed:', e); isQuittingForUpdate = false; }
+      }
+    }, 1000);
   });
 
   setTimeout(() => {
@@ -233,6 +247,16 @@ ipcMain.handle('check-for-updates', () => {
   autoUpdater.checkForUpdates().catch((err) => {
     log.warn('[updater] checkForUpdates rejected:', err?.message || err);
   });
+});
+
+// ── Cancel Auto-Update IPC ────────────────────────────────────────────
+ipcMain.handle('cancel-auto-update', () => {
+  if (autoInstallTimer) {
+    clearInterval(autoInstallTimer);
+    autoInstallTimer = null;
+    log.info('[updater] Auto-install cancelled by user — will install on quit');
+  }
+  return { ok: true };
 });
 
 // ── Install Update IPC ────────────────────────────────────────────────

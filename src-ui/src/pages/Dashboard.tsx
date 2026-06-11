@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import {
   Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { Banknote, ArrowUpRight, BarChart2, Clock, TrendingUp, Trophy, History, type LucideIcon } from 'lucide-react'
 import { useI18n } from '../i18n'
 import Btn from '../ui/Btn'
 import { getReportSummary, getReportMonthly, getDocuments, getReportTopContacts } from '../api'
@@ -43,11 +44,13 @@ function useTiltRef() {
 }
 
 // Section header component with gradient accent
-function SectionHeader({ icon, title, action }: { icon: string; title: string; action?: React.ReactNode }) {
+function SectionHeader({ Icon, title, action }: { Icon: LucideIcon; title: string; action?: ReactNode }) {
   return (
     <div className="flex items-center justify-between px-5 pt-5 pb-4">
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center text-lg shadow-[0_0_12px_rgba(124,109,243,.2)]">{icon}</div>
+        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shadow-[0_0_12px_rgba(124,109,243,.2)]">
+          <Icon size={18} className="text-primary" strokeWidth={2} />
+        </div>
         <div>
           <div className="text-[16px] font-bold tracking-tight">{title}</div>
           <div className="h-[2px] mt-1 w-10 rounded-full bg-gradient-to-r from-primary to-violet-400 opacity-70" />
@@ -59,8 +62,8 @@ function SectionHeader({ icon, title, action }: { icon: string; title: string; a
 }
 
 // Individual tilt stat card
-function StatCard({ icon, label, value, sub, color, glow, gradient }: {
-  icon: string; label: string; value: string; sub: string
+function StatCard({ Icon, label, value, sub, color, glow, gradient }: {
+  Icon: LucideIcon; label: string; value: string; sub: string
   color: string; glow: string; gradient: string
 }) {
   const ref = useTiltRef()
@@ -68,9 +71,10 @@ function StatCard({ icon, label, value, sub, color, glow, gradient }: {
     <div ref={ref} className={`relative bg-content1 border border-content3 rounded-2xl p-5 cursor-default overflow-hidden
       hover:border-primary/30 hover:shadow-[0_16px_48px_rgba(0,0,0,.3)] transition-shadow duration-300`}
       style={{ transformStyle: 'preserve-3d' }}>
-      {/* Background gradient blob */}
       <div className={`absolute -top-4 -right-4 w-20 h-20 rounded-full blur-2xl opacity-40 pointer-events-none ${gradient}`} />
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[22px] mb-4 ${glow} shadow-md relative z-10`}>{icon}</div>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${glow} shadow-md relative z-10`}>
+        <Icon size={22} className={color} strokeWidth={1.8} />
+      </div>
       <div className="text-[11px] font-semibold text-default-400 uppercase tracking-widest mb-2 relative z-10">{label}</div>
       <div className={`text-[28px] font-black tracking-tight stat-value ${color} relative z-10`}>{value}</div>
       <div className="text-[11px] text-default-500 mt-1.5 relative z-10">{sub}</div>
@@ -134,23 +138,23 @@ export default function Dashboard({ onNavigate }: Props) {
   }
 
   const statCards = [
-    { color: 'text-emerald-400', icon: '💰', label: t('dash_revenue'), value: `฿${fmtShort(summary?.revenue || 0)}`, sub: t('dash_all_docs'), glow: 'bg-emerald-500/15', gradient: 'bg-emerald-500' },
-    { color: 'text-rose-400',    icon: '📤', label: t('dash_expense'), value: `฿${fmtShort(summary?.expense || 0)}`, sub: t('dash_all_docs'), glow: 'bg-rose-500/15', gradient: 'bg-rose-500' },
-    { color: (summary?.profit || 0) >= 0 ? 'text-sky-400' : 'text-rose-400', icon: '📊', label: t('dash_profit'), value: `฿${fmtShort(Math.abs(summary?.profit || 0))}`, sub: (summary?.profit || 0) >= 0 ? t('dash_profit_label') : t('dash_loss_label'), glow: 'bg-sky-500/15', gradient: 'bg-sky-500' },
-    { color: 'text-amber-400',   icon: '⏳', label: t('dash_pending'), value: `฿${fmtShort(summary?.pending || 0)}`, sub: t('dash_overdue_label'), glow: 'bg-amber-500/15', gradient: 'bg-amber-500' },
+    { color: 'text-emerald-400', Icon: Banknote,      label: t('dash_revenue'), value: `฿${fmtShort(summary?.revenue || 0)}`, sub: t('dash_all_docs'), glow: 'bg-emerald-500/15', gradient: 'bg-emerald-500' },
+    { color: 'text-rose-400',    Icon: ArrowUpRight,  label: t('dash_expense'), value: `฿${fmtShort(summary?.expense || 0)}`, sub: t('dash_all_docs'), glow: 'bg-rose-500/15', gradient: 'bg-rose-500' },
+    { color: (summary?.profit || 0) >= 0 ? 'text-sky-400' : 'text-rose-400', Icon: BarChart2, label: t('dash_profit'), value: `฿${fmtShort(Math.abs(summary?.profit || 0))}`, sub: (summary?.profit || 0) >= 0 ? t('dash_profit_label') : t('dash_loss_label'), glow: 'bg-sky-500/15', gradient: 'bg-sky-500' },
+    { color: 'text-amber-400',   Icon: Clock,         label: t('dash_pending'), value: `฿${fmtShort(summary?.pending || 0)}`, sub: t('dash_overdue_label'), glow: 'bg-amber-500/15', gradient: 'bg-amber-500' },
   ]
 
   return (
     <div className="flex flex-col gap-6">
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4">
-        {statCards.map((card, i) => <StatCard key={i} {...card} />)}
+        {statCards.map((card, i) => <StatCard key={i} Icon={card.Icon} label={card.label} value={card.value} sub={card.sub} color={card.color} glow={card.glow} gradient={card.gradient} />)}
       </div>
 
       {/* Chart + Top Contacts */}
       <div className="grid grid-cols-2 gap-5">
         <div className="bg-content1 border border-content3 rounded-2xl overflow-hidden">
-          <SectionHeader icon="📈" title={t('dash_chart_title')} />
+          <SectionHeader Icon={TrendingUp} title={t('dash_chart_title')} />
           <div className="px-4 pb-5">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={monthly} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -170,7 +174,7 @@ export default function Dashboard({ onNavigate }: Props) {
         </div>
 
         <div className="bg-content1 border border-content3 rounded-2xl overflow-hidden">
-          <SectionHeader icon="🏆" title={t('dash_top_contacts')} />
+          <SectionHeader Icon={Trophy} title={t('dash_top_contacts')} />
           <div className="px-5 pb-5">
             {topContacts.length > 0 ? (
               <div className="flex flex-col gap-3">
@@ -194,7 +198,7 @@ export default function Dashboard({ onNavigate }: Props) {
 
       {/* Recent Documents */}
       <div className="bg-content1 border border-content3 rounded-2xl overflow-hidden">
-        <SectionHeader icon="🕐" title={t('dash_recent_docs')}
+        <SectionHeader Icon={History} title={t('dash_recent_docs')}
           action={<Btn size="sm" variant="ghost" onClick={() => onNavigate('documents')}>{t('dash_view_all')}</Btn>} />
         <div className="px-5 pb-5">
           <Table removeWrapper aria-label={t('dash_recent_docs')}

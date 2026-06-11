@@ -14,6 +14,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeAllListeners('update-not-available');
     ipcRenderer.on('update-not-available', () => cb());
   },
+  onUpdateCountdown: (cb) => {
+    ipcRenderer.removeAllListeners('update-countdown');
+    ipcRenderer.on('update-countdown', (_e, data) => cb(data));
+  },
+  cancelAutoUpdate: () => ipcRenderer.invoke('cancel-auto-update'),
   getVersion: () => ipcRenderer.invoke('get-version'),
   exportData: () => ipcRenderer.invoke('export-data'),
   importData: () => ipcRenderer.invoke('import-data'),

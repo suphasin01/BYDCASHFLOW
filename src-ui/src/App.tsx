@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react'
 import { Avatar, Progress } from '@heroui/react'
+import {
+  LayoutDashboard, FileText, CreditCard, Users, Package,
+  TrendingUp, Receipt, Building2, Settings as SettingsIcon, LogOut, type LucideIcon,
+} from 'lucide-react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
 import ErrorBoundary from './ErrorBoundary'
 import Btn from './ui/Btn'
@@ -29,16 +33,16 @@ export const useActiveCompany = () => useContext(CompanyContext)
 
 type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'companies' | 'settings'
 
-const NAV_ITEMS: { page: Page; icon: string; key: string }[] = [
-  { page: 'dashboard', icon: '🏠', key: 'nav_dashboard' },
-  { page: 'documents', icon: '📄', key: 'nav_documents' },
-  { page: 'payments', icon: '💳', key: 'nav_payments' },
-  { page: 'contacts', icon: '👥', key: 'nav_contacts' },
-  { page: 'products', icon: '📦', key: 'nav_products' },
-  { page: 'reports', icon: '📈', key: 'nav_reports' },
-  { page: 'withholding_tax', icon: '🧾', key: 'nav_withholding_tax' },
-  { page: 'companies', icon: '🏢', key: 'nav_companies' },
-  { page: 'settings', icon: '⚙️', key: 'nav_settings' },
+const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
+  { page: 'dashboard', Icon: LayoutDashboard, key: 'nav_dashboard' },
+  { page: 'documents', Icon: FileText, key: 'nav_documents' },
+  { page: 'payments', Icon: CreditCard, key: 'nav_payments' },
+  { page: 'contacts', Icon: Users, key: 'nav_contacts' },
+  { page: 'products', Icon: Package, key: 'nav_products' },
+  { page: 'reports', Icon: TrendingUp, key: 'nav_reports' },
+  { page: 'withholding_tax', Icon: Receipt, key: 'nav_withholding_tax' },
+  { page: 'companies', Icon: Building2, key: 'nav_companies' },
+  { page: 'settings', Icon: SettingsIcon, key: 'nav_settings' },
 ]
 
 export default function App() {
@@ -54,6 +58,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
   const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready' | 'mac-available'; version: string; releaseUrl?: string } | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
+  const [updateCountdown, setUpdateCountdown] = useState<number | null>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [appVersion, setAppVersion] = useState('')
@@ -82,11 +87,16 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error' | 'mac-available'; version?: string; message?: string; releaseUrl?: string }) => void) => void; onUpdateNotAvailable: (cb: () => void) => void; onUpdateProgress: (cb: (d: { percent: number }) => void) => void } }).electronAPI
+    const api = (window as unknown as { electronAPI?: {
+      onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error' | 'mac-available'; version?: string; message?: string; releaseUrl?: string }) => void) => void
+      onUpdateNotAvailable: (cb: () => void) => void
+      onUpdateProgress: (cb: (d: { percent: number }) => void) => void
+      onUpdateCountdown: (cb: (d: { seconds: number; version: string }) => void) => void
+    } }).electronAPI
     api?.onUpdateStatus(data => {
       setCheckingUpdate(false)
       if (data.type === 'error') {
-        setInstalling(false)
+        setInstalling(false); setUpdateCountdown(null)
         toast(t('toast_update_failed') + (data.message ? ': ' + data.message : ''), 'err')
         return
       }
@@ -95,10 +105,11 @@ export default function App() {
         return
       }
       setUpdateBanner({ type: data.type, version: data.version || '' })
-      if (data.type === 'ready') setDownloadProgress(null)
+      if (data.type === 'ready') { setDownloadProgress(null); setUpdateCountdown(10) }
     })
     api?.onUpdateNotAvailable(() => { setCheckingUpdate(false); toast(t('toast_up_to_date')) })
     api?.onUpdateProgress(data => setDownloadProgress(data.percent))
+    api?.onUpdateCountdown(data => setUpdateCountdown(data.seconds))
   }, [t, toast])
 
   const checkForUpdates = () => {
@@ -249,10 +260,11 @@ export default function App() {
                     {section.items.map(p => {
                       const item = NAV_ITEMS.find(n => n.page === p)!
                       const active = page === p
+                      const { Icon } = item
                       return (
                         <button key={p} onClick={() => setPage(p as Page)}
                           className={`w-full flex items-center gap-3 py-2.5 px-3 text-[13px] font-medium transition-all duration-150 ${active ? 'nav-item-active' : 'nav-item-inactive text-default-500 rounded-lg'}`}>
-                          <span className={`text-[17px] flex-shrink-0 leading-none transition-transform duration-150 ${active ? 'scale-110' : 'group-hover:scale-105'}`}>{item.icon}</span>
+                          <Icon size={16} className={`flex-shrink-0 transition-transform duration-150 ${active ? 'scale-110 text-primary' : ''}`} strokeWidth={active ? 2.5 : 1.8} />
                           <span>{t(item.key)}</span>
                           {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(124,109,243,.8)]" />}
                         </button>
@@ -284,7 +296,7 @@ export default function App() {
               <div className="px-3.5 py-2 border-t border-content3">
                 <Btn onClick={quitApp} variant="danger" size="sm"
                   className="w-full justify-start"
-                  startContent={<span className="text-sm">🚪</span>}>
+                  startContent={<LogOut size={14} />}>
                   {t('btn_exit_app')}
                 </Btn>
               </div>
@@ -380,7 +392,7 @@ export default function App() {
                 'bg-[#60a5fa]/10 border-[#60a5fa]/40'
               }`}>
                 <span className="text-lg">
-                  {updateBanner.type === 'ready' ? '✅' : updateBanner.type === 'mac-available' ? '🆕' : '⬇️'}
+                  {updateBanner.type === 'ready' ? '⬇️' : updateBanner.type === 'mac-available' ? '🆕' : '↻'}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className={`text-[13px] font-semibold flex items-center justify-between ${
@@ -389,9 +401,12 @@ export default function App() {
                     'text-[#60a5fa]'
                   }`}>
                     <span>
-                      {updateBanner.type === 'ready' ? `v${updateBanner.version} พร้อมแล้ว` :
-                       updateBanner.type === 'mac-available' ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด` :
-                       `กำลังดาวน์โหลด v${updateBanner.version}...`}
+                      {updateBanner.type === 'ready'
+                        ? (updateCountdown !== null && updateCountdown > 0
+                            ? `v${updateBanner.version} — ติดตั้งอัตโนมัติใน ${updateCountdown}s`
+                            : installing ? `กำลังติดตั้ง v${updateBanner.version}...` : `v${updateBanner.version} พร้อมแล้ว`)
+                        : updateBanner.type === 'mac-available' ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด`
+                        : `กำลังดาวน์โหลด v${updateBanner.version}...`}
                     </span>
                     {updateBanner.type === 'downloading' && downloadProgress !== null && (
                       <span className="text-xs font-bold text-[#60a5fa] ml-2">{downloadProgress}%</span>
@@ -401,16 +416,27 @@ export default function App() {
                     <Progress aria-label="download" size="sm" color="primary" value={downloadProgress} className="mt-1.5" />
                   ) : (
                     <div className="text-[11px] text-default-500 mt-0.5">
-                      {updateBanner.type === 'ready' ? 'ดาวน์โหลดเสร็จแล้ว พร้อมติดตั้ง' :
+                      {updateBanner.type === 'ready' ? 'โปรแกรมจะรีสตาร์ทอัตโนมัติเพื่อติดตั้ง' :
                        updateBanner.type === 'mac-available' ? 'กด "ดาวน์โหลด" เพื่อเปิดหน้า Releases' :
                        'ดาวน์โหลดอัพเดทในพื้นหลัง'}
                     </div>
                   )}
                 </div>
                 {updateBanner.type === 'ready' && (
-                  <Btn size="sm" variant="success" onClick={installUpdate} isLoading={installing} className="whitespace-nowrap">
-                    {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
-                  </Btn>
+                  <>
+                    <Btn size="sm" variant="success" onClick={installUpdate} isLoading={installing} className="whitespace-nowrap">
+                      {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
+                    </Btn>
+                    {updateCountdown !== null && updateCountdown > 0 && (
+                      <Btn size="sm" variant="ghost" className="whitespace-nowrap" onClick={() => {
+                        setUpdateCountdown(null)
+                        const api = (window as unknown as { electronAPI?: { cancelAutoUpdate: () => void } }).electronAPI
+                        api?.cancelAutoUpdate()
+                      }}>
+                        เลื่อนไปก่อน
+                      </Btn>
+                    )}
+                  </>
                 )}
                 {updateBanner.type === 'mac-available' && (
                   <Btn size="sm" variant="primary" onClick={openReleasesPage} className="whitespace-nowrap">
