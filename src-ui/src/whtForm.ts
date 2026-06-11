@@ -118,6 +118,13 @@ const grp13 = (id: string | null | undefined): string => {
   return `${d[0]} ${d.slice(1, 5)} ${d.slice(5, 10)} ${d.slice(10, 12)} ${d[12]}`
 }
 
+// Format a 10-digit TIN into the 13-cell comb (10 digits, no separators → fills cells 0–9)
+const grp10 = (id: string | null | undefined): string => {
+  const d = String(id ?? '').replace(/\D/g, '')
+  if (d.length !== 10) return ''
+  return d
+}
+
 // Checkbox mark centered in a button field
 function check(key: string, on: boolean): string {
   const b: FieldBox | undefined = F[key]
@@ -164,11 +171,13 @@ export function buildWHTForm(wht: WithholdingTax): string {
 
   // ── payer (ผู้มีหน้าที่หักภาษี) ──
   parts.push(combField('id1', grp13(wht.payer_tax_id)))
+  parts.push(combField('tin1', grp10(wht.payer_tin)))
   parts.push(field('name1', String(wht.payer_name ?? '')))
   parts.push(field('add1', String(wht.payer_address ?? '')))
 
   // ── payee (ผู้ถูกหักภาษี) ──
   parts.push(combField('id1_2', grp13(wht.payee_tax_id)))
+  parts.push(combField('tin1_2', grp10(wht.payee_tin)))
   parts.push(field('name2', String(wht.payee_name ?? '')))
   parts.push(field('add2', String(wht.payee_address ?? '')))
 

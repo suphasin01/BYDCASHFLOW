@@ -150,6 +150,8 @@ db.exec(`
 
 // Migration: add company column to contacts if it doesn't exist
 try { db.exec('ALTER TABLE contacts ADD COLUMN company TEXT'); } catch {}
+try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payer_tin TEXT'); } catch {}
+try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payee_tin TEXT'); } catch {}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -319,8 +321,8 @@ export const documentRepo = {
 
 export const paymentRepo = {
   list: (document_id?: number) => document_id
-    ? all('SELECT * FROM payments WHERE document_id = ? ORDER BY date DESC', document_id)
-    : all('SELECT * FROM payments ORDER BY date DESC'),
+    ? all('SELECT p.*, d.number as doc_number, d.contact_name FROM payments p LEFT JOIN documents d ON d.id = p.document_id WHERE p.document_id = ? ORDER BY p.date DESC', document_id)
+    : all('SELECT p.*, d.number as doc_number, d.contact_name FROM payments p LEFT JOIN documents d ON d.id = p.document_id ORDER BY p.date DESC'),
   create: (data: Record<string, unknown>) => {
     const r = run(`INSERT INTO payments (document_id,amount,date,method,reference,notes) VALUES (:document_id,:amount,:date,:method,:reference,:notes)`, {
       ':document_id': data.document_id, ':amount': data.amount ?? 0,
@@ -423,16 +425,17 @@ export const withholdingTaxRepo = {
 
   create: (data: Record<string, unknown>, items: Record<string, unknown>[] = []) => {
     const r = run(
-      `INSERT INTO withholding_tax (book_no,cert_no,issue_date,form_type,payer_name,payer_address,payer_tax_id,payee_id,payee_name,payee_address,payee_tax_id,payer_type,payer_type_other,fund_gpf,fund_sso,fund_pvd,total_amount,total_tax)
-       VALUES (:book_no,:cert_no,:issue_date,:form_type,:payer_name,:payer_address,:payer_tax_id,:payee_id,:payee_name,:payee_address,:payee_tax_id,:payer_type,:payer_type_other,:fund_gpf,:fund_sso,:fund_pvd,:total_amount,:total_tax)`,
+      `INSERT INTO withholding_tax (book_no,cert_no,issue_date,form_type,payer_name,payer_address,payer_tax_id,payer_tin,payee_id,payee_name,payee_address,payee_tax_id,payee_tin,payer_type,payer_type_other,fund_gpf,fund_sso,fund_pvd,total_amount,total_tax)
+       VALUES (:book_no,:cert_no,:issue_date,:form_type,:payer_name,:payer_address,:payer_tax_id,:payer_tin,:payee_id,:payee_name,:payee_address,:payee_tax_id,:payee_tin,:payer_type,:payer_type_other,:fund_gpf,:fund_sso,:fund_pvd,:total_amount,:total_tax)`,
       {
         ':book_no': data.book_no ?? null, ':cert_no': data.cert_no ?? null,
         ':issue_date': data.issue_date ?? new Date().toISOString().slice(0, 10),
         ':form_type': data.form_type ?? 'nd53',
         ':payer_name': data.payer_name ?? '', ':payer_address': data.payer_address ?? null,
-        ':payer_tax_id': data.payer_tax_id ?? null,
+        ':payer_tax_id': data.payer_tax_id ?? null, ':payer_tin': data.payer_tin ?? null,
         ':payee_id': data.payee_id ?? null, ':payee_name': data.payee_name ?? '',
         ':payee_address': data.payee_address ?? null, ':payee_tax_id': data.payee_tax_id ?? null,
+        ':payee_tin': data.payee_tin ?? null,
         ':payer_type': data.payer_type ?? '1', ':payer_type_other': data.payer_type_other ?? null,
         ':fund_gpf': data.fund_gpf ?? 0, ':fund_sso': data.fund_sso ?? 0, ':fund_pvd': data.fund_pvd ?? 0,
         ':total_amount': data.total_amount ?? 0, ':total_tax': data.total_tax ?? 0,
@@ -455,7 +458,7 @@ export const withholdingTaxRepo = {
   },
 
   update: (id: number, data: Record<string, unknown>, items?: Record<string, unknown>[]) => {
-    const allowed = ['book_no','cert_no','issue_date','form_type','payer_name','payer_address','payer_tax_id','payee_id','payee_name','payee_address','payee_tax_id','payer_type','payer_type_other','fund_gpf','fund_sso','fund_pvd','total_amount','total_tax'];
+    const allowed = ['book_no','cert_no','issue_date','form_type','payer_name','payer_address','payer_tax_id','payer_tin','payee_id','payee_name','payee_address','payee_tax_id','payee_tin','payer_type','payer_type_other','fund_gpf','fund_sso','fund_pvd','total_amount','total_tax'];
     const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');
     if (fields) {
       const params: Record<string, unknown> = { ':id': id };

@@ -43,6 +43,8 @@ export interface Payment {
   method: 'cash' | 'transfer' | 'cheque' | 'credit_card'
   reference?: string | null
   notes?: string | null
+  doc_number?: string | null
+  contact_name?: string | null
   created_at?: string
 }
 
@@ -109,10 +111,12 @@ export interface WithholdingTax {
   payer_name: string
   payer_address?: string | null
   payer_tax_id?: string | null
+  payer_tin?: string | null
   payee_id?: number | null
   payee_name: string
   payee_address?: string | null
   payee_tax_id?: string | null
+  payee_tin?: string | null
   payer_type: '1' | '2' | '3' | '4'
   payer_type_other?: string | null
   fund_gpf?: number

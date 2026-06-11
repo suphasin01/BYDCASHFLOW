@@ -57,6 +57,7 @@ export default function App() {
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [appVersion, setAppVersion] = useState('')
+  const [showSplash, setShowSplash] = useState(true)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
@@ -67,6 +68,11 @@ export default function App() {
   useEffect(() => {
     const api = (window as unknown as { electronAPI?: { getVersion: () => Promise<string> } }).electronAPI
     api?.getVersion().then(v => setAppVersion(v)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowSplash(false), 2000)
+    return () => clearTimeout(t)
   }, [])
 
   const toast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
@@ -193,7 +199,7 @@ export default function App() {
 
   const navSections = [
     { label: t('nav_sec_main'), items: ['dashboard', 'payments'] },
-    { label: t('nav_sec_docs'), items: ['documents', 'withholding_tax'] },
+    { label: t('nav_sec_docs'), items: ['documents'] },
     { label: t('nav_sec_data'), items: ['contacts', 'products'] },
     { label: t('nav_sec_analyze'), items: ['reports'] },
     { label: '', items: ['companies', 'settings'] },
@@ -203,14 +209,29 @@ export default function App() {
     <I18nContext.Provider value={i18n}>
       <ToastContext.Provider value={{ toast }}>
         <CompanyContext.Provider value={{ activeCompany, reload: reloadCompany }}>
+          {/* Splash screen */}
+          {showSplash && (
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center splash-out"
+              style={{ background: 'radial-gradient(ellipse 80% 70% at 50% 40%, #1a1040 0%, #0a0f1e 100%)' }}>
+              <img src="/app-icon.png" alt="FruitBiz" className="splash-icon w-28 h-28 rounded-[28px] shadow-[0_0_80px_rgba(124,109,243,.7),0_24px_48px_rgba(0,0,0,.6)]" />
+              <div className="splash-text text-[26px] font-bold tracking-tight mt-6" style={{ color: '#f0f4ff' }}>FruitBiz</div>
+              <div className="splash-sub text-[13px] mt-1" style={{ color: '#6b7685' }}>Business Management</div>
+              <div className="mt-8 flex gap-1.5">
+                {[0,1,2].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 rounded-full bg-primary/60"
+                    style={{ animation: `splashPulse .9s ease ${i * .2}s infinite` }} />
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex h-screen overflow-hidden text-foreground text-sm">
             {/* Sidebar */}
             <aside className="w-60 flex-shrink-0 flex flex-col border-r border-content3" style={{ background: 'var(--bg-sidebar)' }}>
-              {/* Logo */}
-              <div className="px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3 relative overflow-hidden">
+              {/* Logo — drag region for Mac traffic lights */}
+              <div className="drag px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
-                <img src="/app-icon.png" alt="FruitBiz" className="w-9 h-9 rounded-[10px] flex-shrink-0 object-cover shadow-[0_4px_12px_rgba(124,109,243,.6)] relative z-10" />
-                <div>
+                <img src="/app-icon.png" alt="FruitBiz" className="no-drag w-9 h-9 rounded-[10px] flex-shrink-0 object-cover shadow-[0_4px_12px_rgba(124,109,243,.6)] relative z-10" />
+                <div className="no-drag">
                   <div className="text-[15px] font-bold tracking-tight">FruitBiz</div>
                   <div className="text-[10px] text-default-500 mt-px">{t('app_subtitle')}</div>
                 </div>
@@ -281,9 +302,9 @@ export default function App() {
             {/* Main */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Topbar */}
-              <div className="h-[60px] px-7 flex items-center justify-between border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md">
+              <div className="drag h-[60px] px-7 flex items-center justify-between border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md">
                 <h1 className="text-[15px] font-semibold">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
-                <div className="flex items-center gap-2.5">
+                <div className="no-drag flex items-center gap-2.5">
                   {/* Check for Updates */}
                   <button disabled={checkingUpdate}
                     onClick={checkForUpdates} title={t('btn_check_update')}

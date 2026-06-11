@@ -55,6 +55,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const [statusChange, setStatusChange] = useState('')
   const [convertType, setConvertType] = useState('')
   const [search, setSearch] = useState('')
+  const [showDocMenu, setShowDocMenu] = useState(false)
 
   const DOC_TYPES: Record<string, string> = {
     quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
@@ -252,7 +253,25 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
           <TextField className="min-w-[200px]" placeholder={t('search_doc')}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <Btn variant="primary" onClick={openCreate}>{t('btn_create_doc')}</Btn>
+        <div className="relative flex items-center">
+          <Btn variant="primary" className="rounded-r-none" onClick={openCreate}>{t('btn_create_doc')}</Btn>
+          <button
+            onClick={() => setShowDocMenu(m => !m)}
+            onBlur={() => setTimeout(() => setShowDocMenu(false), 150)}
+            className="btn-3d-primary h-[34px] px-2 rounded-l-none border-l border-indigo-700/40 text-xs leading-none">
+            ▾
+          </button>
+          {showDocMenu && (
+            <div className="absolute right-0 top-[calc(100%+4px)] bg-content1 border border-content3 rounded-xl shadow-2xl z-50 py-1 min-w-[200px]">
+              <button
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-content2 text-foreground transition-colors rounded-lg"
+                onMouseDown={() => { setShowDocMenu(false); onNavigate?.('withholding_tax') }}>
+                <span className="text-[15px]">🧾</span>
+                {t('nav_withholding_tax')}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -296,7 +315,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Btn size="sm" variant="ghost" onClick={() => openView(doc.id)}>{t('btn_update')}</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => doDuplicate(doc.id)}>คัดลอก</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => doDuplicate(doc.id)}>{t('btn_duplicate')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openPreview(doc.id)}>{t('btn_preview')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => generatePDF(doc.id)}>PDF</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openEdit(doc.id)}>{t('btn_edit')}</Btn>
@@ -373,7 +392,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                 {/* Items */}
                 <div className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">รายการสินค้า / บริการ</div>
                 <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
-                  {['สินค้า', t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
+                  {[t('lbl_product_col'), t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
                     <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
                   ))}
                 </div>
@@ -395,7 +414,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                             })
                           }
                         }}>
-                        <option value="">— เลือก —</option>
+                        <option value="">{t('lbl_select')}</option>
                         {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                       </select>
                       <TextField placeholder={t('lbl_item_ph')}
@@ -563,14 +582,14 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                 {/* Convert Document */}
                 <Divider className="my-1" />
                 <div className="flex items-center gap-2">
-                  <label className="text-[13px] font-medium whitespace-nowrap">แปลงเป็น:</label>
+                  <label className="text-[13px] font-medium whitespace-nowrap">{t('btn_convert_label')}</label>
                   <select value={convertType} onChange={e => setConvertType(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
-                    <option value="">— เลือกประเภท —</option>
+                    <option value="">{t('lbl_select')}</option>
                     {Object.entries(DOC_TYPES).filter(([k]) => k !== viewDoc?.type && k !== 'withholding_tax').map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
                     ))}
                   </select>
-                  <Btn size="sm" variant="ghost" onClick={doConvert} disabled={!convertType}>แปลง</Btn>
+                  <Btn size="sm" variant="ghost" onClick={doConvert} disabled={!convertType}>{t('btn_convert')}</Btn>
                 </div>
           </div>
         )}

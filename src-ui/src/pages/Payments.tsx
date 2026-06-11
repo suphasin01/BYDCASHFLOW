@@ -96,7 +96,10 @@ export default function Payments() {
                 {payments.map(p => (
                   <TableRow key={p.id} className="hover:bg-content2/60 transition-colors">
                     <TableCell className="text-default-500">{fmtDate(p.date)}</TableCell>
-                    <TableCell><span className="text-primary font-semibold">#{p.document_id}</span></TableCell>
+                    <TableCell>
+                      <div className="font-semibold text-primary">{p.doc_number || `#${p.document_id}`}</div>
+                      {p.contact_name && <div className="text-[11px] text-default-500 mt-0.5">{p.contact_name}</div>}
+                    </TableCell>
                     <TableCell>
                       <Chip size="sm" variant="flat" color="primary">{METHODS[p.method] || p.method}</Chip>
                     </TableCell>

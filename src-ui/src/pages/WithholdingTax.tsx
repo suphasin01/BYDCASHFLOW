@@ -75,6 +75,8 @@ export default function WithholdingTax() {
   const [fPayerName, setFPayerName] = useState('')
   const [fPayerAddress, setFPayerAddress] = useState('')
   const [fPayerTaxId, setFPayerTaxId] = useState('')
+  const [fPayerTin, setFPayerTin] = useState('')
+  const [fPayeeTin, setFPayeeTin] = useState('')
   const [fPayeeId, setFPayeeId] = useState('')
   const [fPayeeName, setFPayeeName] = useState('')
   const [fPayeeAddress, setFPayeeAddress] = useState('')
@@ -101,8 +103,8 @@ export default function WithholdingTax() {
   const resetForm = () => {
     setFBookNo(''); setFCertNo(''); setFIssueDate(today()); setFFormType('')
     setFPayerName(activeCompany?.name || ''); setFPayerAddress(activeCompany?.address || '')
-    setFPayerTaxId(activeCompany?.tax_id || '')
-    setFPayeeId(''); setFPayeeName(''); setFPayeeAddress(''); setFPayeeTaxId('')
+    setFPayerTaxId(activeCompany?.tax_id || ''); setFPayerTin('')
+    setFPayeeId(''); setFPayeeName(''); setFPayeeAddress(''); setFPayeeTaxId(''); setFPayeeTin('')
     setFPayerType('1'); setFPayerTypeOther('')
     setFFundGpf(0); setFFundSso(0); setFFundPvd(0)
     setFItems([emptyItem()])
@@ -128,10 +130,12 @@ export default function WithholdingTax() {
     setFPayerName(wht.payer_name || '')
     setFPayerAddress(wht.payer_address || '')
     setFPayerTaxId(wht.payer_tax_id || '')
+    setFPayerTin(wht.payer_tin || '')
     setFPayeeId(wht.payee_id ? String(wht.payee_id) : '')
     setFPayeeName(wht.payee_name || '')
     setFPayeeAddress(wht.payee_address || '')
     setFPayeeTaxId(wht.payee_tax_id || '')
+    setFPayeeTin(wht.payee_tin || '')
     setFPayerType((wht.payer_type as '1' | '2' | '3' | '4') || '1')
     setFPayerTypeOther(wht.payer_type_other || '')
     setFFundGpf(wht.fund_gpf || 0)
@@ -172,10 +176,12 @@ export default function WithholdingTax() {
       payer_name: fPayerName,
       payer_address: fPayerAddress || null,
       payer_tax_id: fPayerTaxId || null,
+      payer_tin: fPayerTin || null,
       payee_id: fPayeeId ? Number(fPayeeId) : null,
       payee_name: fPayeeName,
       payee_address: fPayeeAddress || null,
       payee_tax_id: fPayeeTaxId || null,
+      payee_tin: fPayeeTin || null,
       payer_type: fPayerType,
       payer_type_other: fPayerTypeOther || null,
       fund_gpf: fFundGpf,
@@ -332,6 +338,8 @@ export default function WithholdingTax() {
                   value={fPayerAddress} onChange={e => setFPayerAddress(e.target.value)} />
                 <TextField label={t('wht_lbl_payer_tax_id')}
                   placeholder="0000000000000 (13 หลัก)" maxLength={13} value={fPayerTaxId} onChange={e => setFPayerTaxId(e.target.value)} />
+                <TextField label={t('wht_lbl_payer_tin')}
+                  placeholder="0000000000 (10 หลัก)" maxLength={10} value={fPayerTin} onChange={e => setFPayerTin(e.target.value)} />
 
                 <SectionLabel label={t('wht_sec_payee')} />
                 <div>
@@ -348,6 +356,8 @@ export default function WithholdingTax() {
                   value={fPayeeAddress} onChange={e => setFPayeeAddress(e.target.value)} />
                 <TextField label={t('wht_lbl_payee_tax_id')}
                   placeholder="0000000000000 (13 หลัก)" maxLength={13} value={fPayeeTaxId} onChange={e => setFPayeeTaxId(e.target.value)} />
+                <TextField label={t('wht_lbl_payee_tin')}
+                  placeholder="0000000000 (10 หลัก)" maxLength={10} value={fPayeeTin} onChange={e => setFPayeeTin(e.target.value)} />
 
                 {/* ── Section 4: Income types ── */}
                 <SectionLabel label={t('wht_sec_income')} />
