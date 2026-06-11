@@ -121,11 +121,62 @@ else:
 img.save(PNG_PATH)
 print(f"Saved PNG  → {PNG_PATH}")
 
-# ── 2. ICO (16,32,48,64,128,256) ─────────────────────────────────────────────
-ico_sizes = [(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)]
-ico_images = [img.resize(s, Image.LANCZOS) for s in ico_sizes]
-ico_images[0].save(ICO_PATH, format='ICO', sizes=ico_sizes,
-                   append_images=ico_images[1:])
+# ── 2. ICO (256,128,64,48,32,16) ─────────────────────────────────────────────
+# electron-builder requires at least 256x256 in the ICO.
+# Build each size as a separate RGBA PNG in memory, then pack manually.
+ICO_SIZES = [256, 128, 64, 48, 32, 16]
+
+def _ico_entry(size_px: int, data: bytes, offset: int):
+    """Return (directory_entry_bytes, image_data_bytes)"""
+    w = size_px if size_px < 256 else 0   # 0 means 256 in ICO spec
+    h = w
+    # BMP BITMAPINFOHEADER (40 bytes) + pixel data (BGRA, bottom-up)
+    resized = img.resize((size_px, size_px), Image.LANCZOS).convert('RGBA')
+    r, g, b, a = resized.split()
+    bgra = Image.merge('RGBA', (b, g, r, a))
+    raw_pixels = bgra.tobytes()
+    row = size_px * 4
+    # Flip rows (ICO BMP is bottom-up)
+    rows = [raw_pixels[i*row:(i+1)*row] for i in range(size_px)]
+    pixel_data = b''.join(reversed(rows))
+    bih = struct.pack('<IiiHHIIiiII',
+        40,            # biSize
+        size_px,       # biWidth
+        size_px * 2,   # biHeight (×2 = image + mask in BMP-in-ICO)
+        1,             # biPlanes
+        32,            # biBitCount
+        0,             # biCompression (BI_RGB)
+        len(pixel_data),
+        0, 0, 0, 0,
+    )
+    # AND mask (all zeros = fully opaque via alpha channel)
+    mask_row_bytes = ((size_px + 31) // 32) * 4
+    and_mask = b'\x00' * (mask_row_bytes * size_px)
+    img_data = bih + pixel_data + and_mask
+    entry = struct.pack('<BBBBHHII',
+        w, h,          # width, height (0 = 256)
+        0,             # color count
+        0,             # reserved
+        1,             # planes
+        32,            # bit count
+        len(img_data),
+        offset,
+    )
+    return entry, img_data
+
+dir_entries = []
+img_blobs   = []
+header_size = 6 + 16 * len(ICO_SIZES)   # ICONDIR + N×ICONDIRENTRY
+offset = header_size
+for sz in ICO_SIZES:
+    entry, blob = _ico_entry(sz, b'', offset)
+    dir_entries.append(entry)
+    img_blobs.append(blob)
+    offset += len(blob)
+
+ico_header = struct.pack('<HHH', 0, 1, len(ICO_SIZES))  # reserved, type=1, count
+with open(ICO_PATH, 'wb') as f:
+    f.write(ico_header + b''.join(dir_entries) + b''.join(img_blobs))
 print(f"Saved ICO  → {ICO_PATH}")
 
 # ── 3. ICNS (Apple icon format) ───────────────────────────────────────────────
