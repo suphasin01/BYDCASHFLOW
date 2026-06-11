@@ -152,8 +152,10 @@ export default function Companies() {
                 <div>
                   <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_logo')}</label>
                   <div className="flex items-center gap-3.5">
-                    <div className="w-16 h-16 rounded-xl border-2 border-dashed border-content3 flex items-center justify-center overflow-hidden flex-shrink-0 bg-content2">
-                      {fLogo ? <img src={fLogo} className="w-full h-full object-contain" /> : <span className="text-2xl text-default-400">🏢</span>}
+                    <div className="w-16 h-16 rounded-xl border-2 border-dashed border-content3 overflow-hidden flex-shrink-0 bg-content2">
+                      {fLogo
+                        ? <img src={fLogo} alt="logo" style={{ width: 64, height: 64, objectFit: 'contain', display: 'block' }} />
+                        : <div className="w-full h-full flex items-center justify-center"><span className="text-2xl text-default-400">🏢</span></div>}
                     </div>
                     <div className="flex-1">
                       <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleLogoChange} />

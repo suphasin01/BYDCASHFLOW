@@ -209,7 +209,7 @@ export default function App() {
               {/* Logo */}
               <div className="px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
-                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-base flex-shrink-0 bg-gradient-to-br from-[#7c6df3] to-[#a855f7] shadow-[0_4px_12px_rgba(124,109,243,.6),inset_0_1px_0_rgba(255,255,255,.25)] relative z-10">💼</div>
+                <img src="/app-icon.png" alt="FruitBiz" className="w-9 h-9 rounded-[10px] flex-shrink-0 object-cover shadow-[0_4px_12px_rgba(124,109,243,.6)] relative z-10" />
                 <div>
                   <div className="text-[15px] font-bold tracking-tight">FruitBiz</div>
                   <div className="text-[10px] text-default-500 mt-px">{t('app_subtitle')}</div>
