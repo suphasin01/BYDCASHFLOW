@@ -19,5 +19,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importData: () => ipcRenderer.invoke('import-data'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
+  openReleasesPage: () => ipcRenderer.invoke('open-releases-page'),
   quitApp: () => ipcRenderer.invoke('quit-app'),
 })

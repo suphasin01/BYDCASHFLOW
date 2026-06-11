@@ -52,7 +52,7 @@ export default function App() {
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
-  const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready'; version: string } | null>(null)
+  const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready' | 'mac-available'; version: string; releaseUrl?: string } | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [installing, setInstalling] = useState(false)
@@ -84,6 +84,10 @@ export default function App() {
         toast(t('toast_update_failed') + (data.message ? ': ' + data.message : ''), 'err')
         return
       }
+      if (data.type === 'mac-available') {
+        setUpdateBanner({ type: 'mac-available', version: data.version || '', releaseUrl: data.releaseUrl })
+        return
+      }
       setUpdateBanner({ type: data.type, version: data.version || '' })
       if (data.type === 'ready') setDownloadProgress(null)
     })
@@ -112,6 +116,11 @@ export default function App() {
   const quitApp = () => {
     const api = (window as unknown as { electronAPI?: { quitApp: () => void } }).electronAPI
     api?.quitApp()
+  }
+
+  const openReleasesPage = () => {
+    const api = (window as unknown as { electronAPI?: { openReleasesPage: () => void } }).electronAPI
+    api?.openReleasesPage()
   }
 
   const reloadCompany = useCallback(async () => {
@@ -340,11 +349,25 @@ export default function App() {
 
             {/* Update Banner */}
             {updateBanner && (
-              <div className={`fixed bottom-6 left-[260px] z-[998] rounded-xl px-4 py-2.5 flex items-center gap-2.5 shadow-2xl min-w-[280px] border ${updateBanner.type === 'ready' ? 'bg-success/10 border-success/40' : 'bg-[#60a5fa]/10 border-[#60a5fa]/40'}`}>
-                <span className="text-lg">{updateBanner.type === 'ready' ? '✅' : '⬇️'}</span>
+              <div className={`fixed bottom-6 left-[260px] z-[998] rounded-xl px-4 py-2.5 flex items-center gap-2.5 shadow-2xl min-w-[300px] border ${
+                updateBanner.type === 'ready' ? 'bg-success/10 border-success/40' :
+                updateBanner.type === 'mac-available' ? 'bg-warning/10 border-warning/40' :
+                'bg-[#60a5fa]/10 border-[#60a5fa]/40'
+              }`}>
+                <span className="text-lg">
+                  {updateBanner.type === 'ready' ? '✅' : updateBanner.type === 'mac-available' ? '🆕' : '⬇️'}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] font-semibold flex items-center justify-between ${updateBanner.type === 'ready' ? 'text-success' : 'text-[#60a5fa]'}`}>
-                    <span>{updateBanner.type === 'ready' ? `v${updateBanner.version} พร้อมแล้ว` : `กำลังดาวน์โหลด v${updateBanner.version}...`}</span>
+                  <div className={`text-[13px] font-semibold flex items-center justify-between ${
+                    updateBanner.type === 'ready' ? 'text-success' :
+                    updateBanner.type === 'mac-available' ? 'text-warning' :
+                    'text-[#60a5fa]'
+                  }`}>
+                    <span>
+                      {updateBanner.type === 'ready' ? `v${updateBanner.version} พร้อมแล้ว` :
+                       updateBanner.type === 'mac-available' ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด` :
+                       `กำลังดาวน์โหลด v${updateBanner.version}...`}
+                    </span>
                     {updateBanner.type === 'downloading' && downloadProgress !== null && (
                       <span className="text-xs font-bold text-[#60a5fa] ml-2">{downloadProgress}%</span>
                     )}
@@ -353,13 +376,20 @@ export default function App() {
                     <Progress aria-label="download" size="sm" color="primary" value={downloadProgress} className="mt-1.5" />
                   ) : (
                     <div className="text-[11px] text-default-500 mt-0.5">
-                      {updateBanner.type === 'ready' ? 'ดาวน์โหลดเสร็จแล้ว พร้อมติดตั้ง' : 'ดาวน์โหลดอัพเดทในพื้นหลัง'}
+                      {updateBanner.type === 'ready' ? 'ดาวน์โหลดเสร็จแล้ว พร้อมติดตั้ง' :
+                       updateBanner.type === 'mac-available' ? 'กด "ดาวน์โหลด" เพื่อเปิดหน้า Releases' :
+                       'ดาวน์โหลดอัพเดทในพื้นหลัง'}
                     </div>
                   )}
                 </div>
                 {updateBanner.type === 'ready' && (
                   <Btn size="sm" variant="success" onClick={installUpdate} isLoading={installing} className="whitespace-nowrap">
                     {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
+                  </Btn>
+                )}
+                {updateBanner.type === 'mac-available' && (
+                  <Btn size="sm" variant="primary" onClick={openReleasesPage} className="whitespace-nowrap">
+                    ดาวน์โหลด
                   </Btn>
                 )}
                 <button onClick={() => setUpdateBanner(null)}

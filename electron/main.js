@@ -1,5 +1,6 @@
 const { app, BrowserWindow, shell, Menu, dialog, ipcMain } = require('electron');
 const http = require('http');
+const https = require('https');
 const { autoUpdater } = require('electron-updater');
 const net = require('net');
 const path = require('path');
@@ -35,7 +36,7 @@ function waitForPort(port, timeoutMs = 12000) {
   });
 }
 
-// ── Start Express inside Electron's Node.js (no external Node needed) ─
+// ── Start Express inside Electron's Node.js ───────────────────────────
 function startAPIServer() {
   try {
     require(path.join(__dirname, '..', 'dist', 'api.js'));
@@ -45,21 +46,86 @@ function startAPIServer() {
   }
 }
 
+// ── Mac version check via GitHub API ─────────────────────────────────
+// electron-updater requires code-signing to install on Mac. Instead we
+// check GitHub Releases manually and prompt the user to download the DMG.
+
+function fetchLatestGithubRelease() {
+  return new Promise((resolve) => {
+    const options = {
+      hostname: 'api.github.com',
+      path: '/repos/suphasin01/fruit/releases/latest',
+      headers: { 'User-Agent': `FruitBiz/${app.getVersion()}`, 'Accept': 'application/vnd.github.v3+json' },
+      timeout: 10000,
+    };
+    const req = https.get(options, (res) => {
+      if (res.statusCode !== 200) { res.resume(); resolve(null); return; }
+      let body = '';
+      res.on('data', d => { body += d; });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(body);
+          resolve({ version: (data.tag_name || '').replace(/^v/, ''), url: data.html_url });
+        } catch { resolve(null); }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+function compareVersions(a, b) {
+  const parse = v => (v || '0.0.0').split('.').map(n => parseInt(n, 10) || 0);
+  const [am, an, ap] = parse(a);
+  const [bm, bn, bp] = parse(b);
+  return (am - bm) || (an - bn) || (ap - bp);
+}
+
+async function doMacVersionCheck() {
+  try {
+    const result = await fetchLatestGithubRelease();
+    if (!result || !result.version) {
+      log.warn('[updater-mac] Could not fetch latest release');
+      if (mainWindow) mainWindow.webContents.send('update-not-available');
+      return;
+    }
+    const current = app.getVersion();
+    if (compareVersions(result.version, current) > 0) {
+      log.info(`[updater-mac] New version available: ${result.version} (current: ${current})`);
+      if (mainWindow) mainWindow.webContents.send('update-status', {
+        type: 'mac-available', version: result.version, releaseUrl: result.url,
+      });
+    } else {
+      log.info(`[updater-mac] Up to date: ${current}`);
+      if (mainWindow) mainWindow.webContents.send('update-not-available');
+    }
+  } catch (err) {
+    log.warn('[updater-mac] Version check failed:', err.message);
+    if (mainWindow) mainWindow.webContents.send('update-not-available');
+  }
+}
+
 // ── Auto-update logic ─────────────────────────────────────────────────
 function setupAutoUpdater() {
-  // Skip in development
   if (!app.isPackaged) {
     log.info('[updater] Skipping auto-update in dev mode');
     return;
   }
 
+  if (process.platform === 'darwin') {
+    // Mac: use GitHub API check instead of electron-updater (requires signing)
+    setTimeout(() => doMacVersionCheck(), 3000);
+    setInterval(() => doMacVersionCheck(), 4 * 60 * 60 * 1000);
+    return;
+  }
+
+  // Windows / Linux: use electron-updater normally
   autoUpdater.on('checking-for-update', () => {
     log.info('[updater] Checking for updates...');
   });
 
   autoUpdater.on('update-available', (info) => {
     log.info('[updater] Update available:', info.version);
-    // ดาวน์โหลดเงียบๆ ใน background ไม่ขึ้น popup
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version: info.version });
   });
 
@@ -70,8 +136,6 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     log.warn('[updater] Error:', err == null ? '(unknown)' : (err.stack || err.message || String(err)));
-    // If an install was in progress, clear the guard and surface the failure
-    // so the renderer can stop showing "installing" and tell the user.
     if (isQuittingForUpdate) isQuittingForUpdate = false;
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'error', message: String(err && err.message || err) });
   });
@@ -88,12 +152,9 @@ function setupAutoUpdater() {
   autoUpdater.on('update-downloaded', (info) => {
     if (mainWindow) mainWindow.setProgressBar(-1);
     log.info('[updater] Update downloaded:', info.version);
-    // แจ้งใน app แบบ toast เล็กๆ ไม่บล็อค แล้วติดตั้งอัตโนมัติเมื่อปิดโปรแกรม
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: info.version });
-    // ติดตั้งอัตโนมัติเมื่อปิดโปรแกรม (autoInstallOnAppQuit = true ครอบคลุมแล้ว)
   });
 
-  // Check 3 seconds after window loads, then every 4 hours
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch(() => {});
   }, 3000);
@@ -163,8 +224,14 @@ ipcMain.handle('check-for-updates', () => {
     if (mainWindow) mainWindow.webContents.send('update-not-available');
     return;
   }
-  autoUpdater.checkForUpdates().catch(() => {
-    if (mainWindow) mainWindow.webContents.send('update-not-available');
+  if (process.platform === 'darwin') {
+    doMacVersionCheck();
+    return;
+  }
+  // Windows/Linux: use electron-updater
+  // Note: do NOT send 'update-not-available' in catch — the 'error' event handles it
+  autoUpdater.checkForUpdates().catch((err) => {
+    log.warn('[updater] checkForUpdates rejected:', err?.message || err);
   });
 });
 
@@ -172,13 +239,8 @@ ipcMain.handle('check-for-updates', () => {
 ipcMain.handle('install-update', () => {
   log.info('[updater] install-update requested → quitAndInstall');
   isQuittingForUpdate = true;
-  // Defer so the IPC reply is sent before the app starts tearing down.
-  // Calling quitAndInstall synchronously inside the handler can leave the
-  // invoke() pending and the quit/relaunch silently not happening.
   setImmediate(() => {
     try {
-      // isSilent=false (show installer UI on Windows), isForceRunAfter=true
-      // (relaunch the app after the update is applied).
       autoUpdater.quitAndInstall(false, true);
     } catch (err) {
       isQuittingForUpdate = false;
@@ -187,6 +249,11 @@ ipcMain.handle('install-update', () => {
     }
   });
   return { ok: true };
+});
+
+// ── Open GitHub Releases page (Mac manual update) ─────────────────────
+ipcMain.handle('open-releases-page', () => {
+  shell.openExternal('https://github.com/suphasin01/fruit/releases/latest');
 });
 
 // ── Quit App IPC ──────────────────────────────────────────────────────
@@ -257,7 +324,7 @@ function buildMenu() {
         {
           label: 'ตรวจสอบอัพเดท...',
           click: () => {
-            if (app.isPackaged) autoUpdater.checkForUpdates().catch(() => {});
+            if (app.isPackaged) doMacVersionCheck();
             else dialog.showMessageBox(mainWindow, { message: 'อยู่ใน dev mode — ไม่สามารถตรวจสอบอัพเดทได้', buttons: ['OK'] });
           },
         },
@@ -310,7 +377,6 @@ function buildMenu() {
 app.whenReady().then(async () => {
   buildMenu();
 
-  // Start server (or attach to existing one in dev)
   try {
     await waitForPort(PORT, 500);
     log.info('Attaching to existing server on :' + PORT);
@@ -330,8 +396,6 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
-  // When quitAndInstall() closes the windows to apply an update, let
-  // electron-updater drive the quit/relaunch — don't race it with app.quit().
   if (isQuittingForUpdate) return;
   if (process.platform !== 'darwin') app.quit();
 });
