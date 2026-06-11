@@ -229,3 +229,34 @@ select option {
   animation: progressIndeterminate 1.4s ease infinite;
   transform-origin: left center;
 }
+
+/* ── Interactive dot-grid background (main content area) ─────────────────── */
+.dot-grid-bg {
+  background-image: radial-gradient(circle, rgba(124,109,243,.18) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ── Glassmorphism card ──────────────────────────────────────────────────── */
+.glass-panel {
+  background: rgba(255,255,255,.03);
+  backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255,255,255,.07);
+  box-shadow: 0 8px 32px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.06);
+}
+[data-theme="light"] .glass-panel {
+  background: rgba(255,255,255,.7);
+  border-color: rgba(0,0,0,.07);
+  box-shadow: 0 4px 24px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+/* ── Scrollbar styling ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124,109,243,.25); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124,109,243,.4); }
+
+/* ── Focus ring ──────────────────────────────────────────────────────────── */
+:focus-visible { outline: 2px solid rgba(124,109,243,.6); outline-offset: 2px; }
+
+/* ── Smooth table row transitions ────────────────────────────────────────── */
+table tbody tr { transition: background .12s ease; }

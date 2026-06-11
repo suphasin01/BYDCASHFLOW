@@ -3,6 +3,7 @@ import {
   Card, CardBody, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { CreditCard } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
@@ -88,8 +89,8 @@ export default function Payments() {
                 <TableColumn align="end">{t('col_actions')}</TableColumn>
               </TableHeader>
               <TableBody emptyContent={
-                <div className="py-10 text-default-500">
-                  <div className="text-4xl mb-3.5 opacity-40">💳</div>
+                <div className="py-10 text-default-500 flex flex-col items-center">
+                  <CreditCard size={40} className="mb-3.5 opacity-30" strokeWidth={1.2} />
                   <p>{t('no_payments')}</p>
                 </div>
               }>
