@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import {
   Chip, Spinner,
@@ -16,6 +16,66 @@ interface Props { onNavigate: (p: Page) => void }
 type ChipColor = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'
 const STATUS_COLOR: Record<string, ChipColor> = {
   draft: 'default', sent: 'primary', approved: 'success', paid: 'success', cancelled: 'danger',
+}
+
+// 3D tilt hook for a single card element
+function useTiltRef() {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const onMove = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect()
+      const x = (e.clientX - r.left) / r.width - 0.5
+      const y = (e.clientY - r.top) / r.height - 0.5
+      el.style.transform = `perspective(700px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) translateZ(10px) scale(1.02)`
+      el.style.transition = 'transform .05s ease'
+    }
+    const onLeave = () => {
+      el.style.transform = 'perspective(700px) rotateY(0deg) rotateX(0deg) translateZ(0) scale(1)'
+      el.style.transition = 'transform .35s cubic-bezier(.34,1.56,.64,1)'
+    }
+    el.addEventListener('mousemove', onMove)
+    el.addEventListener('mouseleave', onLeave)
+    return () => { el.removeEventListener('mousemove', onMove); el.removeEventListener('mouseleave', onLeave) }
+  }, [])
+  return ref
+}
+
+// Section header component with gradient accent
+function SectionHeader({ icon, title, action }: { icon: string; title: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between px-5 pt-5 pb-4">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center text-lg shadow-[0_0_12px_rgba(124,109,243,.2)]">{icon}</div>
+        <div>
+          <div className="text-[16px] font-bold tracking-tight">{title}</div>
+          <div className="h-[2px] mt-1 w-10 rounded-full bg-gradient-to-r from-primary to-violet-400 opacity-70" />
+        </div>
+      </div>
+      {action}
+    </div>
+  )
+}
+
+// Individual tilt stat card
+function StatCard({ icon, label, value, sub, color, glow, gradient }: {
+  icon: string; label: string; value: string; sub: string
+  color: string; glow: string; gradient: string
+}) {
+  const ref = useTiltRef()
+  return (
+    <div ref={ref} className={`relative bg-content1 border border-content3 rounded-2xl p-5 cursor-default overflow-hidden
+      hover:border-primary/30 hover:shadow-[0_16px_48px_rgba(0,0,0,.3)] transition-shadow duration-300`}
+      style={{ transformStyle: 'preserve-3d' }}>
+      {/* Background gradient blob */}
+      <div className={`absolute -top-4 -right-4 w-20 h-20 rounded-full blur-2xl opacity-40 pointer-events-none ${gradient}`} />
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-[22px] mb-4 ${glow} shadow-md relative z-10`}>{icon}</div>
+      <div className="text-[11px] font-semibold text-default-400 uppercase tracking-widest mb-2 relative z-10">{label}</div>
+      <div className={`text-[28px] font-black tracking-tight stat-value ${color} relative z-10`}>{value}</div>
+      <div className="text-[11px] text-default-500 mt-1.5 relative z-10">{sub}</div>
+    </div>
+  )
 }
 
 export default function Dashboard({ onNavigate }: Props) {
@@ -65,65 +125,63 @@ export default function Dashboard({ onNavigate }: Props) {
   }, [t])
 
   if (loading) {
-    return <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <Spinner size="lg" color="primary" />
+        <div className="text-sm text-default-400">{t('loading')}</div>
+      </div>
+    )
   }
 
   const statCards = [
-    { color: 'text-success', icon: '💰', label: t('dash_revenue'), value: `฿${fmtShort(summary?.revenue || 0)}`, sub: t('dash_all_docs'), glow: 'bg-success/10' },
-    { color: 'text-danger', icon: '📤', label: t('dash_expense'), value: `฿${fmtShort(summary?.expense || 0)}`, sub: t('dash_all_docs'), glow: 'bg-danger/10' },
-    { color: (summary?.profit || 0) >= 0 ? 'text-success' : 'text-danger', icon: '📊', label: t('dash_profit'), value: `฿${fmtShort(Math.abs(summary?.profit || 0))}`, sub: (summary?.profit || 0) >= 0 ? t('dash_profit_label') : t('dash_loss_label'), glow: 'bg-[#60a5fa]/10' },
-    { color: 'text-warning', icon: '⏳', label: t('dash_pending'), value: `฿${fmtShort(summary?.pending || 0)}`, sub: t('dash_overdue_label'), glow: 'bg-warning/10' },
+    { color: 'text-emerald-400', icon: '💰', label: t('dash_revenue'), value: `฿${fmtShort(summary?.revenue || 0)}`, sub: t('dash_all_docs'), glow: 'bg-emerald-500/15', gradient: 'bg-emerald-500' },
+    { color: 'text-rose-400',    icon: '📤', label: t('dash_expense'), value: `฿${fmtShort(summary?.expense || 0)}`, sub: t('dash_all_docs'), glow: 'bg-rose-500/15', gradient: 'bg-rose-500' },
+    { color: (summary?.profit || 0) >= 0 ? 'text-sky-400' : 'text-rose-400', icon: '📊', label: t('dash_profit'), value: `฿${fmtShort(Math.abs(summary?.profit || 0))}`, sub: (summary?.profit || 0) >= 0 ? t('dash_profit_label') : t('dash_loss_label'), glow: 'bg-sky-500/15', gradient: 'bg-sky-500' },
+    { color: 'text-amber-400',   icon: '⏳', label: t('dash_pending'), value: `฿${fmtShort(summary?.pending || 0)}`, sub: t('dash_overdue_label'), glow: 'bg-amber-500/15', gradient: 'bg-amber-500' },
   ]
 
   return (
     <div className="flex flex-col gap-6">
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4">
-        {statCards.map((card, i) => (
-          <div key={i} className={`stat-card bg-content1 border border-content3 rounded-xl p-5 cursor-default hover:border-primary/25 hover:shadow-[0_8px_32px_rgba(99,102,241,.12)]`}>
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3.5 ${card.glow} shadow-sm`}>{card.icon}</div>
-            <div className="text-[11px] font-semibold text-default-400 uppercase tracking-wider mb-2">{card.label}</div>
-            <div className={`text-[24px] font-bold tracking-tight stat-value ${card.color}`}>{card.value}</div>
-            <div className="text-[11px] text-default-500 mt-1.5">{card.sub}</div>
-          </div>
-        ))}
+        {statCards.map((card, i) => <StatCard key={i} {...card} />)}
       </div>
 
       {/* Chart + Top Contacts */}
       <div className="grid grid-cols-2 gap-5">
-        <div className="bg-content1 border border-content3 rounded-xl overflow-hidden">
-          <div className="text-[13px] font-semibold px-5 pt-4 pb-0">📈 {t('dash_chart_title')}</div>
-          <div className="p-4">
+        <div className="bg-content1 border border-content3 rounded-2xl overflow-hidden">
+          <SectionHeader icon="📈" title={t('dash_chart_title')} />
+          <div className="px-4 pb-5">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={monthly} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
                 <XAxis dataKey="month" tick={{ fill: '#6b7685', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#6b7685', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => fmtShort(v)} />
                 <Tooltip
-                  contentStyle={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: '#f0f4ff', fontSize: 12 }}
+                  contentStyle={{ background: '#1a2235', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, color: '#f0f4ff', fontSize: 12 }}
                   formatter={(v: number) => [`฿${fmt(v)}`, '']}
                 />
                 <Legend wrapperStyle={{ color: '#8892a4', fontSize: 12 }} />
-                <Bar dataKey="revenue" name={t('dash_revenue')} fill="rgba(124,109,243,0.7)" radius={[5,5,0,0]} />
-                <Bar dataKey="expense" name={t('dash_expense')} fill="rgba(248,113,113,0.45)" radius={[5,5,0,0]} />
+                <Bar dataKey="revenue" name={t('dash_revenue')} fill="rgba(124,109,243,0.75)" radius={[6,6,0,0]} />
+                <Bar dataKey="expense" name={t('dash_expense')} fill="rgba(248,113,113,0.5)" radius={[6,6,0,0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-content1 border border-content3 rounded-xl overflow-hidden">
-          <div className="text-[13px] font-semibold px-5 pt-4 pb-3">🏆 {t('dash_top_contacts')}</div>
+        <div className="bg-content1 border border-content3 rounded-2xl overflow-hidden">
+          <SectionHeader icon="🏆" title={t('dash_top_contacts')} />
           <div className="px-5 pb-5">
             {topContacts.length > 0 ? (
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-3">
                 {topContacts.map((c, i) => (
-                  <div key={c.id} className="flex items-center gap-3">
-                    <div className="w-[26px] h-[26px] rounded-md bg-primary/15 text-primary flex items-center justify-center text-xs font-semibold flex-shrink-0">{i + 1}</div>
+                  <div key={c.id} className="flex items-center gap-3 group">
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 text-white ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-slate-400' : i === 2 ? 'bg-amber-700' : 'bg-primary/30 text-primary'}`}>{i + 1}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium truncate">{c.name}</div>
+                      <div className="text-[13px] font-semibold truncate group-hover:text-primary transition-colors">{c.name}</div>
                       <div className="text-[11px] text-default-500">{c.doc_count} {t('dash_doc_count')}</div>
                     </div>
-                    <div className="text-[13px] font-semibold text-success">฿{fmtShort(c.total_amount)}</div>
+                    <div className="text-[14px] font-bold text-emerald-400">฿{fmtShort(c.total_amount)}</div>
                   </div>
                 ))}
               </div>
@@ -135,14 +193,12 @@ export default function Dashboard({ onNavigate }: Props) {
       </div>
 
       {/* Recent Documents */}
-      <div className="bg-content1 border border-content3 rounded-xl overflow-hidden">
-        <div className="flex justify-between items-center px-5 pt-4 pb-3">
-          <div className="text-[13px] font-semibold">🕐 {t('dash_recent_docs')}</div>
-          <Btn size="sm" variant="ghost" onClick={() => onNavigate('documents')}>{t('dash_view_all')}</Btn>
-        </div>
-        <div className="px-5 pb-4">
+      <div className="bg-content1 border border-content3 rounded-2xl overflow-hidden">
+        <SectionHeader icon="🕐" title={t('dash_recent_docs')}
+          action={<Btn size="sm" variant="ghost" onClick={() => onNavigate('documents')}>{t('dash_view_all')}</Btn>} />
+        <div className="px-5 pb-5">
           <Table removeWrapper aria-label={t('dash_recent_docs')}
-            classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
+            classNames={{ th: 'bg-transparent text-default-500 uppercase text-[10px] tracking-wider', td: 'text-[13px]' }}>
             <TableHeader>
               <TableColumn>{t('col_number')}</TableColumn>
               <TableColumn>{t('col_type')}</TableColumn>
@@ -158,12 +214,12 @@ export default function Dashboard({ onNavigate }: Props) {
               </div>
             }>
               {recent.map(doc => (
-                <TableRow key={doc.id} className="cursor-pointer hover:bg-content2" onClick={() => onNavigate('documents')}>
+                <TableRow key={doc.id} className="cursor-pointer hover:bg-content2 transition-colors" onClick={() => onNavigate('documents')}>
                   <TableCell><span className="font-semibold text-primary">{doc.number || '—'}</span></TableCell>
                   <TableCell className="text-default-500">{DOC_TYPES[doc.type] || doc.type}</TableCell>
-                  <TableCell>{doc.contact_name || '—'}</TableCell>
+                  <TableCell className="font-medium">{doc.contact_name || '—'}</TableCell>
                   <TableCell className="text-default-500">{fmtDate(doc.date)}</TableCell>
-                  <TableCell><span className="text-success font-semibold">฿{fmt(doc.total)}</span></TableCell>
+                  <TableCell><span className="text-emerald-400 font-bold">฿{fmt(doc.total)}</span></TableCell>
                   <TableCell>
                     <Chip size="sm" variant="flat" color={STATUS_COLOR[doc.status] || 'default'}>
                       {STATUS_LABELS[doc.status] || doc.status}

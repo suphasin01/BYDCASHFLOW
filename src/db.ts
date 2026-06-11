@@ -551,23 +551,31 @@ export function importAll(data: Record<string, unknown[]>): void {
 
 export const reportRepo = {
   summary: (period?: string) => {
-    const where = period ? `AND strftime('%Y-%m', date) = '${period}'` : '';
-    const revenue = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('invoice','receipt','cash_invoice') AND status NOT IN ('cancelled','draft') ${where}`) ?? { v: 0 }).v;
-    const expense = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('expense','purchase_order') AND status NOT IN ('cancelled','draft') ${where}`) ?? { v: 0 }).v;
-    const pending = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('invoice','billing_note') AND status = 'sent' ${where}`) ?? { v: 0 }).v;
-    const counts = all<{ type: string; cnt: number }>(`SELECT type, COUNT(*) as cnt FROM documents WHERE 1=1 ${where} GROUP BY type`);
+    // Validate period to YYYY-MM format to prevent injection
+    const safePeriod = period && /^\d{4}-\d{2}$/.test(period) ? period : null;
+    const whereClause = safePeriod
+      ? 'AND strftime(\'%Y-%m\', date) = ?'
+      : '';
+    const params = safePeriod ? [safePeriod] : [];
+    const revenue = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('invoice','receipt','cash_invoice') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
+    const expense = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('expense','purchase_order') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
+    const pending = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('invoice','billing_note') AND status = 'sent' ${whereClause}`, ...params) ?? { v: 0 }).v;
+    const counts = all<{ type: string; cnt: number }>(`SELECT type, COUNT(*) as cnt FROM documents WHERE 1=1 ${whereClause} GROUP BY type`, ...params);
     const countMap: Record<string, number> = {};
     counts.forEach(r => { countMap[r.type] = r.cnt; });
     return { revenue, expense, profit: revenue - expense, pending, document_counts: countMap };
   },
   monthly: (year?: number) => {
-    const y = year ?? new Date().getFullYear();
+    // Validate year is a reasonable 4-digit integer
+    const y = (typeof year === 'number' && year >= 1900 && year <= 2200)
+      ? year
+      : new Date().getFullYear();
     return all<{ month: string; revenue: number; expense: number }>(`
       SELECT strftime('%m', date) as month,
              COALESCE(SUM(CASE WHEN type IN ('invoice','receipt','cash_invoice') AND status NOT IN ('cancelled','draft') THEN total ELSE 0 END),0) as revenue,
              COALESCE(SUM(CASE WHEN type IN ('expense','purchase_order') AND status NOT IN ('cancelled','draft') THEN total ELSE 0 END),0) as expense
-      FROM documents WHERE strftime('%Y', date) = '${y}'
-      GROUP BY month ORDER BY month`);
+      FROM documents WHERE strftime('%Y', date) = ?
+      GROUP BY month ORDER BY month`, String(y));
   },
   topContacts: (limit = 10) => all(`
     SELECT c.id, c.name, c.type, COUNT(d.id) as doc_count, COALESCE(SUM(d.total),0) as total_amount
