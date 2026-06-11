@@ -76,7 +76,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error'; version?: string; message?: string }) => void) => void; onUpdateNotAvailable: (cb: () => void) => void; onUpdateProgress: (cb: (d: { percent: number }) => void) => void } }).electronAPI
+    const api = (window as unknown as { electronAPI?: { onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error' | 'mac-available'; version?: string; message?: string; releaseUrl?: string }) => void) => void; onUpdateNotAvailable: (cb: () => void) => void; onUpdateProgress: (cb: (d: { percent: number }) => void) => void } }).electronAPI
     api?.onUpdateStatus(data => {
       setCheckingUpdate(false)
       if (data.type === 'error') {
