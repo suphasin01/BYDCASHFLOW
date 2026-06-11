@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import {
-  Card, CardBody, CardHeader, Chip, Spinner,
+  Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
 import { useI18n } from '../i18n'
@@ -80,22 +80,20 @@ export default function Dashboard({ onNavigate }: Props) {
       {/* Stat Cards */}
       <div className="grid grid-cols-4 gap-4">
         {statCards.map((card, i) => (
-          <Card key={i} className="bg-content1 border border-content3 rounded-xl hover:border-primary/30 transition-colors" shadow="none">
-            <CardBody className="p-5">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg mb-3 ${card.glow}`}>{card.icon}</div>
-              <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-2.5">{card.label}</div>
-              <div className={`text-[22px] font-bold tracking-tight ${card.color}`}>{card.value}</div>
-              <div className="text-[11px] text-default-500 mt-1.5">{card.sub}</div>
-            </CardBody>
-          </Card>
+          <div key={i} className={`stat-card bg-content1 border border-content3 rounded-xl p-5 cursor-default hover:border-primary/25 hover:shadow-[0_8px_32px_rgba(99,102,241,.12)]`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3.5 ${card.glow} shadow-sm`}>{card.icon}</div>
+            <div className="text-[11px] font-semibold text-default-400 uppercase tracking-wider mb-2">{card.label}</div>
+            <div className={`text-[24px] font-bold tracking-tight stat-value ${card.color}`}>{card.value}</div>
+            <div className="text-[11px] text-default-500 mt-1.5">{card.sub}</div>
+          </div>
         ))}
       </div>
 
       {/* Chart + Top Contacts */}
       <div className="grid grid-cols-2 gap-5">
-        <Card className="bg-content1 border border-content3" shadow="none">
-          <CardHeader className="text-[13px] font-semibold pb-0">📈 {t('dash_chart_title')}</CardHeader>
-          <CardBody>
+        <div className="bg-content1 border border-content3 rounded-xl overflow-hidden">
+          <div className="text-[13px] font-semibold px-5 pt-4 pb-0">📈 {t('dash_chart_title')}</div>
+          <div className="p-4">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={monthly} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
@@ -110,12 +108,12 @@ export default function Dashboard({ onNavigate }: Props) {
                 <Bar dataKey="expense" name={t('dash_expense')} fill="rgba(248,113,113,0.45)" radius={[5,5,0,0]} />
               </BarChart>
             </ResponsiveContainer>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="bg-content1 border border-content3" shadow="none">
-          <CardHeader className="text-[13px] font-semibold pb-0">🏆 {t('dash_top_contacts')}</CardHeader>
-          <CardBody>
+        <div className="bg-content1 border border-content3 rounded-xl overflow-hidden">
+          <div className="text-[13px] font-semibold px-5 pt-4 pb-3">🏆 {t('dash_top_contacts')}</div>
+          <div className="px-5 pb-5">
             {topContacts.length > 0 ? (
               <div className="flex flex-col gap-2.5">
                 {topContacts.map((c, i) => (
@@ -132,17 +130,17 @@ export default function Dashboard({ onNavigate }: Props) {
             ) : (
               <div className="text-center py-5 text-default-500">{t('no_data')}</div>
             )}
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Recent Documents */}
-      <Card className="bg-content1 border border-content3" shadow="none">
-        <CardHeader className="flex justify-between items-center">
+      <div className="bg-content1 border border-content3 rounded-xl overflow-hidden">
+        <div className="flex justify-between items-center px-5 pt-4 pb-3">
           <div className="text-[13px] font-semibold">🕐 {t('dash_recent_docs')}</div>
           <Btn size="sm" variant="ghost" onClick={() => onNavigate('documents')}>{t('dash_view_all')}</Btn>
-        </CardHeader>
-        <CardBody className="pt-0">
+        </div>
+        <div className="px-5 pb-4">
           <Table removeWrapper aria-label={t('dash_recent_docs')}
             classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
             <TableHeader>
@@ -175,8 +173,8 @@ export default function Dashboard({ onNavigate }: Props) {
               ))}
             </TableBody>
           </Table>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

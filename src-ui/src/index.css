@@ -6,7 +6,7 @@
   --sidebar-w: 240px;
   --topbar-h: 60px;
   --bg-main: #0a0f1e;
-  --bg-sidebar: #111827;
+  --bg-sidebar: #0d1322;
   --bg-card: #111827;
   --bg-input: rgba(255,255,255,0.04);
   --border: rgba(255,255,255,0.07);
@@ -45,7 +45,6 @@ body.lang-zh {
   font-family: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
 }
 
-/* Fix select option background in dark mode */
 select option {
   background: #1a2235;
   color: #f0f4ff;
@@ -60,4 +59,137 @@ select option {
 ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.35); }
 
-@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fadeIn      { from { opacity:0 } to { opacity:1 } }
+@keyframes slideUpFade { from { opacity:0; transform:translateY(14px) scale(.98) } to { opacity:1; transform:translateY(0) scale(1) } }
+@keyframes slideInLeft { from { opacity:0; transform:translateX(-10px) } to { opacity:1; transform:translateX(0) } }
+@keyframes popIn       { 0%{transform:scale(.92);opacity:0} 60%{transform:scale(1.03)} 100%{transform:scale(1);opacity:1} }
+@keyframes shimmer     { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+@keyframes pulseGlow   { 0%,100%{opacity:.7} 50%{opacity:1} }
+@keyframes countUp     { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+
+/* ── 3D Buttons ──────────────────────────────────────────────── */
+.btn-3d-primary {
+  background: linear-gradient(160deg, #9f8ef8 0%, #7c6df3 45%, #5533cc 100%);
+  box-shadow: 0 4px 0 #312e81, 0 6px 20px rgba(99,102,241,.45), inset 0 1px 0 rgba(255,255,255,.22);
+  color: #fff;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn-3d-primary:hover:not(:disabled) {
+  box-shadow: 0 5px 0 #312e81, 0 10px 28px rgba(99,102,241,.55), inset 0 1px 0 rgba(255,255,255,.22);
+  transform: translateY(-1.5px);
+}
+.btn-3d-primary:active:not(:disabled) {
+  box-shadow: 0 1px 0 #312e81, 0 2px 8px rgba(99,102,241,.3), inset 0 2px 4px rgba(0,0,0,.15);
+  transform: translateY(2px);
+}
+
+.btn-3d-ghost {
+  background: rgba(255,255,255,0.055);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.07);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.btn-3d-ghost:hover:not(:disabled) {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: 0 3px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.1);
+  transform: translateY(-1px);
+}
+.btn-3d-ghost:active:not(:disabled) {
+  background: rgba(255,255,255,0.035);
+  transform: translateY(1px);
+  box-shadow: 0 0 0 transparent, inset 0 2px 4px rgba(0,0,0,.15);
+}
+
+[data-theme="light"] .btn-3d-ghost {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(0,0,0,0.12);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.7);
+}
+[data-theme="light"] .btn-3d-ghost:hover:not(:disabled) {
+  background: rgba(0,0,0,0.07);
+  border-color: rgba(0,0,0,0.18);
+  box-shadow: 0 3px 8px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+.btn-3d-danger {
+  background: linear-gradient(160deg, #fca5a5 0%, #ef4444 45%, #991b1b 100%);
+  box-shadow: 0 3px 0 #7f1d1d, 0 5px 16px rgba(239,68,68,.4), inset 0 1px 0 rgba(255,255,255,.22);
+  color: #fff;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn-3d-danger:hover:not(:disabled) {
+  box-shadow: 0 4px 0 #7f1d1d, 0 8px 22px rgba(239,68,68,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  transform: translateY(-1.5px);
+}
+.btn-3d-danger:active:not(:disabled) {
+  box-shadow: 0 1px 0 #7f1d1d, inset 0 2px 4px rgba(0,0,0,.15);
+  transform: translateY(2px);
+}
+
+.btn-3d-success {
+  background: linear-gradient(160deg, #6ee7b7 0%, #10b981 45%, #065f46 100%);
+  box-shadow: 0 3px 0 #064e3b, 0 5px 16px rgba(16,185,129,.4), inset 0 1px 0 rgba(255,255,255,.22);
+  color: #fff;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn-3d-success:hover:not(:disabled) {
+  box-shadow: 0 4px 0 #064e3b, 0 8px 22px rgba(16,185,129,.5), inset 0 1px 0 rgba(255,255,255,.22);
+  transform: translateY(-1.5px);
+}
+.btn-3d-success:active:not(:disabled) {
+  box-shadow: 0 1px 0 #064e3b, inset 0 2px 4px rgba(0,0,0,.15);
+  transform: translateY(2px);
+}
+
+/* ── Nav items ───────────────────────────────────────────────── */
+.nav-item-active {
+  background: linear-gradient(90deg, rgba(124,109,243,.25) 0%, rgba(124,109,243,.07) 100%);
+  color: #a5b4fc;
+  box-shadow: inset 3px 0 0 #7c6df3, 0 1px 8px rgba(124,109,243,.12);
+  border-radius: 0.5rem;
+  animation: slideInLeft .18s ease;
+}
+.nav-item-inactive:hover {
+  background: rgba(255,255,255,.05);
+}
+[data-theme="light"] .nav-item-active {
+  background: linear-gradient(90deg, rgba(99,102,241,.18) 0%, rgba(99,102,241,.05) 100%);
+  color: #4f46e5;
+  box-shadow: inset 3px 0 0 #6366f1, 0 1px 6px rgba(99,102,241,.08);
+}
+
+/* ── Glass card ──────────────────────────────────────────────── */
+.glass-card {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+[data-theme="light"] .glass-card {
+  background: rgba(255,255,255,0.75);
+  border-color: rgba(0,0,0,0.08);
+}
+
+/* ── Stat card hover glow ─────────────────────────────────────── */
+.stat-card { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.stat-card:hover { transform: translateY(-3px); }
+
+/* ── Page fade-in ─────────────────────────────────────────────── */
+.page-content { animation: slideUpFade .22s ease; }
+
+/* ── Modal slide-up ───────────────────────────────────────────── */
+.modal-panel { animation: slideUpFade .2s ease; }
+
+/* ── Toast pop ───────────────────────────────────────────────── */
+.toast-item { animation: popIn .25s ease; }
+
+/* ── Shimmer skeleton ────────────────────────────────────────── */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,.05) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+}
+
+/* ── Number count-up style ───────────────────────────────────── */
+.stat-value { animation: countUp .35s ease; }

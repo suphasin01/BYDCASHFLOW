@@ -105,8 +105,11 @@ export default function Companies() {
             <Card key={c.id} shadow="none"
               className={isActive ? 'bg-primary/5 border border-primary/40' : 'bg-content1 border border-content3'}>
               <CardBody className="flex flex-row items-center gap-4 p-[18px_20px]">
-                <Avatar src={c.logo_url || undefined} name={(c.name || '').slice(0, 2)} radius="md" size="sm"
-                  classNames={{ base: 'flex-shrink-0 bg-gradient-to-br from-indigo-500 to-violet-500', name: 'text-white font-bold text-[10px]' }} />
+                <div className="w-9 h-9 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
+                  {c.logo_url
+                    ? <img src={c.logo_url} className="w-9 h-9 object-cover" style={{ width: 36, height: 36 }} alt="" />
+                    : <span className="text-white font-bold text-[10px]">{(c.name || '').slice(0, 2)}</span>}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[15px] font-semibold">{c.name}</span>

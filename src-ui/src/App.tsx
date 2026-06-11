@@ -205,10 +205,11 @@ export default function App() {
         <CompanyContext.Provider value={{ activeCompany, reload: reloadCompany }}>
           <div className="flex h-screen overflow-hidden text-foreground text-sm">
             {/* Sidebar */}
-            <aside className="w-60 flex-shrink-0 flex flex-col bg-content1 border-r border-content3">
+            <aside className="w-60 flex-shrink-0 flex flex-col border-r border-content3" style={{ background: 'var(--bg-sidebar)' }}>
               {/* Logo */}
-              <div className="px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3">
-                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-base flex-shrink-0 bg-gradient-to-br from-[#7c6df3] to-[#a855f7] shadow-lg shadow-primary/20">💼</div>
+              <div className="px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
+                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-base flex-shrink-0 bg-gradient-to-br from-[#7c6df3] to-[#a855f7] shadow-[0_4px_12px_rgba(124,109,243,.6),inset_0_1px_0_rgba(255,255,255,.25)] relative z-10">💼</div>
                 <div>
                   <div className="text-[15px] font-bold tracking-tight">FruitBiz</div>
                   <div className="text-[10px] text-default-500 mt-px">{t('app_subtitle')}</div>
@@ -229,9 +230,10 @@ export default function App() {
                       const active = page === p
                       return (
                         <button key={p} onClick={() => setPage(p as Page)}
-                          className={`flex items-center gap-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${active ? 'bg-primary/15 text-primary border-l-2 border-primary pl-[10px] pr-3' : 'text-default-500 hover:bg-content2 hover:text-foreground pl-3 pr-3'}`}>
-                          <span className={`text-[17px] flex-shrink-0 ${active ? 'opacity-100' : 'opacity-80'}`}>{item.icon}</span>
+                          className={`w-full flex items-center gap-3 py-2.5 px-3 text-[13px] font-medium transition-all duration-150 ${active ? 'nav-item-active' : 'nav-item-inactive text-default-500 rounded-lg'}`}>
+                          <span className={`text-[17px] flex-shrink-0 leading-none transition-transform duration-150 ${active ? 'scale-110' : 'group-hover:scale-105'}`}>{item.icon}</span>
                           <span>{t(item.key)}</span>
+                          {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(124,109,243,.8)]" />}
                         </button>
                       )
                     })}
@@ -279,7 +281,7 @@ export default function App() {
             {/* Main */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Topbar */}
-              <div className="h-[60px] px-7 flex items-center justify-between border-b border-content3 bg-content1 flex-shrink-0">
+              <div className="h-[60px] px-7 flex items-center justify-between border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md">
                 <h1 className="text-[15px] font-semibold">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
                 <div className="flex items-center gap-2.5">
                   {/* Check for Updates */}
@@ -312,9 +314,11 @@ export default function App() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-7 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,109,243,.06),transparent)]">
+              <div className="flex-1 overflow-y-auto p-7 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,109,243,.08),transparent)]">
                 <ErrorBoundary key={page}>
-                  {pageComponent()}
+                  <div className="page-content">
+                    {pageComponent()}
+                  </div>
                 </ErrorBoundary>
               </div>
             </div>
@@ -401,7 +405,7 @@ export default function App() {
             <div className="fixed bottom-6 right-6 z-[999] flex flex-col gap-2 pointer-events-none">
               {toasts.map(item => (
                 <div key={item.id}
-                  className={`bg-content2 rounded-xl px-4 py-3 text-[13px] flex items-center gap-2 max-w-80 shadow-2xl border ${item.type === 'ok' ? 'border-success/30 text-success' : 'border-danger/30 text-danger'}`}>
+                  className={`toast-item bg-content2/90 backdrop-blur-sm rounded-xl px-4 py-3 text-[13px] flex items-center gap-2 max-w-80 shadow-[0_8px_32px_rgba(0,0,0,.5)] border ${item.type === 'ok' ? 'border-success/40 text-success shadow-success/10' : 'border-danger/40 text-danger shadow-danger/10'}`}>
                   <span>{item.type === 'ok' ? '✓' : '✕'}</span>
                   {item.msg}
                 </div>
