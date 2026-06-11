@@ -148,6 +148,9 @@ db.exec(`
   );
 `);
 
+// Migration: add company column to contacts if it doesn't exist
+try { db.exec('ALTER TABLE contacts ADD COLUMN company TEXT'); } catch {}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Strip leading colon/at/dollar from named param keys:
@@ -199,15 +202,15 @@ export const contactRepo = {
     : all('SELECT * FROM contacts ORDER BY name'),
   get: (id: number) => get('SELECT * FROM contacts WHERE id = ?', id),
   create: (data: Record<string, unknown>) => {
-    const r = run(`INSERT INTO contacts (type,name,tax_id,email,phone,address,branch,note) VALUES (:type,:name,:tax_id,:email,:phone,:address,:branch,:note)`, {
-      ':type': data.type ?? 'customer', ':name': data.name ?? '', ':tax_id': data.tax_id ?? null,
+    const r = run(`INSERT INTO contacts (type,name,company,tax_id,email,phone,address,branch,note) VALUES (:type,:name,:company,:tax_id,:email,:phone,:address,:branch,:note)`, {
+      ':type': data.type ?? 'customer', ':name': data.name ?? '', ':company': data.company ?? null, ':tax_id': data.tax_id ?? null,
       ':email': data.email ?? null, ':phone': data.phone ?? null,
       ':address': data.address ?? null, ':branch': data.branch ?? null, ':note': data.note ?? null,
     });
     return get('SELECT * FROM contacts WHERE id = ?', r.lastInsertRowid);
   },
   update: (id: number, data: Record<string, unknown>) => {
-    const allowed = ['type','name','tax_id','email','phone','address','branch','note'];
+    const allowed = ['type','name','company','tax_id','email','phone','address','branch','note'];
     const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');
     if (fields) {
       const params: Record<string, unknown> = { ':id': id };
@@ -217,7 +220,7 @@ export const contactRepo = {
     return get('SELECT * FROM contacts WHERE id = ?', id);
   },
   delete: (id: number) => db.prepare('DELETE FROM contacts WHERE id = ?').run(id),
-  search: (q: string) => all(`SELECT * FROM contacts WHERE name LIKE ? OR tax_id LIKE ? OR email LIKE ? ORDER BY name`, `%${q}%`, `%${q}%`, `%${q}%`),
+  search: (q: string) => all(`SELECT * FROM contacts WHERE name LIKE ? OR company LIKE ? OR tax_id LIKE ? OR email LIKE ? ORDER BY name`, `%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`),
 };
 
 // ── Products ───────────────────────────────────────────────────────────────────

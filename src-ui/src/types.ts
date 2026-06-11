@@ -2,6 +2,7 @@ export interface Contact {
   id: number
   type: 'customer' | 'vendor'
   name: string
+  company?: string | null
   tax_id?: string | null
   branch?: string | null
   email?: string | null

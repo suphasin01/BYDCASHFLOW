@@ -220,7 +220,7 @@ export default function App() {
                       const active = page === p
                       return (
                         <button key={p} onClick={() => setPage(p as Page)}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${active ? 'bg-primary/15 text-primary' : 'text-default-500 hover:bg-content2 hover:text-foreground'}`}>
+                          className={`flex items-center gap-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${active ? 'bg-primary/15 text-primary border-l-2 border-primary pl-[10px] pr-3' : 'text-default-500 hover:bg-content2 hover:text-foreground pl-3 pr-3'}`}>
                           <span className={`text-[17px] flex-shrink-0 ${active ? 'opacity-100' : 'opacity-80'}`}>{item.icon}</span>
                           <span>{t(item.key)}</span>
                         </button>

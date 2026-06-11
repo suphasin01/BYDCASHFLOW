@@ -287,13 +287,31 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_contact_select')}</label>
-                    <select value={fContactId} onChange={e => setFContactId(e.target.value)} className={SELECT_CLASS}>
+                    <select value={fContactId} onChange={e => {
+                      const id = e.target.value
+                      setFContactId(id)
+                      if (id) {
+                        const found = contacts.find(c => String(c.id) === id)
+                        if (found) {
+                          setFContactName(found.name)
+                        }
+                      } else {
+                        setFContactName('')
+                      }
+                    }} className={SELECT_CLASS}>
                       <option value="">{t('lbl_select')}</option>
-                      {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      {contacts.map(c => <option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ''}</option>)}
                     </select>
                   </div>
-                  <TextField label={t('lbl_contact_name')}
-                    placeholder={t('lbl_name_ph')} value={fContactName} onChange={e => setFContactName(e.target.value)} />
+                  <div>
+                    <TextField label={t('lbl_contact_name')}
+                      placeholder={t('lbl_name_ph')} value={fContactName} onChange={e => setFContactName(e.target.value)} />
+                    {fContactId && contacts.find(c => String(c.id) === fContactId)?.company && (
+                      <div className="text-[12px] text-default-500 mt-1 px-1">
+                        🏢 {contacts.find(c => String(c.id) === fContactId)?.company}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <TextField type="date" label={t('lbl_date')}
@@ -305,6 +323,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                 <Divider className="my-1" />
 
                 {/* Items */}
+                <div className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">รายการสินค้า / บริการ</div>
                 <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '1fr 64px 56px 100px 90px 32px' }}>
                   {[t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
                     <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>

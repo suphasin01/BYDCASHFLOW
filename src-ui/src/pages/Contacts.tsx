@@ -25,6 +25,7 @@ export default function Contacts() {
   // Form
   const [fType, setFType] = useState<'customer' | 'vendor'>('customer')
   const [fName, setFName] = useState('')
+  const [fCompany, setFCompany] = useState('')
   const [fTax, setFTax] = useState('')
   const [fBranch, setFBranch] = useState('')
   const [fEmail, setFEmail] = useState('')
@@ -42,19 +43,19 @@ export default function Contacts() {
 
   const openCreate = () => {
     setEditing(null)
-    setFType('customer'); setFName(''); setFTax(''); setFBranch(''); setFEmail(''); setFPhone(''); setFAddress(''); setFNote('')
+    setFType('customer'); setFName(''); setFCompany(''); setFTax(''); setFBranch(''); setFEmail(''); setFPhone(''); setFAddress(''); setFNote('')
     setModal(true)
   }
 
   const openEdit = (c: Contact) => {
     setEditing(c)
-    setFType(c.type); setFName(c.name); setFTax(c.tax_id || ''); setFBranch(c.branch || ''); setFEmail(c.email || ''); setFPhone(c.phone || ''); setFAddress(c.address || ''); setFNote(c.note || '')
+    setFType(c.type); setFName(c.name); setFCompany(c.company || ''); setFTax(c.tax_id || ''); setFBranch(c.branch || ''); setFEmail(c.email || ''); setFPhone(c.phone || ''); setFAddress(c.address || ''); setFNote(c.note || '')
     setModal(true)
   }
 
   const save = async () => {
     try {
-      const payload = { type: fType, name: fName, tax_id: fTax || null, branch: fBranch || null, email: fEmail || null, phone: fPhone || null, address: fAddress || null, note: fNote || null }
+      const payload = { type: fType, name: fName, company: fCompany || null, tax_id: fTax || null, branch: fBranch || null, email: fEmail || null, phone: fPhone || null, address: fAddress || null, note: fNote || null }
       if (editing) { await updateContact(editing.id, payload); toast(t('toast_contact_edited')) }
       else { await createContact(payload); toast(t('toast_contact_added')) }
       setModal(false); load()
@@ -105,7 +106,10 @@ export default function Contacts() {
                       <div className="flex items-center gap-2.5">
                         <Avatar name={(c.name || '?').charAt(0).toUpperCase()} size="sm"
                           classNames={{ base: 'bg-primary/15 flex-shrink-0', name: 'text-primary font-bold text-xs' }} />
-                        <span className="font-medium">{c.name}</span>
+                        <div>
+                          <div className="font-medium">{c.name}</div>
+                          {c.company && <div className="text-[11px] text-default-500">{c.company}</div>}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -148,6 +152,8 @@ export default function Contacts() {
                   <TextField label={t('lbl_name')}
                     placeholder={t('lbl_name_ph')} value={fName} onChange={e => setFName(e.target.value)} />
                 </div>
+                <TextField label={t('lbl_contact_company')} placeholder={t('lbl_contact_company_ph')}
+                  value={fCompany} onChange={e => setFCompany(e.target.value)} />
                 <div className="grid grid-cols-2 gap-4">
                   <TextField label={t('col_tax_id')}
                     value={fTax} onChange={e => setFTax(e.target.value)} />
