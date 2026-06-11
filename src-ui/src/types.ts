@@ -26,6 +26,7 @@ export interface Product {
 
 export interface DocumentItem {
   id?: number
+  product_id?: number | null
   description: string
   qty: number
   unit?: string

@@ -6,8 +6,8 @@ import {
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
-import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany } from '../api'
-import type { Document, DocumentItem, Contact, Company } from '../types'
+import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany, getContact, getProducts } from '../api'
+import type { Document, DocumentItem, Contact, Company, Product } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
@@ -36,6 +36,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const [editDoc, setEditDoc] = useState<Document | null>(null)
   const [viewDoc, setViewDoc] = useState<Document | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [preview, setPreview] = useState<{ html: string; id: number } | null>(null)
 
   // Form state
@@ -52,6 +53,8 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const [fNotes, setFNotes] = useState('')
   const [items, setItems] = useState<DocumentItem[]>([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
   const [statusChange, setStatusChange] = useState('')
+  const [convertType, setConvertType] = useState('')
+  const [search, setSearch] = useState('')
 
   const DOC_TYPES: Record<string, string> = {
     quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
@@ -70,13 +73,14 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
       const params: Record<string, string> = {}
       if (filterType) params.type = filterType
       if (filterStatus) params.status = filterStatus
+      if (search) params.q = search
       const { data } = await getDocuments(params)
       setDocs(data)
     } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [filterType, filterStatus])
+  useEffect(() => { load() }, [filterType, filterStatus, search])
 
   const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0)
   const discountAmt = fDiscountMode === 'percent' ? subtotal * fDiscount / 100 : fDiscount
@@ -96,8 +100,9 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   }
 
   const openCreate = async () => {
-    const { data: cs } = await getContacts()
+    const [{ data: cs }, { data: ps }] = await Promise.all([getContacts(), getProducts()])
     setContacts(cs)
+    setProducts(ps)
     setEditDoc(null)
     setFType('quotation'); setFNumber(''); setFContactId(''); setFContactName('')
     setFDate(today()); setFDue(''); setFDiscount(0); setFDiscountMode('amount'); setFVat(7); setFVatMode('percent'); setFNotes('')
@@ -106,9 +111,9 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   }
 
   const openEdit = async (id: number) => {
-    const doc = await getDocument(id)
-    const { data: cs } = await getContacts()
+    const [doc, { data: cs }, { data: ps }] = await Promise.all([getDocument(id), getContacts(), getProducts()])
     setContacts(cs)
+    setProducts(ps)
     setEditDoc(doc)
     setFType(doc.type); setFNumber(doc.number || ''); setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
     setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || ''); setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
@@ -120,6 +125,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     const doc = await getDocument(id)
     setViewDoc(doc)
     setStatusChange(doc.status)
+    setConvertType('')
     setModal('view')
   }
 
@@ -166,10 +172,48 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const doConvert = async () => {
+    if (!viewDoc || !convertType) return
+    const [{ data: cs }, { data: ps }] = await Promise.all([getContacts(), getProducts()])
+    setContacts(cs)
+    setProducts(ps)
+    setEditDoc(null)
+    setFType(convertType)
+    setFNumber('')
+    setFContactId(viewDoc.contact_id ? String(viewDoc.contact_id) : '')
+    setFContactName(viewDoc.contact_name || '')
+    setFDate(today())
+    setFDue(viewDoc.due_date?.slice(0, 10) || '')
+    setFDiscount(viewDoc.discount || 0); setFDiscountMode('amount')
+    setFVat(viewDoc.vat || 0); setFVatMode('amount')
+    setFNotes(viewDoc.notes || '')
+    setItems(viewDoc.items?.length ? viewDoc.items.map(it => ({ description: it.description, qty: it.qty, unit: it.unit || '', price: it.price, amount: it.amount, product_id: it.product_id })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
+    setModal('create')
+  }
+
+  const doDuplicate = async (docId: number) => {
+    const [doc, { data: cs }, { data: ps }] = await Promise.all([getDocument(docId), getContacts(), getProducts()])
+    setContacts(cs)
+    setProducts(ps)
+    setEditDoc(null)
+    setFType(doc.type)
+    setFNumber('')
+    setFContactId(doc.contact_id ? String(doc.contact_id) : '')
+    setFContactName(doc.contact_name || '')
+    setFDate(today())
+    setFDue(doc.due_date?.slice(0, 10) || '')
+    setFDiscount(doc.discount || 0); setFDiscountMode('amount')
+    setFVat(doc.vat || 0); setFVatMode('amount')
+    setFNotes(doc.notes || '')
+    setItems(doc.items?.length ? doc.items.map(it => ({ description: it.description, qty: it.qty, unit: it.unit || '', price: it.price, amount: it.amount, product_id: it.product_id })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
+    setModal('create')
+  }
+
   const generatePDF = async (docId: number) => {
     try {
       const [doc, company] = await Promise.all([getDocument(docId), getActiveCompany()])
-      const html = buildPDFHtml(doc, company, t)
+      const contact = doc.contact_id ? await getContact(doc.contact_id).catch(() => null) : null
+      const html = buildPDFHtml(doc, company, contact, t)
       const api = (window as unknown as { electronAPI?: { exportPDF: (h: string, f: string) => Promise<{ success: boolean }> } }).electronAPI
       if (api?.exportPDF) {
         const filename = `${doc.type}_${doc.number || doc.id}.pdf`
@@ -185,7 +229,8 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const openPreview = async (docId: number) => {
     try {
       const [doc, company] = await Promise.all([getDocument(docId), getActiveCompany()])
-      setPreview({ html: buildPDFHtml(doc, company, t), id: docId })
+      const contact = doc.contact_id ? await getContact(doc.contact_id).catch(() => null) : null
+      setPreview({ html: buildPDFHtml(doc, company, contact, t), id: docId })
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
@@ -195,7 +240,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
             <option value="">{t('all_types')}</option>
             {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -204,6 +249,8 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
             <option value="">{t('all_statuses')}</option>
             {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+          <TextField className="min-w-[200px]" placeholder={t('search_doc')}
+            value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Btn variant="primary" onClick={openCreate}>{t('btn_create_doc')}</Btn>
       </div>
@@ -249,6 +296,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                     <TableCell>
                       <div className="flex justify-end gap-2">
                         <Btn size="sm" variant="ghost" onClick={() => openView(doc.id)}>{t('btn_update')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => doDuplicate(doc.id)}>คัดลอก</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openPreview(doc.id)}>{t('btn_preview')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => generatePDF(doc.id)}>PDF</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openEdit(doc.id)}>{t('btn_edit')}</Btn>
@@ -324,14 +372,32 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
 
                 {/* Items */}
                 <div className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">รายการสินค้า / บริการ</div>
-                <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '1fr 64px 56px 100px 90px 32px' }}>
-                  {[t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
+                <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
+                  {['สินค้า', t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
                     <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
                   ))}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {items.map((item, i) => (
-                    <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '1fr 64px 56px 100px 90px 32px' }}>
+                    <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
+                      <select className={SELECT_CLASS + ' text-[12px]'}
+                        value={item.product_id ? String(item.product_id) : ''}
+                        onChange={e => {
+                          const pid = e.target.value
+                          if (pid) {
+                            const p = products.find(pr => String(pr.id) === pid)
+                            setItems(prev => {
+                              const next = [...prev]
+                              const it = { ...next[i] }
+                              if (p) { it.product_id = Number(pid); it.description = p.name; if (p.unit) it.unit = p.unit; it.price = p.price; it.amount = (it.qty || 1) * p.price }
+                              next[i] = it
+                              return next
+                            })
+                          }
+                        }}>
+                        <option value="">— เลือก —</option>
+                        {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
+                      </select>
                       <TextField placeholder={t('lbl_item_ph')}
                         value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
                       <TextField type="number" min={0}
@@ -493,6 +559,19 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                   </select>
                   <Btn size="sm" variant="primary" onClick={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</Btn>
                 </div>
+
+                {/* Convert Document */}
+                <Divider className="my-1" />
+                <div className="flex items-center gap-2">
+                  <label className="text-[13px] font-medium whitespace-nowrap">แปลงเป็น:</label>
+                  <select value={convertType} onChange={e => setConvertType(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
+                    <option value="">— เลือกประเภท —</option>
+                    {Object.entries(DOC_TYPES).filter(([k]) => k !== viewDoc?.type && k !== 'withholding_tax').map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                  <Btn size="sm" variant="ghost" onClick={doConvert} disabled={!convertType}>แปลง</Btn>
+                </div>
           </div>
         )}
       </Modal>
@@ -506,7 +585,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
 }
 
 // ─── PDF Generator ────────────────────────────────────────────────────────────
-function buildPDFHtml(doc: Document, company: Company | null, t: (k: string) => string): string {
+function buildPDFHtml(doc: Document, company: Company | null, contact: Contact | null, t: (k: string) => string): string {
   const fmtN = (n: number | undefined | null) =>
     new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)
   const fmtD = (d: string | undefined | null) => d ? d.slice(0, 10) : '-'
@@ -562,6 +641,10 @@ function buildPDFHtml(doc: Document, company: Company | null, t: (k: string) => 
     <div style="background:#f9fafb;border-radius:10px;padding:16px">
       <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${t('pdf_customer_label')}</div>
       <div style="font-size:15px;font-weight:600;color:#111827">${doc.contact_name || '-'}</div>
+      ${contact?.company ? `<div style="font-size:13px;color:#374151;margin-top:2px">${contact.company}</div>` : ''}
+      ${contact?.tax_id ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${t('pdf_tax_prefix')}${contact.tax_id}</div>` : ''}
+      ${contact?.address ? `<div style="font-size:12px;color:#6b7280;margin-top:4px;max-width:220px">${contact.address}</div>` : ''}
+      ${contact?.phone ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${t('pdf_tel_prefix')}${contact.phone}</div>` : ''}
     </div>
     <div style="background:#f9fafb;border-radius:10px;padding:16px">
       <div style="font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${t('pdf_dates_label')}</div>

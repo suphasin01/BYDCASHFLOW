@@ -109,13 +109,14 @@ app.delete('/api/products/:id', (req, res) => {
 
 app.get('/api/documents', (req, res) => {
   try {
-    const { type, status, contact_id, limit, offset } = req.query as Record<string, string>;
+    const { type, status, contact_id, limit, offset, q } = req.query as Record<string, string>;
     const data = documentRepo.list({
       type,
       status,
       contact_id: contact_id ? Number(contact_id) : undefined,
       limit: limit ? Number(limit) : 50,
       offset: offset ? Number(offset) : 0,
+      q,
     });
     res.json({ data });
   } catch (e: unknown) { res.status(500).json({ error: String(e) }); }

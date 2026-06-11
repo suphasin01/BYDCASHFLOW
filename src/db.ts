@@ -252,12 +252,13 @@ export const productRepo = {
 // ── Documents ─────────────────────────────────────────────────────────────────────
 
 export const documentRepo = {
-  list: (filters: { type?: string; status?: string; contact_id?: number; limit?: number; offset?: number } = {}) => {
+  list: (filters: { type?: string; status?: string; contact_id?: number; limit?: number; offset?: number; q?: string } = {}) => {
     let sql = 'SELECT d.*, c.name as contact_display FROM documents d LEFT JOIN contacts c ON d.contact_id = c.id WHERE 1=1';
     const params: unknown[] = [];
     if (filters.type)       { sql += ' AND d.type = ?';       params.push(filters.type); }
     if (filters.status)     { sql += ' AND d.status = ?';     params.push(filters.status); }
     if (filters.contact_id) { sql += ' AND d.contact_id = ?'; params.push(filters.contact_id); }
+    if (filters.q) { sql += ' AND (d.number LIKE ? OR d.contact_name LIKE ?)'; params.push(`%${filters.q}%`, `%${filters.q}%`); }
     sql += ` ORDER BY d.created_at DESC LIMIT ${filters.limit ?? 50} OFFSET ${filters.offset ?? 0}`;
     return all(sql, ...params);
   },

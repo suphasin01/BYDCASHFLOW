@@ -25,6 +25,7 @@ export const getHealth = () => GET<{ status: string }>('/health')
 // Contacts
 export const getContacts = (q?: string) =>
   GET<{ data: Contact[] }>('/contacts' + (q ? '?q=' + encodeURIComponent(q) : ''))
+export const getContact = (id: number) => GET<Contact>('/contacts/' + id)
 export const createContact = (data: Partial<Contact>) => POST<Contact>('/contacts', data)
 export const updateContact = (id: number, data: Partial<Contact>) => PUT<Contact>('/contacts/' + id, data)
 export const deleteContact = (id: number) => DEL<void>('/contacts/' + id)
