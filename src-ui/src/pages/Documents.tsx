@@ -64,6 +64,8 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     purchase_order: t('type_purchase_order'), expense: t('type_expense'),
     withholding_tax: t('nav_withholding_tax'),
   }
+  // Types that exist only in documents table (WHT lives in its own table)
+  const FILTER_TYPES = Object.entries(DOC_TYPES).filter(([k]) => k !== 'withholding_tax')
   const STATUS_LABELS: Record<string, string> = {
     draft: t('status_draft'), sent: t('status_sent'), approved: t('status_approved'),
     paid: t('status_paid'), cancelled: t('status_cancelled'),
@@ -243,9 +245,14 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2 flex-wrap items-center">
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
+          <select value={filterType} onChange={e => {
+            const val = e.target.value
+            if (val === 'withholding_tax') { onNavigate?.('withholding_tax'); return }
+            setFilterType(val)
+          }} className={`${SELECT_CLASS} min-w-[130px]`}>
             <option value="">{t('all_types')}</option>
-            {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {FILTER_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            <option value="withholding_tax">→ {t('nav_withholding_tax')}</option>
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
             <option value="">{t('all_statuses')}</option>
