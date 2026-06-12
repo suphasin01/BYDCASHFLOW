@@ -3,6 +3,7 @@ import {
   Card, CardBody, Chip, Divider, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
+import { ChevronDown, Receipt } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
@@ -253,20 +254,28 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
           <TextField className="min-w-[200px]" placeholder={t('search_doc')}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="relative flex items-center">
-          <Btn variant="primary" className="rounded-r-none" onClick={openCreate}>{t('btn_create_doc')}</Btn>
-          <button
-            onClick={() => setShowDocMenu(m => !m)}
-            onBlur={() => setTimeout(() => setShowDocMenu(false), 150)}
-            className="btn-3d-primary h-[34px] px-2 rounded-l-none border-l border-indigo-700/40 text-xs leading-none">
-            ▾
-          </button>
+        <div className="relative">
+          <div className="btn-3d-primary inline-flex items-stretch rounded-lg overflow-hidden p-0"
+            onBlur={() => setTimeout(() => setShowDocMenu(false), 150)}>
+            <button onClick={openCreate}
+              className="text-[13px] font-semibold pl-4 pr-3.5 py-2 cursor-pointer select-none outline-none">
+              {t('btn_create_doc')}
+            </button>
+            <span className="w-px self-stretch my-1.5 bg-white/25" />
+            <button onClick={() => setShowDocMenu(m => !m)}
+              className="px-2.5 flex items-center justify-center cursor-pointer select-none outline-none">
+              <ChevronDown size={15} strokeWidth={2.5} className={`transition-transform duration-200 ${showDocMenu ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
           {showDocMenu && (
-            <div className="absolute right-0 top-[calc(100%+4px)] bg-content1 border border-content3 rounded-xl shadow-2xl z-50 py-1 min-w-[200px]">
+            <div className="absolute right-0 top-[calc(100%+6px)] bg-content1 border border-content3 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,.5)] z-50 p-1.5 min-w-[210px] modal-panel">
+              <div className="text-[10px] font-semibold text-default-400 uppercase tracking-wider px-3 pt-1.5 pb-1">{t('nav_sec_docs')}</div>
               <button
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] hover:bg-content2 text-foreground transition-colors rounded-lg"
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] hover:bg-content2 text-foreground transition-colors rounded-lg"
                 onMouseDown={() => { setShowDocMenu(false); onNavigate?.('withholding_tax') }}>
-                <span className="text-[15px]">🧾</span>
+                <span className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+                  <Receipt size={15} className="text-primary" strokeWidth={2} />
+                </span>
                 {t('nav_withholding_tax')}
               </button>
             </div>
