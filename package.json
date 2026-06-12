@@ -42,6 +42,7 @@
     "@types/node": "^20.11.0",
     "electron": "^34.0.0",
     "electron-builder": "^25.0.0",
+    "playwright-core": "^1.60.0",
     "typescript": "^5.3.3"
   },
   "build": {
@@ -86,7 +87,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.ico"
@@ -95,7 +98,9 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png"
@@ -116,8 +121,16 @@
     "dmg": {
       "title": "FruitBiz",
       "contents": [
-        {"x": 130, "y": 220},
-        {"x": 410, "y": 220, "type": "link", "path": "/Applications"}
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     }
   }
