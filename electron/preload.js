@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   importData: () => ipcRenderer.invoke('import-data'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
+  startMacDownload: (url, version) => ipcRenderer.invoke('start-mac-download', url, version),
   openReleasesPage: () => ipcRenderer.invoke('open-releases-page'),
   quitApp: () => ipcRenderer.invoke('quit-app'),
 })

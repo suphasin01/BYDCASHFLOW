@@ -70,6 +70,8 @@ function fetchLatestGithubRelease() {
           const version = (data.tag_name || '').replace(/^v/, '');
           const url = data.html_url;
           let downloadUrl = null;
+          let arm64Url = null;
+          let x64Url = null;
           let winDownloadUrl = null;
           let buildInfoUrl = null;
           if (Array.isArray(data.assets)) {
@@ -79,6 +81,10 @@ function fetchLatestGithubRelease() {
                        || data.assets.find(a => a.name.endsWith('.dmg'));
               if (dmg) downloadUrl = dmg.browser_download_url;
             }
+            const arm64Asset = data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes('arm64'));
+            const x64Asset = data.assets.find(a => a.name.endsWith('.dmg') && !a.name.includes('arm64'));
+            if (arm64Asset) arm64Url = arm64Asset.browser_download_url;
+            if (x64Asset) x64Url = x64Asset.browser_download_url;
             if (process.platform === 'win32') {
               const setupExe = data.assets.find(a => /Setup.*\.exe$/i.test(a.name));
               if (setupExe) winDownloadUrl = setupExe.browser_download_url;
@@ -86,7 +92,7 @@ function fetchLatestGithubRelease() {
             const buildInfoAsset = data.assets.find(a => a.name === 'build-info.json');
             if (buildInfoAsset) buildInfoUrl = buildInfoAsset.browser_download_url;
           }
-          resolve({ version, url, downloadUrl, winDownloadUrl, buildInfoUrl });
+          resolve({ version, url, downloadUrl, arm64Url, x64Url, winDownloadUrl, buildInfoUrl });
         } catch { resolve(null); }
       });
     });
@@ -209,7 +215,8 @@ async function checkWindowsSameVersionUpdate() {
 
 function downloadMacUpdate(version, downloadUrl) {
   return new Promise((resolve, reject) => {
-    const destPath = path.join(app.getPath('temp'), `FruitBiz-${version}.dmg`);
+    const filename = decodeURIComponent((downloadUrl.split('/').pop() || '').split('?')[0]) || `FruitBiz-${version}.dmg`;
+    const destPath = path.join(app.getPath('temp'), filename);
     if (fs.existsSync(destPath)) {
       macUpdatePath = destPath;
       resolve(destPath);
@@ -291,31 +298,14 @@ async function doMacVersionCheck() {
 
     if (shouldUpdate) {
       log.info(`[updater-mac] Update available: ${result.version} (current: ${current})`);
-      if (!result.downloadUrl) {
-        if (mainWindow) mainWindow.webContents.send('update-status', {
-          type: 'mac-available', version: result.version, releaseUrl: result.url,
-        });
-        return;
-      }
-      if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version: result.version });
-      try {
-        await downloadMacUpdate(result.version, result.downloadUrl);
-        log.info(`[updater-mac] Download complete: ${macUpdatePath}`);
-        if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: result.version });
-        let countdown = 10;
-        autoInstallTimer = setInterval(() => {
-          countdown--;
-          if (mainWindow) mainWindow.webContents.send('update-countdown', { seconds: countdown, version: result.version });
-          if (countdown <= 0) {
-            clearInterval(autoInstallTimer);
-            autoInstallTimer = null;
-            if (macUpdatePath) shell.openPath(macUpdatePath);
-          }
-        }, 1000);
-      } catch (dlErr) {
-        log.error('[updater-mac] Download failed:', dlErr.message);
-        if (mainWindow) mainWindow.webContents.send('update-status', { type: 'error', message: dlErr.message });
-      }
+      // Let user choose which build to download
+      if (mainWindow) mainWindow.webContents.send('update-status', {
+        type: 'mac-choose',
+        version: result.version,
+        arm64Url: result.arm64Url,
+        x64Url: result.x64Url,
+        releaseUrl: result.url,
+      });
     } else {
       log.info(`[updater-mac] Up to date: ${current}`);
       if (mainWindow) mainWindow.webContents.send('update-not-available');
@@ -470,6 +460,31 @@ ipcMain.handle('check-for-updates', async () => {
     autoUpdater.checkForUpdates().catch((err) => {
       log.warn('[updater] checkForUpdates rejected:', err?.message || err);
     });
+  }
+});
+
+// ── Start Mac DMG Download IPC (triggered after user picks arch) ──────
+ipcMain.handle('start-mac-download', async (_, url, version) => {
+  if (process.platform !== 'darwin') return { ok: false };
+  try {
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version });
+    await downloadMacUpdate(version, url);
+    log.info(`[updater-mac] Download complete: ${macUpdatePath}`);
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version });
+    let countdown = 10;
+    autoInstallTimer = setInterval(() => {
+      countdown--;
+      if (mainWindow) mainWindow.webContents.send('update-countdown', { seconds: countdown, version });
+      if (countdown <= 0) {
+        clearInterval(autoInstallTimer); autoInstallTimer = null;
+        if (macUpdatePath) shell.openPath(macUpdatePath);
+      }
+    }, 1000);
+    return { ok: true };
+  } catch (err) {
+    log.error('[updater-mac] Download failed:', err.message);
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'error', message: err.message });
+    return { ok: false };
   }
 });
 

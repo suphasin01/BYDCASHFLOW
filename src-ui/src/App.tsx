@@ -61,7 +61,7 @@ export default function App() {
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
-  const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready' | 'mac-available'; version: string; releaseUrl?: string } | null>(null)
+  const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready' | 'mac-available' | 'mac-choose'; version: string; releaseUrl?: string; arm64Url?: string; x64Url?: string } | null>(null)
   const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
   const [updateCountdown, setUpdateCountdown] = useState<number | null>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
@@ -93,7 +93,7 @@ export default function App() {
 
   useEffect(() => {
     const api = (window as unknown as { electronAPI?: {
-      onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error' | 'mac-available'; version?: string; message?: string; releaseUrl?: string }) => void) => void
+      onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error' | 'mac-available' | 'mac-choose'; version?: string; message?: string; releaseUrl?: string; arm64Url?: string; x64Url?: string }) => void) => void
       onUpdateNotAvailable: (cb: () => void) => void
       onUpdateProgress: (cb: (d: { percent: number }) => void) => void
       onUpdateCountdown: (cb: (d: { seconds: number; version: string }) => void) => void
@@ -107,6 +107,10 @@ export default function App() {
       }
       if (data.type === 'mac-available') {
         setUpdateBanner({ type: 'mac-available', version: data.version || '', releaseUrl: data.releaseUrl })
+        return
+      }
+      if (data.type === 'mac-choose') {
+        setUpdateBanner({ type: 'mac-choose', version: data.version || '', arm64Url: data.arm64Url, x64Url: data.x64Url, releaseUrl: data.releaseUrl })
         return
       }
       setUpdateBanner({ type: data.type, version: data.version || '' })
@@ -143,6 +147,12 @@ export default function App() {
   const openReleasesPage = () => {
     const api = (window as unknown as { electronAPI?: { openReleasesPage: () => void } }).electronAPI
     api?.openReleasesPage()
+  }
+
+  const startMacDownload = (url: string) => {
+    if (!updateBanner) return
+    const api = (window as unknown as { electronAPI?: { startMacDownload: (url: string, version: string) => void } }).electronAPI
+    api?.startMacDownload(url, updateBanner.version)
   }
 
   const reloadCompany = useCallback(async () => {
@@ -401,18 +411,18 @@ export default function App() {
                 {/* Accent bar */}
                 <div className={`h-0.5 w-full ${
                   updateBanner.type === 'ready' ? 'bg-gradient-to-r from-success/60 via-success to-success/60' :
-                  updateBanner.type === 'mac-available' ? 'bg-gradient-to-r from-warning/60 via-warning to-warning/60' :
+                  (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'bg-gradient-to-r from-warning/60 via-warning to-warning/60' :
                   'bg-gradient-to-r from-primary/60 via-primary to-primary/60'
                 }`} />
                 <div className="px-4 py-3.5 flex items-start gap-3">
                   {/* Icon */}
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                     updateBanner.type === 'ready' ? 'bg-success/15 text-success' :
-                    updateBanner.type === 'mac-available' ? 'bg-warning/15 text-warning' :
+                    (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'bg-warning/15 text-warning' :
                     'bg-primary/15 text-primary'
                   }`}>
                     {updateBanner.type === 'ready' ? <Download size={17} strokeWidth={2} /> :
-                     updateBanner.type === 'mac-available' ? <Sparkles size={17} strokeWidth={2} /> :
+                     (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? <Sparkles size={17} strokeWidth={2} /> :
                      <RefreshCw size={17} strokeWidth={2} className="animate-spin" />}
                   </div>
 
@@ -423,17 +433,17 @@ export default function App() {
                         ? (updateCountdown !== null && updateCountdown > 0
                             ? `ติดตั้งอัตโนมัติใน ${updateCountdown} วินาที`
                             : installing ? 'กำลังติดตั้งอัพเดท...' : 'อัพเดทพร้อมแล้ว')
-                        : updateBanner.type === 'mac-available' ? 'มีเวอร์ชันใหม่'
+                        : (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'มีเวอร์ชันใหม่'
                         : 'กำลังดาวน์โหลดอัพเดท'}
                     </div>
                     <div className="text-[11px] text-default-400 mt-0.5 flex items-center gap-1.5">
                       <span className={`inline-block w-1.5 h-1.5 rounded-full ${
                         updateBanner.type === 'ready' ? 'bg-success' :
-                        updateBanner.type === 'mac-available' ? 'bg-warning' : 'bg-primary'
+                        (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'bg-warning' : 'bg-primary'
                       }`} />
                       <span>
                         {updateBanner.type === 'ready' ? `v${updateBanner.version} — รีสตาร์ทเพื่อติดตั้ง` :
-                         updateBanner.type === 'mac-available' ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด` :
+                         (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด` :
                          `v${updateBanner.version}${downloadProgress !== null ? ` · ${downloadProgress}%` : ''}`}
                       </span>
                     </div>
@@ -463,6 +473,28 @@ export default function App() {
                           startContent={<Download size={13} strokeWidth={2} />}>
                           ดาวน์โหลด
                         </Btn>
+                      </div>
+                    )}
+                    {updateBanner.type === 'mac-choose' && (
+                      <div className="mt-2.5 flex flex-col gap-1.5">
+                        <div className="text-[11px] text-default-400 mb-0.5">เลือกรุ่นที่ต้องการดาวน์โหลด:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {updateBanner.arm64Url && (
+                            <Btn size="sm" variant="primary" onClick={() => startMacDownload(updateBanner.arm64Url!)}
+                              startContent={<Download size={13} strokeWidth={2} />} className="whitespace-nowrap">
+                              Mac Apple Silicon (arm64)
+                            </Btn>
+                          )}
+                          {updateBanner.x64Url && (
+                            <Btn size="sm" variant="ghost" onClick={() => startMacDownload(updateBanner.x64Url!)}
+                              startContent={<Download size={13} strokeWidth={2} />} className="whitespace-nowrap">
+                              Mac Intel (x64)
+                            </Btn>
+                          )}
+                          <Btn size="sm" variant="ghost" onClick={openReleasesPage} className="whitespace-nowrap text-default-400">
+                            Windows
+                          </Btn>
+                        </div>
                       </div>
                     )}
                   </div>
