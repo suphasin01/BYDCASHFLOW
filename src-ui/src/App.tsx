@@ -21,6 +21,7 @@ import Companies from './pages/Companies'
 import Settings from './pages/Settings'
 import WithholdingTaxPage from './pages/WithholdingTax'
 import PaySlipPage from './pages/PaySlip'
+import EmployeesPage from './pages/Employees'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 export type ToastItem = { id: number; msg: string; type: 'ok' | 'err' }
@@ -33,7 +34,7 @@ type CompanyCtxType = { activeCompany: Company | null; reload: () => void }
 export const CompanyContext = createContext<CompanyCtxType>({ activeCompany: null, reload: () => {} })
 export const useActiveCompany = () => useContext(CompanyContext)
 
-type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'pay_slips' | 'companies' | 'settings'
+type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'employees' | 'reports' | 'withholding_tax' | 'pay_slips' | 'companies' | 'settings'
 
 const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
   { page: 'dashboard', Icon: LayoutDashboard, key: 'nav_dashboard' },
@@ -41,6 +42,7 @@ const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
   { page: 'payments', Icon: CreditCard, key: 'nav_payments' },
   { page: 'contacts', Icon: Users, key: 'nav_contacts' },
   { page: 'products', Icon: Package, key: 'nav_products' },
+  { page: 'employees', Icon: Users, key: 'nav_employees' },
   { page: 'reports', Icon: TrendingUp, key: 'nav_reports' },
   { page: 'withholding_tax', Icon: Receipt, key: 'nav_withholding_tax' },
   { page: 'pay_slips', Icon: FileText, key: 'nav_pay_slips' },
@@ -193,6 +195,7 @@ export default function App() {
       case 'contacts': return <Contacts />
       case 'products': return <Products />
       case 'reports': return <Reports />
+      case 'employees': return <EmployeesPage />
       case 'withholding_tax': return <WithholdingTaxPage />
       case 'pay_slips': return <PaySlipPage />
       case 'companies': return <Companies />
@@ -207,6 +210,7 @@ export default function App() {
     contacts: null,
     products: null,
     reports: null,
+    employees: null,
     withholding_tax: null,
     pay_slips: null,
     companies: null,
@@ -216,7 +220,7 @@ export default function App() {
   const navSections = [
     { label: t('nav_sec_main'), items: ['dashboard', 'payments'] },
     { label: t('nav_sec_docs'), items: ['documents', 'withholding_tax', 'pay_slips'] },
-    { label: t('nav_sec_data'), items: ['contacts', 'products'] },
+    { label: t('nav_sec_data'), items: ['contacts', 'products', 'employees'] },
     { label: t('nav_sec_analyze'), items: ['reports'] },
     { label: '', items: ['companies', 'settings'] },
   ]

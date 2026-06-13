@@ -166,6 +166,25 @@ export interface PaySlip {
   created_at?: string
 }
 
+export interface Employee {
+  id: number
+  employee_no?: string | null
+  name: string
+  nickname?: string | null
+  department?: string | null
+  position?: string | null
+  start_date?: string | null
+  salary: number
+  phone?: string | null
+  email?: string | null
+  id_card?: string | null
+  bank_name?: string | null
+  bank_account?: string | null
+  notes?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 export interface ReportSummary {
   revenue: number
   expense: number

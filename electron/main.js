@@ -107,7 +107,7 @@ function downloadMacUpdate(version, downloadUrl) {
           makeRequest(res.headers.location, redirects + 1);
           return;
         }
-        if (res.statusCode !== 200) { res.resume(); reject(new Error(`HTTP ${res.statusCode}`)); return; }
+        if (res.statusCode !== 200) { res.resume(); file.destroy(); try { fs.unlinkSync(tmpPath); } catch {} reject(new Error(`HTTP ${res.statusCode}`)); return; }
         const total = parseInt(res.headers['content-length'] || '0', 10);
         let downloaded = 0;
         res.on('data', chunk => {
