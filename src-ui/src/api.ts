@@ -1,4 +1,4 @@
-import type { Contact, Product, Document, Payment, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax } from './types'
+import type { Contact, Product, Document, Payment, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax, PaySlip } from './types'
 
 const BASE = 'http://localhost:3737/api'
 
@@ -78,3 +78,11 @@ export const getReportSummary = () => GET<ReportSummary>('/reports/summary')
 export const getReportMonthly = () => GET<{ data: MonthlyData[] }>('/reports/monthly')
 export const getReportTopContacts = (limit = 5) =>
   GET<{ data: TopContact[] }>('/reports/top-contacts?limit=' + limit)
+
+// Pay Slips
+export const getPaySlips = (q?: string) =>
+  GET<{ data: PaySlip[] }>('/pay-slips' + (q ? '?q=' + encodeURIComponent(q) : ''))
+export const getPaySlip = (id: number) => GET<PaySlip>('/pay-slips/' + id)
+export const createPaySlip = (data: Partial<PaySlip>) => POST<PaySlip>('/pay-slips', data)
+export const updatePaySlip = (id: number, data: Partial<PaySlip>) => PUT<PaySlip>('/pay-slips/' + id, data)
+export const deletePaySlip = (id: number) => DEL<void>('/pay-slips/' + id)

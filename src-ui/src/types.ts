@@ -128,6 +128,44 @@ export interface WithholdingTax {
   created_at?: string
 }
 
+export interface PaySlip {
+  id: number
+  employee_name: string
+  contact_id?: number | null
+  department?: string | null
+  period?: string | null
+  pay_date: string
+  // Income 1-10
+  salary: number
+  cost_of_living: number
+  position_allow: number
+  meal_allow: number
+  overtime: number
+  shift_allow: number
+  travel_allow: number
+  subsidy: number
+  welfare: number
+  bonus: number
+  total_income: number
+  // Deductions 11-17
+  tax_withheld: number
+  social_security: number
+  late_deduct: number
+  absent_deduct: number
+  loan_deduct: number
+  advance_deduct: number
+  other_deduct: number
+  total_deductions: number
+  net_income: number
+  // Cumulative
+  cum_income: number
+  cum_tax: number
+  cum_social_sec: number
+  cum_provident: number
+  notes?: string | null
+  created_at?: string
+}
+
 export interface ReportSummary {
   revenue: number
   expense: number

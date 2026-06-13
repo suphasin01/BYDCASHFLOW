@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, createContext, useContext } from 'rea
 import { Avatar, Progress } from '@heroui/react'
 import {
   LayoutDashboard, FileText, CreditCard, Users, Package,
-  TrendingUp, Receipt, Building2, Settings as SettingsIcon, LogOut, type LucideIcon,
+  TrendingUp, Receipt, Building2, Settings as SettingsIcon, LogOut,
+  RefreshCw, Sun, Moon, Download, Sparkles, type LucideIcon,
 } from 'lucide-react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
 import ErrorBoundary from './ErrorBoundary'
@@ -19,6 +20,7 @@ import Reports from './pages/Reports'
 import Companies from './pages/Companies'
 import Settings from './pages/Settings'
 import WithholdingTaxPage from './pages/WithholdingTax'
+import PaySlipPage from './pages/PaySlip'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 export type ToastItem = { id: number; msg: string; type: 'ok' | 'err' }
@@ -31,7 +33,7 @@ type CompanyCtxType = { activeCompany: Company | null; reload: () => void }
 export const CompanyContext = createContext<CompanyCtxType>({ activeCompany: null, reload: () => {} })
 export const useActiveCompany = () => useContext(CompanyContext)
 
-type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'companies' | 'settings'
+type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'pay_slips' | 'companies' | 'settings'
 
 const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
   { page: 'dashboard', Icon: LayoutDashboard, key: 'nav_dashboard' },
@@ -41,6 +43,7 @@ const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
   { page: 'products', Icon: Package, key: 'nav_products' },
   { page: 'reports', Icon: TrendingUp, key: 'nav_reports' },
   { page: 'withholding_tax', Icon: Receipt, key: 'nav_withholding_tax' },
+  { page: 'pay_slips', Icon: FileText, key: 'nav_pay_slips' },
   { page: 'companies', Icon: Building2, key: 'nav_companies' },
   { page: 'settings', Icon: SettingsIcon, key: 'nav_settings' },
 ]
@@ -191,6 +194,7 @@ export default function App() {
       case 'products': return <Products />
       case 'reports': return <Reports />
       case 'withholding_tax': return <WithholdingTaxPage />
+      case 'pay_slips': return <PaySlipPage />
       case 'companies': return <Companies />
       case 'settings': return <Settings />
     }
@@ -204,13 +208,14 @@ export default function App() {
     products: null,
     reports: null,
     withholding_tax: null,
+    pay_slips: null,
     companies: null,
     settings: null,
   }
 
   const navSections = [
     { label: t('nav_sec_main'), items: ['dashboard', 'payments'] },
-    { label: t('nav_sec_docs'), items: ['documents'] },
+    { label: t('nav_sec_docs'), items: ['documents', 'withholding_tax', 'pay_slips'] },
     { label: t('nav_sec_data'), items: ['contacts', 'products'] },
     { label: t('nav_sec_analyze'), items: ['reports'] },
     { label: '', items: ['companies', 'settings'] },
@@ -293,12 +298,12 @@ export default function App() {
               </button>
 
               {/* Exit Button */}
-              <div className="px-3.5 py-2 border-t border-content3">
-                <Btn onClick={quitApp} variant="danger" size="sm"
-                  className="w-full justify-start"
-                  startContent={<LogOut size={14} />}>
+              <div className="px-2.5 py-2 border-t border-content3">
+                <button onClick={quitApp}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium text-default-400 hover:text-danger hover:bg-danger/8 transition-all duration-150 cursor-pointer group">
+                  <LogOut size={14} className="flex-shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" strokeWidth={1.8} />
                   {t('btn_exit_app')}
-                </Btn>
+                </button>
               </div>
 
               {/* Status */}
@@ -320,15 +325,15 @@ export default function App() {
                   {/* Check for Updates */}
                   <button disabled={checkingUpdate}
                     onClick={checkForUpdates} title={t('btn_check_update')}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-600 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
-                    <span className={`text-sm inline-block ${checkingUpdate ? 'animate-spin' : ''}`}>🔄</span>
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-500 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
+                    <RefreshCw size={15} strokeWidth={1.8} className={checkingUpdate ? 'animate-spin' : ''} />
                   </button>
                   {/* Dark/Light toggle */}
                   <button
                     onClick={() => setDarkMode(d => !d)}
                     title={darkMode ? 'โหมดกลางวัน' : 'โหมดกลางคืน'}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-600 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer">
-                    <span className="text-base">{darkMode ? '☀️' : '🌙'}</span>
+                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-500 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer">
+                    {darkMode ? <Sun size={15} strokeWidth={1.8} /> : <Moon size={15} strokeWidth={1.8} />}
                   </button>
                   {/* Lang switcher */}
                   <div className="flex items-center gap-0.5 bg-content2 border border-content3 rounded-lg p-0.5">
@@ -387,65 +392,81 @@ export default function App() {
 
             {/* Update Banner */}
             {updateBanner && (
-              <div className={`fixed bottom-6 left-[260px] z-[998] rounded-xl px-4 py-2.5 flex items-center gap-2.5 shadow-2xl min-w-[300px] border ${
-                updateBanner.type === 'ready' ? 'bg-success/10 border-success/40' :
-                updateBanner.type === 'mac-available' ? 'bg-warning/10 border-warning/40' :
-                'bg-[#60a5fa]/10 border-[#60a5fa]/40'
-              }`}>
-                <span className="text-lg">
-                  {updateBanner.type === 'ready' ? '⬇️' : updateBanner.type === 'mac-available' ? '🆕' : '↻'}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] font-semibold flex items-center justify-between ${
-                    updateBanner.type === 'ready' ? 'text-success' :
-                    updateBanner.type === 'mac-available' ? 'text-warning' :
-                    'text-[#60a5fa]'
+              <div className="fixed bottom-6 left-[260px] z-[998] min-w-[320px] max-w-[420px] modal-panel rounded-2xl overflow-hidden"
+                style={{ boxShadow: '0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06)' }}>
+                {/* Accent bar */}
+                <div className={`h-0.5 w-full ${
+                  updateBanner.type === 'ready' ? 'bg-gradient-to-r from-success/60 via-success to-success/60' :
+                  updateBanner.type === 'mac-available' ? 'bg-gradient-to-r from-warning/60 via-warning to-warning/60' :
+                  'bg-gradient-to-r from-primary/60 via-primary to-primary/60'
+                }`} />
+                <div className="px-4 py-3.5 flex items-start gap-3">
+                  {/* Icon */}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    updateBanner.type === 'ready' ? 'bg-success/15 text-success' :
+                    updateBanner.type === 'mac-available' ? 'bg-warning/15 text-warning' :
+                    'bg-primary/15 text-primary'
                   }`}>
-                    <span>
+                    {updateBanner.type === 'ready' ? <Download size={17} strokeWidth={2} /> :
+                     updateBanner.type === 'mac-available' ? <Sparkles size={17} strokeWidth={2} /> :
+                     <RefreshCw size={17} strokeWidth={2} className="animate-spin" />}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-foreground leading-tight">
                       {updateBanner.type === 'ready'
                         ? (updateCountdown !== null && updateCountdown > 0
-                            ? `v${updateBanner.version} — ติดตั้งอัตโนมัติใน ${updateCountdown}s`
-                            : installing ? `กำลังติดตั้ง v${updateBanner.version}...` : `v${updateBanner.version} พร้อมแล้ว`)
-                        : updateBanner.type === 'mac-available' ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด`
-                        : `กำลังดาวน์โหลด v${updateBanner.version}...`}
-                    </span>
+                            ? `ติดตั้งอัตโนมัติใน ${updateCountdown} วินาที`
+                            : installing ? 'กำลังติดตั้งอัพเดท...' : 'อัพเดทพร้อมแล้ว')
+                        : updateBanner.type === 'mac-available' ? 'มีเวอร์ชันใหม่'
+                        : 'กำลังดาวน์โหลดอัพเดท'}
+                    </div>
+                    <div className="text-[11px] text-default-400 mt-0.5 flex items-center gap-1.5">
+                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                        updateBanner.type === 'ready' ? 'bg-success' :
+                        updateBanner.type === 'mac-available' ? 'bg-warning' : 'bg-primary'
+                      }`} />
+                      <span>
+                        {updateBanner.type === 'ready' ? `v${updateBanner.version} — รีสตาร์ทเพื่อติดตั้ง` :
+                         updateBanner.type === 'mac-available' ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด` :
+                         `v${updateBanner.version}${downloadProgress !== null ? ` · ${downloadProgress}%` : ''}`}
+                      </span>
+                    </div>
                     {updateBanner.type === 'downloading' && downloadProgress !== null && (
-                      <span className="text-xs font-bold text-[#60a5fa] ml-2">{downloadProgress}%</span>
+                      <Progress aria-label="download" size="sm" color="primary" value={downloadProgress} className="mt-2" />
+                    )}
+                    {/* Action buttons */}
+                    {updateBanner.type === 'ready' && (
+                      <div className="flex items-center gap-2 mt-2.5">
+                        <Btn size="sm" variant="success" onClick={installUpdate} isLoading={installing} className="whitespace-nowrap">
+                          {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
+                        </Btn>
+                        {updateCountdown !== null && updateCountdown > 0 && (
+                          <button className="text-[11px] text-default-400 hover:text-default-600 transition-colors cursor-pointer" onClick={() => {
+                            setUpdateCountdown(null)
+                            const api = (window as unknown as { electronAPI?: { cancelAutoUpdate: () => void } }).electronAPI
+                            api?.cancelAutoUpdate()
+                          }}>
+                            เลื่อนออกไปก่อน
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    {updateBanner.type === 'mac-available' && (
+                      <div className="mt-2.5">
+                        <Btn size="sm" variant="primary" onClick={openReleasesPage} className="whitespace-nowrap"
+                          startContent={<Download size={13} strokeWidth={2} />}>
+                          ดาวน์โหลด
+                        </Btn>
+                      </div>
                     )}
                   </div>
-                  {updateBanner.type === 'downloading' && downloadProgress !== null ? (
-                    <Progress aria-label="download" size="sm" color="primary" value={downloadProgress} className="mt-1.5" />
-                  ) : (
-                    <div className="text-[11px] text-default-500 mt-0.5">
-                      {updateBanner.type === 'ready' ? 'โปรแกรมจะรีสตาร์ทอัตโนมัติเพื่อติดตั้ง' :
-                       updateBanner.type === 'mac-available' ? 'กด "ดาวน์โหลด" เพื่อเปิดหน้า Releases' :
-                       'ดาวน์โหลดอัพเดทในพื้นหลัง'}
-                    </div>
-                  )}
+
+                  {/* Close */}
+                  <button onClick={() => setUpdateBanner(null)}
+                    className="w-6 h-6 flex items-center justify-center rounded-lg text-default-400 hover:text-foreground hover:bg-content3 transition-colors cursor-pointer flex-shrink-0 text-[13px] mt-0.5">✕</button>
                 </div>
-                {updateBanner.type === 'ready' && (
-                  <>
-                    <Btn size="sm" variant="success" onClick={installUpdate} isLoading={installing} className="whitespace-nowrap">
-                      {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
-                    </Btn>
-                    {updateCountdown !== null && updateCountdown > 0 && (
-                      <Btn size="sm" variant="ghost" className="whitespace-nowrap" onClick={() => {
-                        setUpdateCountdown(null)
-                        const api = (window as unknown as { electronAPI?: { cancelAutoUpdate: () => void } }).electronAPI
-                        api?.cancelAutoUpdate()
-                      }}>
-                        เลื่อนไปก่อน
-                      </Btn>
-                    )}
-                  </>
-                )}
-                {updateBanner.type === 'mac-available' && (
-                  <Btn size="sm" variant="primary" onClick={openReleasesPage} className="whitespace-nowrap">
-                    ดาวน์โหลด
-                  </Btn>
-                )}
-                <button onClick={() => setUpdateBanner(null)}
-                  className="w-6 h-6 flex items-center justify-center rounded-md text-default-500 hover:text-foreground hover:bg-content3 transition-colors cursor-pointer flex-shrink-0">✕</button>
               </div>
             )}
 

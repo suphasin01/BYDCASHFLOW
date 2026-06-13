@@ -13,6 +13,7 @@ const API_URL = `http://localhost:${PORT}`;
 let mainWindow = null;
 let isQuittingForUpdate = false;
 let autoInstallTimer = null;
+let macUpdatePath = null;
 
 // ── Logging ───────────────────────────────────────────────────────────
 log.transports.file.level = 'info';
@@ -66,12 +67,69 @@ function fetchLatestGithubRelease() {
       res.on('end', () => {
         try {
           const data = JSON.parse(body);
-          resolve({ version: (data.tag_name || '').replace(/^v/, ''), url: data.html_url });
+          const version = (data.tag_name || '').replace(/^v/, '');
+          const url = data.html_url;
+          let downloadUrl = null;
+          if (process.platform === 'darwin' && Array.isArray(data.assets)) {
+            const archStr = process.arch === 'arm64' ? 'arm64' : 'x64';
+            const dmg = data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes(archStr))
+                     || data.assets.find(a => a.name.endsWith('.dmg'));
+            if (dmg) downloadUrl = dmg.browser_download_url;
+          }
+          resolve({ version, url, downloadUrl });
         } catch { resolve(null); }
       });
     });
     req.on('error', () => resolve(null));
     req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
+function downloadMacUpdate(version, downloadUrl) {
+  return new Promise((resolve, reject) => {
+    const destPath = path.join(app.getPath('temp'), `FruitBiz-${version}.dmg`);
+    if (fs.existsSync(destPath)) {
+      macUpdatePath = destPath;
+      resolve(destPath);
+      return;
+    }
+    const tmpPath = destPath + '.tmp';
+    const file = fs.createWriteStream(tmpPath);
+    if (mainWindow) mainWindow.webContents.send('update-progress', { percent: 0 });
+
+    const makeRequest = (url, redirects) => {
+      if (redirects > 5) { reject(new Error('Too many redirects')); return; }
+      const urlObj = new URL(url);
+      const protocol = urlObj.protocol === 'https:' ? https : http;
+      const req = protocol.get(url, { headers: { 'User-Agent': `FruitBiz/${app.getVersion()}` } }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+          res.resume();
+          makeRequest(res.headers.location, redirects + 1);
+          return;
+        }
+        if (res.statusCode !== 200) { res.resume(); reject(new Error(`HTTP ${res.statusCode}`)); return; }
+        const total = parseInt(res.headers['content-length'] || '0', 10);
+        let downloaded = 0;
+        res.on('data', chunk => {
+          downloaded += chunk.length;
+          if (total > 0 && mainWindow) {
+            const pct = Math.round((downloaded / total) * 100);
+            mainWindow.webContents.send('update-progress', { percent: pct });
+            mainWindow.setProgressBar(pct / 100);
+          }
+        });
+        res.pipe(file);
+        file.on('finish', () => file.close(() => {
+          try { fs.renameSync(tmpPath, destPath); } catch (e) { reject(e); return; }
+          if (mainWindow) { mainWindow.setProgressBar(-1); mainWindow.webContents.send('update-progress', { percent: 100 }); }
+          macUpdatePath = destPath;
+          resolve(destPath);
+        }));
+        file.on('error', err => { try { fs.unlinkSync(tmpPath); } catch {} reject(err); });
+      });
+      req.on('error', err => { try { fs.unlinkSync(tmpPath); } catch {} reject(err); });
+    };
+    makeRequest(downloadUrl, 0);
   });
 }
 
@@ -93,9 +151,34 @@ async function doMacVersionCheck() {
     const current = app.getVersion();
     if (compareVersions(result.version, current) > 0) {
       log.info(`[updater-mac] New version available: ${result.version} (current: ${current})`);
-      if (mainWindow) mainWindow.webContents.send('update-status', {
-        type: 'mac-available', version: result.version, releaseUrl: result.url,
-      });
+      if (!result.downloadUrl) {
+        // No DMG asset found — fall back to browser
+        if (mainWindow) mainWindow.webContents.send('update-status', {
+          type: 'mac-available', version: result.version, releaseUrl: result.url,
+        });
+        return;
+      }
+      // Download in-app
+      if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version: result.version });
+      try {
+        await downloadMacUpdate(result.version, result.downloadUrl);
+        log.info(`[updater-mac] Download complete: ${macUpdatePath}`);
+        if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: result.version });
+        // Start countdown
+        let countdown = 10;
+        autoInstallTimer = setInterval(() => {
+          countdown--;
+          if (mainWindow) mainWindow.webContents.send('update-countdown', { seconds: countdown, version: result.version });
+          if (countdown <= 0) {
+            clearInterval(autoInstallTimer);
+            autoInstallTimer = null;
+            if (macUpdatePath) shell.openPath(macUpdatePath);
+          }
+        }, 1000);
+      } catch (dlErr) {
+        log.error('[updater-mac] Download failed:', dlErr.message);
+        if (mainWindow) mainWindow.webContents.send('update-status', { type: 'error', message: dlErr.message });
+      }
     } else {
       log.info(`[updater-mac] Up to date: ${current}`);
       if (mainWindow) mainWindow.webContents.send('update-not-available');
@@ -261,6 +344,15 @@ ipcMain.handle('cancel-auto-update', () => {
 
 // ── Install Update IPC ────────────────────────────────────────────────
 ipcMain.handle('install-update', () => {
+  if (process.platform === 'darwin') {
+    if (macUpdatePath && fs.existsSync(macUpdatePath)) {
+      log.info('[updater-mac] Opening DMG:', macUpdatePath);
+      shell.openPath(macUpdatePath);
+    } else {
+      shell.openExternal('https://github.com/suphasin01/fruit/releases/latest');
+    }
+    return { ok: true };
+  }
   log.info('[updater] install-update requested → quitAndInstall');
   isQuittingForUpdate = true;
   setImmediate(() => {
