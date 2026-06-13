@@ -7,8 +7,8 @@ import { ChevronDown, Receipt } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
-import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany, getContact, getProducts } from '../api'
-import type { Document, DocumentItem, Contact, Company, Product } from '../types'
+import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany, getContact, getProducts, getWithholdingTaxList, deleteWithholdingTax } from '../api'
+import type { Document, DocumentItem, Contact, Company, Product, WithholdingTax } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
@@ -28,6 +28,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const { toast } = useToast()
 
   const [docs, setDocs] = useState<Document[]>([])
+  const [whts, setWhts] = useState<WithholdingTax[]>([])
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [loading, setLoading] = useState(true)
@@ -64,8 +65,10 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     purchase_order: t('type_purchase_order'), expense: t('type_expense'),
     withholding_tax: t('nav_withholding_tax'),
   }
-  // Types that exist only in documents table (WHT lives in its own table)
-  const FILTER_TYPES = Object.entries(DOC_TYPES).filter(([k]) => k !== 'withholding_tax')
+  const WHT_FORM_LABELS: Record<string, string> = {
+    nd53: 'ภ.ง.ด.53', nd3: 'ภ.ง.ด.3', nd1: 'ภ.ง.ด.1ก',
+    nd1_special: 'ภ.ง.ด.1กพิเศษ', nd2: 'ภ.ง.ด.2', nd2k: 'ภ.ง.ด.2ก', nd3k: 'ภ.ง.ด.3ก',
+  }
   const STATUS_LABELS: Record<string, string> = {
     draft: t('status_draft'), sent: t('status_sent'), approved: t('status_approved'),
     paid: t('status_paid'), cancelled: t('status_cancelled'),
@@ -74,12 +77,25 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const load = async () => {
     setLoading(true)
     try {
+      const showDocs = filterType !== 'withholding_tax'
+      const showWhts = !filterType || filterType === 'withholding_tax'
       const params: Record<string, string> = {}
-      if (filterType) params.type = filterType
+      if (filterType && showDocs) params.type = filterType
       if (filterStatus) params.status = filterStatus
       if (search) params.q = search
-      const { data } = await getDocuments(params)
-      setDocs(data)
+      const [docsRes, whtsRes] = await Promise.all([
+        showDocs ? getDocuments(params) : Promise.resolve({ data: [] as Document[] }),
+        showWhts ? getWithholdingTaxList() : Promise.resolve({ data: [] as WithholdingTax[] }),
+      ])
+      setDocs(docsRes.data)
+      // client-side filter WHT by search
+      const q = search.toLowerCase()
+      setWhts(q
+        ? whtsRes.data.filter(w =>
+            (w.cert_no || '').toLowerCase().includes(q) ||
+            w.payee_name.toLowerCase().includes(q) ||
+            w.payer_name.toLowerCase().includes(q))
+        : whtsRes.data)
     } catch {}
     setLoading(false)
   }
@@ -166,6 +182,12 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const doDeleteWht = async (id: number) => {
+    if (!confirm(t('confirm_delete_doc'))) return
+    try { await deleteWithholdingTax(id); toast(t('toast_doc_deleted')); load() }
+    catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
   const doChangeStatus = async (id: number) => {
     try {
       await patchDocumentStatus(id, statusChange)
@@ -245,14 +267,9 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
       {/* Header */}
       <div className="flex justify-between items-center">
         <div className="flex gap-2 flex-wrap items-center">
-          <select value={filterType} onChange={e => {
-            const val = e.target.value
-            if (val === 'withholding_tax') { onNavigate?.('withholding_tax'); return }
-            setFilterType(val)
-          }} className={`${SELECT_CLASS} min-w-[130px]`}>
+          <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
             <option value="">{t('all_types')}</option>
-            {FILTER_TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            <option value="withholding_tax">→ {t('nav_withholding_tax')}</option>
+            {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
             <option value="">{t('all_statuses')}</option>
@@ -261,32 +278,12 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
           <TextField className="min-w-[200px]" placeholder={t('search_doc')}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="relative">
-          <div className="btn-3d-primary inline-flex items-stretch rounded-lg overflow-hidden p-0"
-            onBlur={() => setTimeout(() => setShowDocMenu(false), 150)}>
-            <button onClick={openCreate}
-              className="text-[13px] font-semibold pl-4 pr-3.5 py-2 cursor-pointer select-none outline-none">
-              {t('btn_create_doc')}
-            </button>
-            <span className="w-px self-stretch my-1.5 bg-white/25" />
-            <button onClick={() => setShowDocMenu(m => !m)}
-              className="px-2.5 flex items-center justify-center cursor-pointer select-none outline-none">
-              <ChevronDown size={15} strokeWidth={2.5} className={`transition-transform duration-200 ${showDocMenu ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
-          {showDocMenu && (
-            <div className="absolute right-0 top-[calc(100%+6px)] bg-content1 border border-content3 rounded-xl shadow-[0_12px_40px_rgba(0,0,0,.5)] z-50 p-1.5 min-w-[210px] modal-panel">
-              <div className="text-[10px] font-semibold text-default-400 uppercase tracking-wider px-3 pt-1.5 pb-1">{t('nav_sec_docs')}</div>
-              <button
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] hover:bg-content2 text-foreground transition-colors rounded-lg"
-                onMouseDown={() => { setShowDocMenu(false); onNavigate?.('withholding_tax') }}>
-                <span className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
-                  <Receipt size={15} className="text-primary" strokeWidth={2} />
-                </span>
-                {t('nav_withholding_tax')}
-              </button>
-            </div>
-          )}
+        <div className="relative flex items-center gap-2">
+          <Btn variant="ghost" size="sm" startContent={<Receipt size={14} strokeWidth={2} />}
+            onClick={() => onNavigate?.('withholding_tax')}>
+            {t('nav_withholding_tax')}
+          </Btn>
+          <Btn variant="primary" onClick={openCreate}>{t('btn_create_doc')}</Btn>
         </div>
       </div>
 
@@ -315,27 +312,64 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                   <p className="mt-1 text-[12px]" dangerouslySetInnerHTML={{ __html: t('no_documents_hint') }} />
                 </div>
               }>
-                {docs.map(doc => (
-                  <TableRow key={doc.id} className="hover:bg-content2/60 transition-colors">
-                    <TableCell><span className="font-semibold text-primary">{doc.number || '—'}</span></TableCell>
-                    <TableCell className="text-default-500">{DOC_TYPES[doc.type] || doc.type}</TableCell>
-                    <TableCell className="font-medium">{doc.contact_name || '—'}</TableCell>
-                    <TableCell className="text-default-500">{fmtDate(doc.date)}</TableCell>
-                    <TableCell className="text-default-500">{fmtDate(doc.due_date)}</TableCell>
-                    <TableCell><span className="text-success font-semibold">฿{fmt(doc.total)}</span></TableCell>
+                {[
+                  ...docs.map(doc => ({ kind: 'doc' as const, id: `d-${doc.id}`, doc })),
+                  ...whts.map(wht => ({ kind: 'wht' as const, id: `w-${wht.id}`, wht })),
+                ].sort((a, b) => {
+                  const da = a.kind === 'doc' ? a.doc.date : a.wht.issue_date
+                  const db = b.kind === 'doc' ? b.doc.date : b.wht.issue_date
+                  return (db || '').localeCompare(da || '')
+                }).map(row => row.kind === 'wht' ? (
+                  <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
                     <TableCell>
-                      <Chip size="sm" variant="flat" color={STATUS_COLOR[doc.status] || 'default'}>
-                        {STATUS_LABELS[doc.status] || doc.status}
+                      <span className="font-semibold text-primary">{row.wht.cert_no || `WHT-${row.wht.id}`}</span>
+                      {row.wht.book_no && <span className="text-[11px] text-default-400 ml-1.5">เล่ม {row.wht.book_no}</span>}
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat" color="secondary">{DOC_TYPES.withholding_tax}</Chip>
+                    </TableCell>
+                    <TableCell className="font-medium">{row.wht.payee_name || '—'}</TableCell>
+                    <TableCell className="text-default-500">{fmtDate(row.wht.issue_date)}</TableCell>
+                    <TableCell className="text-default-500">—</TableCell>
+                    <TableCell>
+                      <div>
+                        <span className="text-success font-semibold">฿{fmt(row.wht.total_amount)}</span>
+                        <span className="text-[11px] text-default-400 ml-1">ภาษี ฿{fmt(row.wht.total_tax)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat" color="warning">
+                        {WHT_FORM_LABELS[row.wht.form_type || ''] || row.wht.form_type || 'ภ.ง.ด.53'}
                       </Chip>
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        <Btn size="sm" variant="ghost" onClick={() => openView(doc.id)}>{t('btn_update')}</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => doDuplicate(doc.id)}>{t('btn_duplicate')}</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => openPreview(doc.id)}>{t('btn_preview')}</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => generatePDF(doc.id)}>PDF</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => openEdit(doc.id)}>{t('btn_edit')}</Btn>
-                        <Btn size="sm" variant="danger" onClick={() => doDelete(doc.id)}>{t('btn_delete')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => onNavigate?.('withholding_tax')}>{t('btn_edit')}</Btn>
+                        <Btn size="sm" variant="danger" onClick={() => doDeleteWht(row.wht.id)}>{t('btn_delete')}</Btn>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
+                    <TableCell><span className="font-semibold text-primary">{row.doc.number || '—'}</span></TableCell>
+                    <TableCell className="text-default-500">{DOC_TYPES[row.doc.type] || row.doc.type}</TableCell>
+                    <TableCell className="font-medium">{row.doc.contact_name || '—'}</TableCell>
+                    <TableCell className="text-default-500">{fmtDate(row.doc.date)}</TableCell>
+                    <TableCell className="text-default-500">{fmtDate(row.doc.due_date)}</TableCell>
+                    <TableCell><span className="text-success font-semibold">฿{fmt(row.doc.total)}</span></TableCell>
+                    <TableCell>
+                      <Chip size="sm" variant="flat" color={STATUS_COLOR[row.doc.status] || 'default'}>
+                        {STATUS_LABELS[row.doc.status] || row.doc.status}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Btn size="sm" variant="ghost" onClick={() => openView(row.doc.id)}>{t('btn_update')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => doDuplicate(row.doc.id)}>{t('btn_duplicate')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => openPreview(row.doc.id)}>{t('btn_preview')}</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => generatePDF(row.doc.id)}>PDF</Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => openEdit(row.doc.id)}>{t('btn_edit')}</Btn>
+                        <Btn size="sm" variant="danger" onClick={() => doDelete(row.doc.id)}>{t('btn_delete')}</Btn>
                       </div>
                     </TableCell>
                   </TableRow>
