@@ -8,11 +8,11 @@ import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
 import {
   getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus,
-  getContacts, getActiveCompany, getContact, getProducts,
+  getContacts, getActiveCompany, getContact, getProducts, getEmployees,
   getWithholdingTaxList, getWithholdingTax, createWithholdingTax, updateWithholdingTax, deleteWithholdingTax,
   getPaySlips, createPaySlip, updatePaySlip, deletePaySlip,
 } from '../api'
-import type { Document, DocumentItem, Contact, Company, Product, WithholdingTax, WithholdingTaxItem, PaySlip } from '../types'
+import type { Document, DocumentItem, Contact, Company, Product, WithholdingTax, WithholdingTaxItem, PaySlip, Employee } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import { buildWHTForm } from '../whtForm'
 import { buildPaySlipHtml } from './PaySlip'
@@ -109,6 +109,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const [viewDoc, setViewDoc] = useState<Document | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [preview, setPreview] = useState<{ html: string; id: number } | null>(null)
   const [whtPreview, setWhtPreview] = useState<{ html: string; id: number } | null>(null)
 
@@ -296,7 +297,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   // ── PaySlip helpers ──────────────────────────────────────────────────────────
   const resetPSForm = () => { setPsEditId(null); setPsForm({ ...PS_ZERO }) }
 
-  const openEditPS = (slip: PaySlip) => {
+  const openEditPS = async (slip: PaySlip) => {
+    if (employees.length === 0) { const { data: emps } = await getEmployees(); setEmployees(emps) }
     setFType('pay_slips')
     setPsEditId(slip.id)
     setPsForm({
@@ -382,8 +384,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
 
   // ── Open modal helpers ───────────────────────────────────────────────────────
   const openCreate = async () => {
-    const [{ data: cs }, { data: ps }] = await Promise.all([getContacts(), getProducts()])
-    setContacts(cs); setProducts(ps)
+    const [{ data: cs }, { data: ps }, { data: emps }] = await Promise.all([getContacts(), getProducts(), getEmployees()])
+    setContacts(cs); setProducts(ps); setEmployees(emps)
     setEditDoc(null)
     setFType('quotation'); setFNumber(''); setFContactId(''); setFContactName('')
     setFDate(today()); setFDue(''); setFDiscount(0); setFDiscountMode('amount')
@@ -508,20 +510,20 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-2 flex-wrap items-center">
-          <select value={filterType} onChange={e => setFilterType(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
-            <option value="">{t('all_types')}</option>
-            {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`${SELECT_CLASS} min-w-[130px]`}>
-            <option value="">{t('all_statuses')}</option>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-          <TextField className="min-w-[200px]" placeholder={t('search_doc')}
-            value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <Btn variant="primary" onClick={openCreate}>{t('btn_create_doc')}</Btn>
+      <div className="flex items-center gap-2">
+        <select value={filterType} onChange={e => setFilterType(e.target.value)}
+          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-[148px] flex-shrink-0">
+          <option value="">{t('all_types')}</option>
+          {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-[120px] flex-shrink-0">
+          <option value="">{t('all_statuses')}</option>
+          {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <TextField className="flex-1 min-w-0" placeholder={t('search_doc')}
+          value={search} onChange={e => setSearch(e.target.value)} />
+        <Btn size="sm" variant="primary" onClick={openCreate} className="flex-shrink-0">{t('btn_create_doc')}</Btn>
       </div>
 
       {/* Table */}
@@ -785,12 +787,15 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL_CLASS}>{t('ps_lbl_employee')}</label>
-                  <select value={psForm.contact_id} onChange={e => {
-                    const id = e.target.value; setPs('contact_id', id)
-                    if (id) { const c = contacts.find(c => String(c.id) === id); if (c) setPs('employee_name', c.name) }
+                  <select value={psForm.employee_name} onChange={e => {
+                    const name = e.target.value; setPs('employee_name', name)
+                    if (name) {
+                      const emp = employees.find(em => em.name === name)
+                      if (emp) { if (emp.department) setPs('department', emp.department); if (emp.salary) setPs('salary', emp.salary) }
+                    }
                   }} className={SELECT_CLASS}>
                     <option value="">— เลือกพนักงาน —</option>
-                    {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {employees.map(em => <option key={em.id} value={em.name}>{em.name}{em.department ? ` (${em.department})` : ''}{em.employee_no ? ` #${em.employee_no}` : ''}</option>)}
                   </select>
                   <input className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors"
                     placeholder="หรือพิมพ์ชื่อโดยตรง..." value={psForm.employee_name} onChange={e => setPs('employee_name', e.target.value)} />
