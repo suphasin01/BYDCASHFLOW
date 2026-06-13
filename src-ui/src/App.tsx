@@ -20,6 +20,7 @@ import Reports from './pages/Reports'
 import Companies from './pages/Companies'
 import Settings from './pages/Settings'
 import WithholdingTaxPage from './pages/WithholdingTax'
+import PaySlipPage from './pages/PaySlip'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 export type ToastItem = { id: number; msg: string; type: 'ok' | 'err' }
@@ -32,7 +33,7 @@ type CompanyCtxType = { activeCompany: Company | null; reload: () => void }
 export const CompanyContext = createContext<CompanyCtxType>({ activeCompany: null, reload: () => {} })
 export const useActiveCompany = () => useContext(CompanyContext)
 
-type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'companies' | 'settings'
+type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'pay_slips' | 'companies' | 'settings'
 
 const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
   { page: 'dashboard', Icon: LayoutDashboard, key: 'nav_dashboard' },
@@ -42,6 +43,7 @@ const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
   { page: 'products', Icon: Package, key: 'nav_products' },
   { page: 'reports', Icon: TrendingUp, key: 'nav_reports' },
   { page: 'withholding_tax', Icon: Receipt, key: 'nav_withholding_tax' },
+  { page: 'pay_slips', Icon: FileText, key: 'nav_pay_slips' },
   { page: 'companies', Icon: Building2, key: 'nav_companies' },
   { page: 'settings', Icon: SettingsIcon, key: 'nav_settings' },
 ]
@@ -192,6 +194,7 @@ export default function App() {
       case 'products': return <Products />
       case 'reports': return <Reports />
       case 'withholding_tax': return <WithholdingTaxPage />
+      case 'pay_slips': return <PaySlipPage />
       case 'companies': return <Companies />
       case 'settings': return <Settings />
     }
@@ -205,13 +208,14 @@ export default function App() {
     products: null,
     reports: null,
     withholding_tax: null,
+    pay_slips: null,
     companies: null,
     settings: null,
   }
 
   const navSections = [
     { label: t('nav_sec_main'), items: ['dashboard', 'payments'] },
-    { label: t('nav_sec_docs'), items: ['documents'] },
+    { label: t('nav_sec_docs'), items: ['documents', 'withholding_tax', 'pay_slips'] },
     { label: t('nav_sec_data'), items: ['contacts', 'products'] },
     { label: t('nav_sec_analyze'), items: ['reports'] },
     { label: '', items: ['companies', 'settings'] },

@@ -146,6 +146,42 @@ db.exec(`
     tax_withheld     REAL NOT NULL DEFAULT 0,
     sort_order       INTEGER NOT NULL DEFAULT 0
   );
+
+  CREATE TABLE IF NOT EXISTS pay_slips (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_name   TEXT    NOT NULL DEFAULT '',
+    contact_id      INTEGER REFERENCES contacts(id),
+    department      TEXT,
+    period          TEXT,
+    pay_date        TEXT    NOT NULL DEFAULT (date('now','localtime')),
+    salary          REAL    NOT NULL DEFAULT 0,
+    cost_of_living  REAL    NOT NULL DEFAULT 0,
+    position_allow  REAL    NOT NULL DEFAULT 0,
+    meal_allow      REAL    NOT NULL DEFAULT 0,
+    overtime        REAL    NOT NULL DEFAULT 0,
+    shift_allow     REAL    NOT NULL DEFAULT 0,
+    travel_allow    REAL    NOT NULL DEFAULT 0,
+    subsidy         REAL    NOT NULL DEFAULT 0,
+    welfare         REAL    NOT NULL DEFAULT 0,
+    bonus           REAL    NOT NULL DEFAULT 0,
+    total_income    REAL    NOT NULL DEFAULT 0,
+    tax_withheld    REAL    NOT NULL DEFAULT 0,
+    social_security REAL    NOT NULL DEFAULT 0,
+    late_deduct     REAL    NOT NULL DEFAULT 0,
+    absent_deduct   REAL    NOT NULL DEFAULT 0,
+    loan_deduct     REAL    NOT NULL DEFAULT 0,
+    advance_deduct  REAL    NOT NULL DEFAULT 0,
+    other_deduct    REAL    NOT NULL DEFAULT 0,
+    total_deductions REAL   NOT NULL DEFAULT 0,
+    net_income      REAL    NOT NULL DEFAULT 0,
+    cum_income      REAL    NOT NULL DEFAULT 0,
+    cum_tax         REAL    NOT NULL DEFAULT 0,
+    cum_social_sec  REAL    NOT NULL DEFAULT 0,
+    cum_provident   REAL    NOT NULL DEFAULT 0,
+    notes           TEXT,
+    created_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+    updated_at      TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+  );
 `);
 
 // Migration: add company column to contacts if it doesn't exist
@@ -486,6 +522,69 @@ export const withholdingTaxRepo = {
   delete: (id: number) => db.prepare('DELETE FROM withholding_tax WHERE id = ?').run(id),
 };
 
+// ── Pay Slips ─────────────────────────────────────────────────────────────────────
+
+export const paySlipRepo = {
+  list: (q?: string) => q
+    ? all(`SELECT * FROM pay_slips WHERE employee_name LIKE ? OR department LIKE ? OR period LIKE ? ORDER BY pay_date DESC`, `%${q}%`, `%${q}%`, `%${q}%`)
+    : all('SELECT * FROM pay_slips ORDER BY pay_date DESC'),
+
+  get: (id: number) => get('SELECT * FROM pay_slips WHERE id = ?', id),
+
+  create: (data: Record<string, unknown>) => {
+    const r = run(
+      `INSERT INTO pay_slips (employee_name,contact_id,department,period,pay_date,salary,cost_of_living,position_allow,meal_allow,overtime,shift_allow,travel_allow,subsidy,welfare,bonus,total_income,tax_withheld,social_security,late_deduct,absent_deduct,loan_deduct,advance_deduct,other_deduct,total_deductions,net_income,cum_income,cum_tax,cum_social_sec,cum_provident,notes)
+       VALUES (:employee_name,:contact_id,:department,:period,:pay_date,:salary,:cost_of_living,:position_allow,:meal_allow,:overtime,:shift_allow,:travel_allow,:subsidy,:welfare,:bonus,:total_income,:tax_withheld,:social_security,:late_deduct,:absent_deduct,:loan_deduct,:advance_deduct,:other_deduct,:total_deductions,:net_income,:cum_income,:cum_tax,:cum_social_sec,:cum_provident,:notes)`,
+      {
+        ':employee_name': data.employee_name ?? '',
+        ':contact_id': data.contact_id ?? null,
+        ':department': data.department ?? null,
+        ':period': data.period ?? null,
+        ':pay_date': data.pay_date ?? new Date().toISOString().slice(0, 10),
+        ':salary': data.salary ?? 0,
+        ':cost_of_living': data.cost_of_living ?? 0,
+        ':position_allow': data.position_allow ?? 0,
+        ':meal_allow': data.meal_allow ?? 0,
+        ':overtime': data.overtime ?? 0,
+        ':shift_allow': data.shift_allow ?? 0,
+        ':travel_allow': data.travel_allow ?? 0,
+        ':subsidy': data.subsidy ?? 0,
+        ':welfare': data.welfare ?? 0,
+        ':bonus': data.bonus ?? 0,
+        ':total_income': data.total_income ?? 0,
+        ':tax_withheld': data.tax_withheld ?? 0,
+        ':social_security': data.social_security ?? 0,
+        ':late_deduct': data.late_deduct ?? 0,
+        ':absent_deduct': data.absent_deduct ?? 0,
+        ':loan_deduct': data.loan_deduct ?? 0,
+        ':advance_deduct': data.advance_deduct ?? 0,
+        ':other_deduct': data.other_deduct ?? 0,
+        ':total_deductions': data.total_deductions ?? 0,
+        ':net_income': data.net_income ?? 0,
+        ':cum_income': data.cum_income ?? 0,
+        ':cum_tax': data.cum_tax ?? 0,
+        ':cum_social_sec': data.cum_social_sec ?? 0,
+        ':cum_provident': data.cum_provident ?? 0,
+        ':notes': data.notes ?? null,
+      }
+    );
+    return get('SELECT * FROM pay_slips WHERE id = ?', r.lastInsertRowid);
+  },
+
+  update: (id: number, data: Record<string, unknown>) => {
+    const allowed = ['employee_name','contact_id','department','period','pay_date','salary','cost_of_living','position_allow','meal_allow','overtime','shift_allow','travel_allow','subsidy','welfare','bonus','total_income','tax_withheld','social_security','late_deduct','absent_deduct','loan_deduct','advance_deduct','other_deduct','total_deductions','net_income','cum_income','cum_tax','cum_social_sec','cum_provident','notes'];
+    const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');
+    if (fields) {
+      const params: Record<string, unknown> = { ':id': id };
+      Object.keys(data).filter(k => allowed.includes(k)).forEach(k => { params[`:${k}`] = data[k]; });
+      db.prepare(`UPDATE pay_slips SET ${fields}, updated_at = datetime('now','localtime') WHERE id = :id`).run(np(params));
+    }
+    return get('SELECT * FROM pay_slips WHERE id = ?', id);
+  },
+
+  delete: (id: number) => db.prepare('DELETE FROM pay_slips WHERE id = ?').run(id),
+};
+
 // ── Export / Import ──────────────────────────────────────────────────────────────
 
 export function exportAll(): Record<string, unknown> {
@@ -501,6 +600,7 @@ export function exportAll(): Record<string, unknown> {
     payments: all('SELECT * FROM payments ORDER BY id'),
     withholding_tax: all('SELECT * FROM withholding_tax ORDER BY id'),
     withholding_tax_items: all('SELECT * FROM withholding_tax_items ORDER BY id'),
+    pay_slips: all('SELECT * FROM pay_slips ORDER BY id'),
   };
 }
 
@@ -510,6 +610,7 @@ export function importAll(data: Record<string, unknown[]>): void {
   const doImport = db.transaction(() => {
     db.exec('DELETE FROM withholding_tax_items');
     db.exec('DELETE FROM withholding_tax');
+    db.exec('DELETE FROM pay_slips');
     db.exec('DELETE FROM payments');
     db.exec('DELETE FROM document_items');
     db.exec('DELETE FROM documents');
@@ -536,8 +637,9 @@ export function importAll(data: Record<string, unknown[]>): void {
     insert('payments', (data.payments || []) as Record<string, unknown>[]);
     insert('withholding_tax', (data.withholding_tax || []) as Record<string, unknown>[]);
     insert('withholding_tax_items', (data.withholding_tax_items || []) as Record<string, unknown>[]);
+    insert('pay_slips', (data.pay_slips || []) as Record<string, unknown>[]);
 
-    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments', 'withholding_tax', 'withholding_tax_items']) {
+    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments', 'withholding_tax', 'withholding_tax_items', 'pay_slips']) {
       const r = db.prepare(`SELECT COALESCE(MAX(id), 0) as m FROM ${table}`).get() as { m: number };
       if (r.m > 0) db.prepare('INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(table, r.m);
     }
