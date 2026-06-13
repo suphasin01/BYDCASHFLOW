@@ -70,19 +70,141 @@ function fetchLatestGithubRelease() {
           const version = (data.tag_name || '').replace(/^v/, '');
           const url = data.html_url;
           let downloadUrl = null;
-          if (process.platform === 'darwin' && Array.isArray(data.assets)) {
-            const archStr = process.arch === 'arm64' ? 'arm64' : 'x64';
-            const dmg = data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes(archStr))
-                     || data.assets.find(a => a.name.endsWith('.dmg'));
-            if (dmg) downloadUrl = dmg.browser_download_url;
+          let winDownloadUrl = null;
+          let buildInfoUrl = null;
+          if (Array.isArray(data.assets)) {
+            if (process.platform === 'darwin') {
+              const archStr = process.arch === 'arm64' ? 'arm64' : 'x64';
+              const dmg = data.assets.find(a => a.name.endsWith('.dmg') && a.name.includes(archStr))
+                       || data.assets.find(a => a.name.endsWith('.dmg'));
+              if (dmg) downloadUrl = dmg.browser_download_url;
+            }
+            if (process.platform === 'win32') {
+              const setupExe = data.assets.find(a => /Setup.*\.exe$/i.test(a.name));
+              if (setupExe) winDownloadUrl = setupExe.browser_download_url;
+            }
+            const buildInfoAsset = data.assets.find(a => a.name === 'build-info.json');
+            if (buildInfoAsset) buildInfoUrl = buildInfoAsset.browser_download_url;
           }
-          resolve({ version, url, downloadUrl });
+          resolve({ version, url, downloadUrl, winDownloadUrl, buildInfoUrl });
         } catch { resolve(null); }
       });
     });
     req.on('error', () => resolve(null));
     req.on('timeout', () => { req.destroy(); resolve(null); });
   });
+}
+
+// ── Read this build's run ID (embedded by CI) ─────────────────────────
+let _myRunId = undefined;
+function getMyRunId() {
+  if (_myRunId !== undefined) return _myRunId;
+  try {
+    const p = path.join(
+      app.isPackaged ? app.getAppPath() : path.join(__dirname, '..'),
+      'build-info.json'
+    );
+    const info = JSON.parse(fs.readFileSync(p, 'utf8'));
+    _myRunId = String(info.runId || '');
+  } catch { _myRunId = ''; }
+  return _myRunId;
+}
+
+// ── Fetch build-info.json from GitHub release asset ───────────────────
+function fetchReleaseBuildInfo(url) {
+  return new Promise((resolve) => {
+    const makeReq = (u, redirects) => {
+      if (redirects > 5) { resolve(null); return; }
+      const urlObj = new URL(u);
+      const protocol = urlObj.protocol === 'https:' ? https : http;
+      protocol.get(u, { headers: { 'User-Agent': `FruitBiz/${app.getVersion()}` } }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+          res.resume(); makeReq(res.headers.location, redirects + 1); return;
+        }
+        if (res.statusCode !== 200) { res.resume(); resolve(null); return; }
+        let body = '';
+        res.on('data', d => { body += d; });
+        res.on('end', () => { try { resolve(JSON.parse(body)); } catch { resolve(null); } });
+      }).on('error', () => resolve(null));
+    };
+    makeReq(url, 0);
+  });
+}
+
+// ── Download Windows NSIS installer (same-version force-update) ───────
+function downloadWindowsUpdate(version, downloadUrl) {
+  return new Promise((resolve, reject) => {
+    const destPath = path.join(app.getPath('temp'), `FruitBiz-Setup-${version}-new.exe`);
+    if (fs.existsSync(destPath)) { resolve(destPath); return; }
+    const tmpPath = destPath + '.tmp';
+    const file = fs.createWriteStream(tmpPath);
+    if (mainWindow) mainWindow.webContents.send('update-progress', { percent: 0 });
+    const makeRequest = (url, redirects) => {
+      if (redirects > 5) { file.destroy(); try { fs.unlinkSync(tmpPath); } catch {} reject(new Error('Too many redirects')); return; }
+      const urlObj = new URL(url);
+      const protocol = urlObj.protocol === 'https:' ? https : http;
+      protocol.get(url, { headers: { 'User-Agent': `FruitBiz/${app.getVersion()}` } }, (res) => {
+        if (res.statusCode === 301 || res.statusCode === 302 || res.statusCode === 307 || res.statusCode === 308) {
+          res.resume(); makeRequest(res.headers.location, redirects + 1); return;
+        }
+        if (res.statusCode !== 200) { res.resume(); file.destroy(); try { fs.unlinkSync(tmpPath); } catch {} reject(new Error(`HTTP ${res.statusCode}`)); return; }
+        const total = parseInt(res.headers['content-length'] || '0', 10);
+        let downloaded = 0;
+        res.on('data', chunk => {
+          downloaded += chunk.length;
+          if (total > 0 && mainWindow) {
+            const pct = Math.round((downloaded / total) * 100);
+            mainWindow.webContents.send('update-progress', { percent: pct });
+            mainWindow.setProgressBar(pct / 100);
+          }
+        });
+        res.pipe(file);
+        file.on('finish', () => file.close(() => {
+          try { fs.renameSync(tmpPath, destPath); } catch (e) { reject(e); return; }
+          if (mainWindow) { mainWindow.setProgressBar(-1); mainWindow.webContents.send('update-progress', { percent: 100 }); }
+          resolve(destPath);
+        }));
+        file.on('error', err => { try { fs.unlinkSync(tmpPath); } catch {} reject(err); });
+      }).on('error', err => { try { fs.unlinkSync(tmpPath); } catch {} reject(err); });
+    };
+    makeRequest(downloadUrl, 0);
+  });
+}
+
+// ── Check for same-version newer CI build (Windows) ───────────────────
+async function checkWindowsSameVersionUpdate() {
+  const runId = getMyRunId();
+  if (!runId) return false;
+  try {
+    const result = await fetchLatestGithubRelease();
+    if (!result || !result.version) return false;
+    const current = app.getVersion();
+    if (compareVersions(result.version, current) !== 0) return false;
+    if (!result.buildInfoUrl || !result.winDownloadUrl) return false;
+    const releaseInfo = await fetchReleaseBuildInfo(result.buildInfoUrl);
+    if (!releaseInfo || !releaseInfo.runId) return false;
+    if (String(releaseInfo.runId) === runId) return false;
+    log.info(`[updater-win] Same version ${current}, newer CI build: ${runId} → ${releaseInfo.runId}`);
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version: result.version });
+    const installerPath = await downloadWindowsUpdate(result.version, result.winDownloadUrl);
+    if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: result.version });
+    let countdown = 10;
+    autoInstallTimer = setInterval(() => {
+      countdown--;
+      if (mainWindow) mainWindow.webContents.send('update-countdown', { seconds: countdown, version: result.version });
+      if (countdown <= 0) {
+        clearInterval(autoInstallTimer); autoInstallTimer = null;
+        isQuittingForUpdate = true;
+        const { spawn } = require('child_process');
+        spawn(installerPath, ['--updated'], { detached: true, stdio: 'ignore' }).unref();
+        setTimeout(() => app.quit(), 300);
+      }
+    }, 1000);
+    return true;
+  } catch (err) {
+    log.warn('[updater-win] Same-version check error:', err.message);
+    return false;
+  }
 }
 
 function downloadMacUpdate(version, downloadUrl) {
@@ -149,22 +271,37 @@ async function doMacVersionCheck() {
       return;
     }
     const current = app.getVersion();
-    if (compareVersions(result.version, current) > 0) {
-      log.info(`[updater-mac] New version available: ${result.version} (current: ${current})`);
+    const cmp = compareVersions(result.version, current);
+    let shouldUpdate = cmp > 0;
+
+    // Same version but newer CI build?
+    if (cmp === 0 && result.buildInfoUrl) {
+      const runId = getMyRunId();
+      if (runId) {
+        const releaseInfo = await fetchReleaseBuildInfo(result.buildInfoUrl);
+        if (releaseInfo && String(releaseInfo.runId) !== runId) {
+          log.info(`[updater-mac] Same version ${current}, newer CI build: ${runId} → ${releaseInfo.runId}`);
+          shouldUpdate = true;
+          // Clear cached DMG so it re-downloads the new build
+          const cachedPath = path.join(app.getPath('temp'), `FruitBiz-${current}.dmg`);
+          try { fs.unlinkSync(cachedPath); } catch {}
+        }
+      }
+    }
+
+    if (shouldUpdate) {
+      log.info(`[updater-mac] Update available: ${result.version} (current: ${current})`);
       if (!result.downloadUrl) {
-        // No DMG asset found — fall back to browser
         if (mainWindow) mainWindow.webContents.send('update-status', {
           type: 'mac-available', version: result.version, releaseUrl: result.url,
         });
         return;
       }
-      // Download in-app
       if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version: result.version });
       try {
         await downloadMacUpdate(result.version, result.downloadUrl);
         log.info(`[updater-mac] Download complete: ${macUpdatePath}`);
         if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: result.version });
-        // Start countdown
         let countdown = 10;
         autoInstallTimer = setInterval(() => {
           countdown--;
@@ -252,12 +389,14 @@ function setupAutoUpdater() {
     }, 1000);
   });
 
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(() => {});
+  setTimeout(async () => {
+    const handled = await checkWindowsSameVersionUpdate();
+    if (!handled) autoUpdater.checkForUpdates().catch(() => {});
   }, 3000);
 
-  setInterval(() => {
-    autoUpdater.checkForUpdates().catch(() => {});
+  setInterval(async () => {
+    const handled = await checkWindowsSameVersionUpdate();
+    if (!handled) autoUpdater.checkForUpdates().catch(() => {});
   }, 4 * 60 * 60 * 1000);
 }
 
@@ -316,7 +455,7 @@ ipcMain.handle('import-data', async () => {
 });
 
 // ── Check for Updates IPC ─────────────────────────────────────────────
-ipcMain.handle('check-for-updates', () => {
+ipcMain.handle('check-for-updates', async () => {
   if (!app.isPackaged) {
     if (mainWindow) mainWindow.webContents.send('update-not-available');
     return;
@@ -325,11 +464,13 @@ ipcMain.handle('check-for-updates', () => {
     doMacVersionCheck();
     return;
   }
-  // Windows/Linux: use electron-updater
-  // Note: do NOT send 'update-not-available' in catch — the 'error' event handles it
-  autoUpdater.checkForUpdates().catch((err) => {
-    log.warn('[updater] checkForUpdates rejected:', err?.message || err);
-  });
+  // Windows/Linux: check same-version build first, then fall back to electron-updater
+  const handled = await checkWindowsSameVersionUpdate();
+  if (!handled) {
+    autoUpdater.checkForUpdates().catch((err) => {
+      log.warn('[updater] checkForUpdates rejected:', err?.message || err);
+    });
+  }
 });
 
 // ── Cancel Auto-Update IPC ────────────────────────────────────────────

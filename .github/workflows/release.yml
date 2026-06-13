@@ -30,6 +30,10 @@ jobs:
       - name: Rebuild better-sqlite3 for Electron
         run: npx @electron/rebuild -f -w better-sqlite3
 
+      - name: Write build info
+        shell: bash
+        run: echo '{"runId":${{ github.run_id }},"sha":"${{ github.sha }}"}' > build-info.json
+
       - name: Build UI
         run: cd src-ui && npm install && npm run build
 
@@ -40,6 +44,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --publish always
+
+      - name: Upload build-info to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          $version = node -e "console.log('v' + require('./package.json').version)"
+          foreach ($attempt in 1..4) {
+            gh release upload $version build-info.json --clobber
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds ([math]::Pow(2, $attempt))
+          }
 
   # ── Windows: build Portable exe — uploads after release exists ─────────────────
   build-windows-portable:
@@ -59,6 +75,10 @@ jobs:
 
       - name: Rebuild better-sqlite3 for Electron
         run: npx @electron/rebuild -f -w better-sqlite3
+
+      - name: Write build info
+        shell: bash
+        run: echo '{"runId":${{ github.run_id }},"sha":"${{ github.sha }}"}' > build-info.json
 
       - name: Build UI
         run: cd src-ui && npm install && npm run build
@@ -111,6 +131,9 @@ jobs:
 
       - name: Create app icons
         run: bash create-icon.sh
+
+      - name: Write build info
+        run: echo '{"runId":${{ github.run_id }},"sha":"${{ github.sha }}"}' > build-info.json
 
       - name: Build UI
         run: cd src-ui && npm install && npm run build
