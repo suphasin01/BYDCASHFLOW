@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
-import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, withholdingTaxRepo, paySlipRepo, exportAll, importAll } from './db';
+import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, withholdingTaxRepo, employeeRepo, paySlipRepo, exportAll, importAll } from './db';
 
 const app = express();
 const PORT = process.env.PORT ?? 3737;
@@ -278,13 +278,39 @@ app.delete('/api/withholding-tax/:id', (req, res) => {
   res.json({ success: true });
 });
 
-// ── Pay Slips ─────────────────────────────────────────────────────────────────
+// ── Employees ─────────────────────────────────────────────────────────────────
+
+app.get('/api/employees', (req, res) => {
+  const { q } = req.query as Record<string, string>;
+  res.json({ data: employeeRepo.list(q) });
+});
+
+app.get('/api/employees/:id', (req, res) => {
+  const row = employeeRepo.get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  res.json(row);
+});
+
+app.post('/api/employees', (req, res) => {
+  try { res.status(201).json(employeeRepo.create(req.body)); }
+  catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+});
+
+app.put('/api/employees/:id', (req, res) => {
+  try { res.json(employeeRepo.update(Number(req.params.id), req.body)); }
+  catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+});
+
+app.delete('/api/employees/:id', (req, res) => {
+  employeeRepo.delete(Number(req.params.id));
+  res.json({ success: true });
+});
+
+// ── Pay Slips ──────────────────────────────────────────────────────────────────
 
 app.get('/api/pay-slips', (req, res) => {
-  try {
-    const { q } = req.query as Record<string, string>;
-    res.json({ data: paySlipRepo.list(q) });
-  } catch (e: unknown) { res.status(500).json({ error: String(e) }); }
+  const { q } = req.query as Record<string, string>;
+  res.json({ data: paySlipRepo.list(q) });
 });
 
 app.get('/api/pay-slips/:id', (req, res) => {
@@ -294,15 +320,13 @@ app.get('/api/pay-slips/:id', (req, res) => {
 });
 
 app.post('/api/pay-slips', (req, res) => {
-  try {
-    res.status(201).json(paySlipRepo.create(req.body));
-  } catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+  try { res.status(201).json(paySlipRepo.create(req.body)); }
+  catch (e: unknown) { res.status(400).json({ error: String(e) }); }
 });
 
 app.put('/api/pay-slips/:id', (req, res) => {
-  try {
-    res.json(paySlipRepo.update(Number(req.params.id), req.body));
-  } catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+  try { res.json(paySlipRepo.update(Number(req.params.id), req.body)); }
+  catch (e: unknown) { res.status(400).json({ error: String(e) }); }
 });
 
 app.delete('/api/pay-slips/:id', (req, res) => {

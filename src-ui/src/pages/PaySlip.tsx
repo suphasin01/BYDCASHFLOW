@@ -331,7 +331,7 @@ export default function PaySlipPage() {
   )
 }
 
-function buildPaySlipHtml(slip: PaySlip, company: { name?: string | null; address?: string | null; phone?: string | null; tax_id?: string | null } | null): string {
+export function buildPaySlipHtml(slip: PaySlip, company: { name?: string | null; address?: string | null; phone?: string | null; tax_id?: string | null } | null): string {
   const fmtN = (n: number) => new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2 }).format(n || 0)
   const row = (label: string, val: number, idx: number, _side: 'income' | 'deduct') => {
     return `<tr>

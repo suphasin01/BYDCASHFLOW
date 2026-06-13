@@ -1,4 +1,4 @@
-import type { Contact, Product, Document, Payment, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax, PaySlip } from './types'
+import type { Contact, Product, Document, Payment, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax, PaySlip, Employee } from './types'
 
 const BASE = 'http://localhost:3737/api'
 
@@ -86,3 +86,10 @@ export const getPaySlip = (id: number) => GET<PaySlip>('/pay-slips/' + id)
 export const createPaySlip = (data: Partial<PaySlip>) => POST<PaySlip>('/pay-slips', data)
 export const updatePaySlip = (id: number, data: Partial<PaySlip>) => PUT<PaySlip>('/pay-slips/' + id, data)
 export const deletePaySlip = (id: number) => DEL<void>('/pay-slips/' + id)
+
+// ── Employees ─────────────────────────────────────────────────────────────────
+export const getEmployees = (q?: string) =>
+  GET<{ data: Employee[] }>('/employees' + (q ? '?q=' + encodeURIComponent(q) : ''))
+export const createEmployee = (data: Partial<Employee>) => POST<Employee>('/employees', data)
+export const updateEmployee = (id: number, data: Partial<Employee>) => PUT<Employee>('/employees/' + id, data)
+export const deleteEmployee = (id: number) => DEL<void>('/employees/' + id)

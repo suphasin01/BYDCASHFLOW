@@ -3,13 +3,19 @@ import {
   Card, CardBody, Chip, Divider, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
-import { ChevronDown, Receipt } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
-import { useToast } from '../App'
-import { getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus, getContacts, getActiveCompany, getContact, getProducts, getWithholdingTaxList, deleteWithholdingTax } from '../api'
-import type { Document, DocumentItem, Contact, Company, Product, WithholdingTax } from '../types'
+import { useToast, useActiveCompany } from '../App'
+import {
+  getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus,
+  getContacts, getActiveCompany, getContact, getProducts,
+  getWithholdingTaxList, getWithholdingTax, createWithholdingTax, updateWithholdingTax, deleteWithholdingTax,
+  getPaySlips, createPaySlip, updatePaySlip, deletePaySlip,
+} from '../api'
+import type { Document, DocumentItem, Contact, Company, Product, WithholdingTax, WithholdingTaxItem, PaySlip } from '../types'
 import { fmt, fmtDate, today } from '../utils'
+import { buildWHTForm } from '../whtForm'
+import { buildPaySlipHtml } from './PaySlip'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
 import PreviewModal from '../ui/PreviewModal'
@@ -20,28 +26,93 @@ const STATUS_COLOR: Record<string, ChipColor> = {
 }
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
 
-type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'companies' | 'settings'
+// ─── WHT constants ────────────────────────────────────────────────────────────
+const WHT_INCOME_TYPES = [
+  { value: '40_1', key: 'wht_income_40_1', hasDesc: false },
+  { value: '40_2', key: 'wht_income_40_2', hasDesc: false },
+  { value: '40_3', key: 'wht_income_40_3', hasDesc: false },
+  { value: '40_4a', key: 'wht_income_40_4a', hasDesc: false },
+  { value: '40_4b_1_1', key: 'wht_income_40_4b_1_1', hasDesc: false },
+  { value: '40_4b_1_2', key: 'wht_income_40_4b_1_2', hasDesc: false },
+  { value: '40_4b_1_3', key: 'wht_income_40_4b_1_3', hasDesc: false },
+  { value: '40_4b_1_4', key: 'wht_income_40_4b_1_4', hasDesc: true },
+  { value: '40_4b_2_1', key: 'wht_income_40_4b_2_1', hasDesc: false },
+  { value: '40_4b_2_2', key: 'wht_income_40_4b_2_2', hasDesc: false },
+  { value: '40_4b_2_3', key: 'wht_income_40_4b_2_3', hasDesc: false },
+  { value: '40_4b_2_4', key: 'wht_income_40_4b_2_4', hasDesc: false },
+  { value: '40_4b_2_5', key: 'wht_income_40_4b_2_5', hasDesc: true },
+  { value: '3tres', key: 'wht_income_3tres', hasDesc: false },
+  { value: 'other', key: 'wht_income_other', hasDesc: true },
+]
+const WHT_FORM_TYPES = [
+  { value: 'nd1k', key: 'wht_form_nd1k' },
+  { value: 'nd1k_s', key: 'wht_form_nd1k_s' },
+  { value: 'nd2', key: 'wht_form_nd2' },
+  { value: 'nd3', key: 'wht_form_nd3' },
+  { value: 'nd2k', key: 'wht_form_nd2k' },
+  { value: 'nd3k', key: 'wht_form_nd3k' },
+  { value: 'nd53', key: 'wht_form_nd53' },
+]
+const emptyWHTItem = (): WithholdingTaxItem => ({ income_type: '40_1', income_type_desc: '', pay_date: '', amount: 0, tax_withheld: 0 })
+const WHT_FORM_LABELS: Record<string, string> = {
+  nd53: 'ภ.ง.ด.53', nd3: 'ภ.ง.ด.3', nd1: 'ภ.ง.ด.1ก',
+  nd1_special: 'ภ.ง.ด.1กพิเศษ', nd2: 'ภ.ง.ด.2', nd2k: 'ภ.ง.ด.2ก', nd3k: 'ภ.ง.ด.3ก',
+  nd1k: 'ภ.ง.ด.1ก', nd1k_s: 'ภ.ง.ด.1กพิเศษ',
+}
 
-export default function Documents({ onNavigate }: { onNavigate?: (page: Page) => void }) {
+// ─── PaySlip form state shape ─────────────────────────────────────────────────
+const PS_ZERO = {
+  employee_name: '', contact_id: '', department: '', period: '', pay_date: today(),
+  salary: 0, cost_of_living: 0, position_allow: 0, meal_allow: 0, overtime: 0,
+  shift_allow: 0, travel_allow: 0, subsidy: 0, welfare: 0, bonus: 0,
+  tax_withheld: 0, social_security: 0, late_deduct: 0, absent_deduct: 0,
+  loan_deduct: 0, advance_deduct: 0, other_deduct: 0,
+  cum_income: 0, cum_tax: 0, cum_social_sec: 0, cum_provident: 0, notes: '',
+}
+type PSForm = typeof PS_ZERO
+const PS_INCOME_KEYS = ['salary','cost_of_living','position_allow','meal_allow','overtime','shift_allow','travel_allow','subsidy','welfare','bonus'] as const
+const PS_DEDUCT_KEYS = ['tax_withheld','social_security','late_deduct','absent_deduct','loan_deduct','advance_deduct','other_deduct'] as const
+
+type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'pay_slips' | 'companies' | 'settings'
+
+export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (page: Page) => void }) {
   const { t } = useI18n()
   const { toast } = useToast()
+  const { activeCompany } = useActiveCompany()
 
+  const DOC_TYPES: Record<string, string> = {
+    quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
+    billing_note: t('type_billing_note'), cash_invoice: t('type_cash_invoice'),
+    purchase_order: t('type_purchase_order'), expense: t('type_expense'),
+    withholding_tax: t('nav_withholding_tax'),
+    pay_slips: t('nav_pay_slips'),
+  }
+  const STATUS_LABELS: Record<string, string> = {
+    draft: t('status_draft'), sent: t('status_sent'), approved: t('status_approved'),
+    paid: t('status_paid'), cancelled: t('status_cancelled'),
+  }
+
+  // ── List state ──────────────────────────────────────────────────────────────
   const [docs, setDocs] = useState<Document[]>([])
   const [whts, setWhts] = useState<WithholdingTax[]>([])
+  const [paySlips, setPaySlips] = useState<PaySlip[]>([])
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
 
-  // Modal state
+  // ── Modal state ─────────────────────────────────────────────────────────────
   const [modal, setModal] = useState<'none' | 'create' | 'edit' | 'view'>('none')
   const [editDoc, setEditDoc] = useState<Document | null>(null)
   const [viewDoc, setViewDoc] = useState<Document | null>(null)
   const [contacts, setContacts] = useState<Contact[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [preview, setPreview] = useState<{ html: string; id: number } | null>(null)
+  const [whtPreview, setWhtPreview] = useState<{ html: string; id: number } | null>(null)
 
-  // Form state
+  // ── Standard doc form ───────────────────────────────────────────────────────
   const [fType, setFType] = useState('quotation')
   const [fNumber, setFNumber] = useState('')
   const [fContactId, setFContactId] = useState('')
@@ -56,57 +127,82 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   const [items, setItems] = useState<DocumentItem[]>([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
   const [statusChange, setStatusChange] = useState('')
   const [convertType, setConvertType] = useState('')
-  const [search, setSearch] = useState('')
-  const [showDocMenu, setShowDocMenu] = useState(false)
 
-  const DOC_TYPES: Record<string, string> = {
-    quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
-    billing_note: t('type_billing_note'), cash_invoice: t('type_cash_invoice'),
-    purchase_order: t('type_purchase_order'), expense: t('type_expense'),
-    withholding_tax: t('nav_withholding_tax'),
-  }
-  const WHT_FORM_LABELS: Record<string, string> = {
-    nd53: 'ภ.ง.ด.53', nd3: 'ภ.ง.ด.3', nd1: 'ภ.ง.ด.1ก',
-    nd1_special: 'ภ.ง.ด.1กพิเศษ', nd2: 'ภ.ง.ด.2', nd2k: 'ภ.ง.ด.2ก', nd3k: 'ภ.ง.ด.3ก',
-  }
-  const STATUS_LABELS: Record<string, string> = {
-    draft: t('status_draft'), sent: t('status_sent'), approved: t('status_approved'),
-    paid: t('status_paid'), cancelled: t('status_cancelled'),
-  }
+  // ── WHT form state ──────────────────────────────────────────────────────────
+  const [wfEditId, setWfEditId] = useState<number | null>(null)
+  const [wfBookNo, setWfBookNo] = useState('')
+  const [wfCertNo, setWfCertNo] = useState('')
+  const [wfIssueDate, setWfIssueDate] = useState(today())
+  const [wfFormType, setWfFormType] = useState('')
+  const [wfPayerName, setWfPayerName] = useState('')
+  const [wfPayerAddress, setWfPayerAddress] = useState('')
+  const [wfPayerTaxId, setWfPayerTaxId] = useState('')
+  const [wfPayerTin, setWfPayerTin] = useState('')
+  const [wfPayeeId, setWfPayeeId] = useState('')
+  const [wfPayeeName, setWfPayeeName] = useState('')
+  const [wfPayeeAddress, setWfPayeeAddress] = useState('')
+  const [wfPayeeTaxId, setWfPayeeTaxId] = useState('')
+  const [wfPayeeTin, setWfPayeeTin] = useState('')
+  const [wfPayerType, setWfPayerType] = useState<'1' | '2' | '3' | '4'>('1')
+  const [wfPayerTypeOther, setWfPayerTypeOther] = useState('')
+  const [wfFundGpf, setWfFundGpf] = useState(0)
+  const [wfFundSso, setWfFundSso] = useState(0)
+  const [wfFundPvd, setWfFundPvd] = useState(0)
+  const [wfItems, setWfItems] = useState<WithholdingTaxItem[]>([emptyWHTItem()])
 
+  // ── PaySlip form state ──────────────────────────────────────────────────────
+  const [psEditId, setPsEditId] = useState<number | null>(null)
+  const [psForm, setPsForm] = useState<PSForm>({ ...PS_ZERO })
+  const setPs = (field: keyof PSForm, value: string | number) => setPsForm(prev => ({ ...prev, [field]: value }))
+
+  // ── Derived ─────────────────────────────────────────────────────────────────
+  const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0)
+  const discountAmt = fDiscountMode === 'percent' ? subtotal * fDiscount / 100 : fDiscount
+  const vatAmt = fVatMode === 'percent' ? (subtotal - discountAmt) * fVat / 100 : fVat
+  const total = subtotal - discountAmt + vatAmt
+
+  const wfTotalAmount = wfItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
+  const wfTotalTax = wfItems.reduce((s, i) => s + (Number(i.tax_withheld) || 0), 0)
+
+  const psTotalIncome = PS_INCOME_KEYS.reduce((s, k) => s + (Number((psForm as Record<string, unknown>)[k]) || 0), 0)
+  const psTotalDeductions = PS_DEDUCT_KEYS.reduce((s, k) => s + (Number((psForm as Record<string, unknown>)[k]) || 0), 0)
+  const psNetIncome = psTotalIncome - psTotalDeductions
+
+  // ── Load ────────────────────────────────────────────────────────────────────
   const load = async () => {
     setLoading(true)
     try {
-      const showDocs = filterType !== 'withholding_tax'
+      const showDocs = !filterType || !['withholding_tax', 'pay_slips'].includes(filterType)
       const showWhts = !filterType || filterType === 'withholding_tax'
+      const showPSs = !filterType || filterType === 'pay_slips'
       const params: Record<string, string> = {}
       if (filterType && showDocs) params.type = filterType
       if (filterStatus) params.status = filterStatus
       if (search) params.q = search
-      const [docsRes, whtsRes] = await Promise.all([
+      const [docsRes, whtsRes, psRes] = await Promise.all([
         showDocs ? getDocuments(params) : Promise.resolve({ data: [] as Document[] }),
         showWhts ? getWithholdingTaxList() : Promise.resolve({ data: [] as WithholdingTax[] }),
+        showPSs ? getPaySlips(search || undefined) : Promise.resolve({ data: [] as PaySlip[] }),
       ])
       setDocs(docsRes.data)
-      // client-side filter WHT by search
       const q = search.toLowerCase()
-      setWhts(q
-        ? whtsRes.data.filter(w =>
-            (w.cert_no || '').toLowerCase().includes(q) ||
-            w.payee_name.toLowerCase().includes(q) ||
-            w.payer_name.toLowerCase().includes(q))
-        : whtsRes.data)
+      setWhts(q ? whtsRes.data.filter(w =>
+        (w.cert_no || '').toLowerCase().includes(q) ||
+        w.payee_name.toLowerCase().includes(q) ||
+        w.payer_name.toLowerCase().includes(q)
+      ) : whtsRes.data)
+      setPaySlips(q ? psRes.data.filter(s =>
+        s.employee_name.toLowerCase().includes(q) ||
+        (s.department || '').toLowerCase().includes(q) ||
+        (s.period || '').toLowerCase().includes(q)
+      ) : psRes.data)
     } catch {}
     setLoading(false)
   }
 
   useEffect(() => { load() }, [filterType, filterStatus, search])
 
-  const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0)
-  const discountAmt = fDiscountMode === 'percent' ? subtotal * fDiscount / 100 : fDiscount
-  const vatAmt = fVatMode === 'percent' ? (subtotal - discountAmt) * fVat / 100 : fVat
-  const total = subtotal - discountAmt + vatAmt
-
+  // ── Standard doc helpers ─────────────────────────────────────────────────────
   const updateItem = (i: number, field: keyof DocumentItem, value: string | number) => {
     setItems(prev => {
       const next = [...prev]
@@ -119,60 +215,216 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     })
   }
 
+  // ── WHT helpers ─────────────────────────────────────────────────────────────
+  const resetWHTForm = () => {
+    setWfEditId(null)
+    setWfBookNo(''); setWfCertNo(''); setWfIssueDate(today()); setWfFormType('')
+    setWfPayerName(activeCompany?.name || ''); setWfPayerAddress(activeCompany?.address || '')
+    setWfPayerTaxId(activeCompany?.tax_id || ''); setWfPayerTin('')
+    setWfPayeeId(''); setWfPayeeName(''); setWfPayeeAddress(''); setWfPayeeTaxId(''); setWfPayeeTin('')
+    setWfPayerType('1'); setWfPayerTypeOther('')
+    setWfFundGpf(0); setWfFundSso(0); setWfFundPvd(0)
+    setWfItems([emptyWHTItem()])
+  }
+
+  const openEditWHT = async (id: number) => {
+    const [wht, { data: cs }, { data: ps }] = await Promise.all([getWithholdingTax(id), getContacts(), getProducts()])
+    setContacts(cs); setProducts(ps)
+    setFType('withholding_tax')
+    setWfEditId(id)
+    setWfBookNo(wht.book_no || ''); setWfCertNo(wht.cert_no || '')
+    setWfIssueDate(wht.issue_date?.slice(0, 10) || today()); setWfFormType(wht.form_type || '')
+    setWfPayerName(wht.payer_name || ''); setWfPayerAddress(wht.payer_address || '')
+    setWfPayerTaxId(wht.payer_tax_id || ''); setWfPayerTin(wht.payer_tin || '')
+    setWfPayeeId(wht.payee_id ? String(wht.payee_id) : ''); setWfPayeeName(wht.payee_name || '')
+    setWfPayeeAddress(wht.payee_address || ''); setWfPayeeTaxId(wht.payee_tax_id || ''); setWfPayeeTin(wht.payee_tin || '')
+    setWfPayerType((wht.payer_type as '1' | '2' | '3' | '4') || '1'); setWfPayerTypeOther(wht.payer_type_other || '')
+    setWfFundGpf(wht.fund_gpf || 0); setWfFundSso(wht.fund_sso || 0); setWfFundPvd(wht.fund_pvd || 0)
+    setWfItems(wht.items?.length ? wht.items : [emptyWHTItem()])
+    setModal('edit')
+  }
+
+  const saveWHT = async () => {
+    if (!wfPayerName.trim()) { toast(t('wht_lbl_payer_name') + ' required', 'err'); return }
+    if (!wfPayeeName.trim()) { toast(t('wht_lbl_payee_name') + ' required', 'err'); return }
+    const payload: Partial<WithholdingTax> = {
+      book_no: wfBookNo || null, cert_no: wfCertNo || null,
+      issue_date: wfIssueDate, form_type: wfFormType,
+      payer_name: wfPayerName, payer_address: wfPayerAddress || null,
+      payer_tax_id: wfPayerTaxId || null, payer_tin: wfPayerTin || null,
+      payee_id: wfPayeeId ? Number(wfPayeeId) : null, payee_name: wfPayeeName,
+      payee_address: wfPayeeAddress || null, payee_tax_id: wfPayeeTaxId || null, payee_tin: wfPayeeTin || null,
+      payer_type: wfPayerType, payer_type_other: wfPayerTypeOther || null,
+      fund_gpf: wfFundGpf, fund_sso: wfFundSso, fund_pvd: wfFundPvd,
+      total_amount: wfTotalAmount, total_tax: wfTotalTax,
+      items: wfItems.map((item, idx) => ({ ...item, sort_order: idx })) as WithholdingTaxItem[],
+    }
+    try {
+      if (wfEditId !== null) { await updateWithholdingTax(wfEditId, payload); toast(t('wht_toast_edited')) }
+      else { await createWithholdingTax(payload); toast(t('wht_toast_saved')) }
+      setModal('none'); load()
+    } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  const updateWHTItem = (idx: number, field: keyof WithholdingTaxItem, value: string | number) => {
+    setWfItems(prev => { const next = [...prev]; next[idx] = { ...next[idx], [field]: value }; return next })
+  }
+
+  const handleWHTPayeeChange = (contactId: string) => {
+    setWfPayeeId(contactId)
+    if (contactId) {
+      const c = contacts.find(c => String(c.id) === contactId)
+      if (c) { setWfPayeeName(c.name); setWfPayeeAddress(c.address || ''); setWfPayeeTaxId(c.tax_id || '') }
+    }
+  }
+
+  const generateWHTPDF = async (id: number) => {
+    try {
+      const wht = await getWithholdingTax(id)
+      const html = buildWHTForm(wht)
+      const api = (window as unknown as { electronAPI?: { exportPDF: (h: string, f: string) => Promise<{ success: boolean }> } }).electronAPI
+      if (api?.exportPDF) await api.exportPDF(html, `WHT_${wht.cert_no || id}.pdf`)
+      else { const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() } }
+    } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  const openWHTPreview = async (id: number) => {
+    try { const wht = await getWithholdingTax(id); setWhtPreview({ html: buildWHTForm(wht), id }) }
+    catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  // ── PaySlip helpers ──────────────────────────────────────────────────────────
+  const resetPSForm = () => { setPsEditId(null); setPsForm({ ...PS_ZERO }) }
+
+  const openEditPS = (slip: PaySlip) => {
+    setFType('pay_slips')
+    setPsEditId(slip.id)
+    setPsForm({
+      employee_name: slip.employee_name, contact_id: slip.contact_id ? String(slip.contact_id) : '',
+      department: slip.department || '', period: slip.period || '',
+      pay_date: slip.pay_date?.slice(0, 10) || today(),
+      salary: slip.salary, cost_of_living: slip.cost_of_living, position_allow: slip.position_allow,
+      meal_allow: slip.meal_allow, overtime: slip.overtime, shift_allow: slip.shift_allow,
+      travel_allow: slip.travel_allow, subsidy: slip.subsidy, welfare: slip.welfare, bonus: slip.bonus,
+      tax_withheld: slip.tax_withheld, social_security: slip.social_security, late_deduct: slip.late_deduct,
+      absent_deduct: slip.absent_deduct, loan_deduct: slip.loan_deduct, advance_deduct: slip.advance_deduct,
+      other_deduct: slip.other_deduct, cum_income: slip.cum_income, cum_tax: slip.cum_tax,
+      cum_social_sec: slip.cum_social_sec, cum_provident: slip.cum_provident, notes: slip.notes || '',
+    })
+    setModal('edit')
+  }
+
+  const savePS = async () => {
+    const payload = {
+      employee_name: psForm.employee_name,
+      contact_id: psForm.contact_id ? Number(psForm.contact_id) : null,
+      department: psForm.department || null, period: psForm.period || null, pay_date: psForm.pay_date,
+      salary: Number(psForm.salary), cost_of_living: Number(psForm.cost_of_living),
+      position_allow: Number(psForm.position_allow), meal_allow: Number(psForm.meal_allow),
+      overtime: Number(psForm.overtime), shift_allow: Number(psForm.shift_allow),
+      travel_allow: Number(psForm.travel_allow), subsidy: Number(psForm.subsidy),
+      welfare: Number(psForm.welfare), bonus: Number(psForm.bonus),
+      total_income: psTotalIncome,
+      tax_withheld: Number(psForm.tax_withheld), social_security: Number(psForm.social_security),
+      late_deduct: Number(psForm.late_deduct), absent_deduct: Number(psForm.absent_deduct),
+      loan_deduct: Number(psForm.loan_deduct), advance_deduct: Number(psForm.advance_deduct),
+      other_deduct: Number(psForm.other_deduct),
+      total_deductions: psTotalDeductions, net_income: psNetIncome,
+      cum_income: Number(psForm.cum_income), cum_tax: Number(psForm.cum_tax),
+      cum_social_sec: Number(psForm.cum_social_sec), cum_provident: Number(psForm.cum_provident),
+      notes: psForm.notes || null,
+    }
+    try {
+      if (psEditId !== null) { await updatePaySlip(psEditId, payload) }
+      else { await createPaySlip(payload) }
+      toast(t('toast_ps_saved')); setModal('none'); load()
+    } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  const generatePSPdf = async (slip: PaySlip) => {
+    try {
+      const company = await getActiveCompany().catch(() => null)
+      const html = buildPaySlipHtml(slip, company)
+      const api = (window as unknown as { electronAPI?: { exportPDF: (h: string, f: string) => Promise<{ success: boolean }> } }).electronAPI
+      if (api?.exportPDF) await api.exportPDF(html, `payslip_${slip.employee_name}_${slip.period || slip.pay_date}.pdf`)
+      else { const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() } }
+    } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  const generatePSPdfFromForm = async () => {
+    try {
+      const company = await getActiveCompany().catch(() => null)
+      const slip = {
+        id: psEditId || 0, employee_name: psForm.employee_name,
+        contact_id: psForm.contact_id ? Number(psForm.contact_id) : null,
+        department: psForm.department, period: psForm.period, pay_date: psForm.pay_date,
+        salary: Number(psForm.salary), cost_of_living: Number(psForm.cost_of_living),
+        position_allow: Number(psForm.position_allow), meal_allow: Number(psForm.meal_allow),
+        overtime: Number(psForm.overtime), shift_allow: Number(psForm.shift_allow),
+        travel_allow: Number(psForm.travel_allow), subsidy: Number(psForm.subsidy),
+        welfare: Number(psForm.welfare), bonus: Number(psForm.bonus),
+        total_income: psTotalIncome,
+        tax_withheld: Number(psForm.tax_withheld), social_security: Number(psForm.social_security),
+        late_deduct: Number(psForm.late_deduct), absent_deduct: Number(psForm.absent_deduct),
+        loan_deduct: Number(psForm.loan_deduct), advance_deduct: Number(psForm.advance_deduct),
+        other_deduct: Number(psForm.other_deduct),
+        total_deductions: psTotalDeductions, net_income: psNetIncome,
+        cum_income: Number(psForm.cum_income), cum_tax: Number(psForm.cum_tax),
+        cum_social_sec: Number(psForm.cum_social_sec), cum_provident: Number(psForm.cum_provident),
+        notes: psForm.notes, created_at: '', updated_at: '',
+      } as PaySlip
+      const html = buildPaySlipHtml(slip, company)
+      const api = (window as unknown as { electronAPI?: { exportPDF: (h: string, f: string) => Promise<{ success: boolean }> } }).electronAPI
+      if (api?.exportPDF) await api.exportPDF(html, `payslip_${slip.employee_name}.pdf`)
+      else { const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() } }
+    } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  // ── Open modal helpers ───────────────────────────────────────────────────────
   const openCreate = async () => {
     const [{ data: cs }, { data: ps }] = await Promise.all([getContacts(), getProducts()])
-    setContacts(cs)
-    setProducts(ps)
+    setContacts(cs); setProducts(ps)
     setEditDoc(null)
     setFType('quotation'); setFNumber(''); setFContactId(''); setFContactName('')
-    setFDate(today()); setFDue(''); setFDiscount(0); setFDiscountMode('amount'); setFVat(7); setFVatMode('percent'); setFNotes('')
+    setFDate(today()); setFDue(''); setFDiscount(0); setFDiscountMode('amount')
+    setFVat(7); setFVatMode('percent'); setFNotes('')
     setItems([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
+    resetWHTForm(); resetPSForm()
     setModal('create')
   }
 
   const openEdit = async (id: number) => {
     const [doc, { data: cs }, { data: ps }] = await Promise.all([getDocument(id), getContacts(), getProducts()])
-    setContacts(cs)
-    setProducts(ps)
+    setContacts(cs); setProducts(ps)
     setEditDoc(doc)
     setFType(doc.type); setFNumber(doc.number || ''); setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
-    setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || ''); setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
+    setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || '')
+    setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
     setItems(doc.items?.length ? doc.items : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     setModal('edit')
   }
 
   const openView = async (id: number) => {
     const doc = await getDocument(id)
-    setViewDoc(doc)
-    setStatusChange(doc.status)
-    setConvertType('')
-    setModal('view')
+    setViewDoc(doc); setStatusChange(doc.status); setConvertType(''); setModal('view')
   }
 
+  // ── Save (routes by type) ────────────────────────────────────────────────────
   const save = async () => {
+    if (fType === 'withholding_tax') { await saveWHT(); return }
+    if (fType === 'pay_slips') { await savePS(); return }
     const validItems = items.filter(i => i.description.trim())
-    if (validItems.length === 0) {
-      toast(t('no_items'), 'err')
-      return
-    }
+    if (validItems.length === 0) { toast(t('no_items'), 'err'); return }
     try {
       const payload = {
         type: fType as Document['type'], number: fNumber || undefined,
         contact_id: fContactId ? Number(fContactId) : null,
-        contact_name: fContactName || null,
-        date: fDate, due_date: fDue || null,
-        subtotal, discount: discountAmt, vat: vatAmt, total,
-        notes: fNotes || null, items: validItems,
+        contact_name: fContactName || null, date: fDate, due_date: fDue || null,
+        subtotal, discount: discountAmt, vat: vatAmt, total, notes: fNotes || null, items: validItems,
       }
-      if (modal === 'edit' && editDoc) {
-        await updateDocument(editDoc.id, payload)
-        toast(t('toast_doc_edited'))
-      } else {
-        await createDocument(payload)
-        toast(t('toast_doc_saved'))
-      }
-      setModal('none')
-      load()
+      if (modal === 'edit' && editDoc) { await updateDocument(editDoc.id, payload); toast(t('toast_doc_edited')) }
+      else { await createDocument(payload); toast(t('toast_doc_saved')) }
+      setModal('none'); load()
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
@@ -188,49 +440,40 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
     catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const doDeletePS = async (id: number) => {
+    if (!confirm(t('confirm_delete_doc'))) return
+    try { await deletePaySlip(id); toast(t('toast_doc_deleted')); load() }
+    catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
   const doChangeStatus = async (id: number) => {
     try {
-      await patchDocumentStatus(id, statusChange)
-      toast(t('toast_update_status'))
-      const updated = await getDocument(id)
-      setViewDoc(updated)
-      load()
+      await patchDocumentStatus(id, statusChange); toast(t('toast_update_status'))
+      const updated = await getDocument(id); setViewDoc(updated); load()
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
   const doConvert = async () => {
     if (!viewDoc || !convertType) return
     const [{ data: cs }, { data: ps }] = await Promise.all([getContacts(), getProducts()])
-    setContacts(cs)
-    setProducts(ps)
-    setEditDoc(null)
-    setFType(convertType)
-    setFNumber('')
-    setFContactId(viewDoc.contact_id ? String(viewDoc.contact_id) : '')
-    setFContactName(viewDoc.contact_name || '')
-    setFDate(today())
-    setFDue(viewDoc.due_date?.slice(0, 10) || '')
+    setContacts(cs); setProducts(ps); setEditDoc(null)
+    setFType(convertType); setFNumber('')
+    setFContactId(viewDoc.contact_id ? String(viewDoc.contact_id) : ''); setFContactName(viewDoc.contact_name || '')
+    setFDate(today()); setFDue(viewDoc.due_date?.slice(0, 10) || '')
     setFDiscount(viewDoc.discount || 0); setFDiscountMode('amount')
-    setFVat(viewDoc.vat || 0); setFVatMode('amount')
-    setFNotes(viewDoc.notes || '')
+    setFVat(viewDoc.vat || 0); setFVatMode('amount'); setFNotes(viewDoc.notes || '')
     setItems(viewDoc.items?.length ? viewDoc.items.map(it => ({ description: it.description, qty: it.qty, unit: it.unit || '', price: it.price, amount: it.amount, product_id: it.product_id })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     setModal('create')
   }
 
   const doDuplicate = async (docId: number) => {
     const [doc, { data: cs }, { data: ps }] = await Promise.all([getDocument(docId), getContacts(), getProducts()])
-    setContacts(cs)
-    setProducts(ps)
-    setEditDoc(null)
-    setFType(doc.type)
-    setFNumber('')
-    setFContactId(doc.contact_id ? String(doc.contact_id) : '')
-    setFContactName(doc.contact_name || '')
-    setFDate(today())
-    setFDue(doc.due_date?.slice(0, 10) || '')
+    setContacts(cs); setProducts(ps); setEditDoc(null)
+    setFType(doc.type); setFNumber('')
+    setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
+    setFDate(today()); setFDue(doc.due_date?.slice(0, 10) || '')
     setFDiscount(doc.discount || 0); setFDiscountMode('amount')
-    setFVat(doc.vat || 0); setFVatMode('amount')
-    setFNotes(doc.notes || '')
+    setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
     setItems(doc.items?.length ? doc.items.map(it => ({ description: it.description, qty: it.qty, unit: it.unit || '', price: it.price, amount: it.amount, product_id: it.product_id })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     setModal('create')
   }
@@ -241,14 +484,8 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
       const contact = doc.contact_id ? await getContact(doc.contact_id).catch(() => null) : null
       const html = buildPDFHtml(doc, company, contact, t)
       const api = (window as unknown as { electronAPI?: { exportPDF: (h: string, f: string) => Promise<{ success: boolean }> } }).electronAPI
-      if (api?.exportPDF) {
-        const filename = `${doc.type}_${doc.number || doc.id}.pdf`
-        await api.exportPDF(html, filename)
-      } else {
-        // fallback for browser/dev mode
-        const win = window.open('', '_blank')
-        if (win) { win.document.write(html); win.document.close() }
-      }
+      if (api?.exportPDF) { await api.exportPDF(html, `${doc.type}_${doc.number || doc.id}.pdf`) }
+      else { const w = window.open('', '_blank'); if (w) { w.document.write(html); w.document.close() } }
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
@@ -261,6 +498,12 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
   }
 
   const paidAmount = viewDoc ? (viewDoc.payments || []).reduce((s, p) => s + p.amount, 0) : 0
+
+  const modalTitle = () => {
+    if (fType === 'withholding_tax') return wfEditId !== null ? t('wht_modal_edit') : t('wht_modal_new')
+    if (fType === 'pay_slips') return psEditId !== null ? t('ps_modal_edit') : t('ps_modal_create')
+    return modal === 'edit' ? t('modal_edit_doc') : t('modal_new_doc')
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -278,13 +521,7 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
           <TextField className="min-w-[200px]" placeholder={t('search_doc')}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="relative flex items-center gap-2">
-          <Btn variant="ghost" size="sm" startContent={<Receipt size={14} strokeWidth={2} />}
-            onClick={() => onNavigate?.('withholding_tax')}>
-            {t('nav_withholding_tax')}
-          </Btn>
-          <Btn variant="primary" onClick={openCreate}>{t('btn_create_doc')}</Btn>
-        </div>
+        <Btn variant="primary" onClick={openCreate}>{t('btn_create_doc')}</Btn>
       </div>
 
       {/* Table */}
@@ -313,218 +550,402 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
                 </div>
               }>
                 {[
-                  ...docs.map(doc => ({ kind: 'doc' as const, id: `d-${doc.id}`, doc })),
-                  ...whts.map(wht => ({ kind: 'wht' as const, id: `w-${wht.id}`, wht })),
-                ].sort((a, b) => {
-                  const da = a.kind === 'doc' ? a.doc.date : a.wht.issue_date
-                  const db = b.kind === 'doc' ? b.doc.date : b.wht.issue_date
-                  return (db || '').localeCompare(da || '')
-                }).map(row => row.kind === 'wht' ? (
-                  <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
-                    <TableCell>
-                      <span className="font-semibold text-primary">{row.wht.cert_no || `WHT-${row.wht.id}`}</span>
-                      {row.wht.book_no && <span className="text-[11px] text-default-400 ml-1.5">เล่ม {row.wht.book_no}</span>}
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="sm" variant="flat" color="secondary">{DOC_TYPES.withholding_tax}</Chip>
-                    </TableCell>
-                    <TableCell className="font-medium">{row.wht.payee_name || '—'}</TableCell>
-                    <TableCell className="text-default-500">{fmtDate(row.wht.issue_date)}</TableCell>
-                    <TableCell className="text-default-500">—</TableCell>
-                    <TableCell>
-                      <div>
-                        <span className="text-success font-semibold">฿{fmt(row.wht.total_amount)}</span>
-                        <span className="text-[11px] text-default-400 ml-1">ภาษี ฿{fmt(row.wht.total_tax)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="sm" variant="flat" color="warning">
-                        {WHT_FORM_LABELS[row.wht.form_type || ''] || row.wht.form_type || 'ภ.ง.ด.53'}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Btn size="sm" variant="ghost" onClick={() => onNavigate?.('withholding_tax')}>{t('btn_edit')}</Btn>
-                        <Btn size="sm" variant="danger" onClick={() => doDeleteWht(row.wht.id)}>{t('btn_delete')}</Btn>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
-                    <TableCell><span className="font-semibold text-primary">{row.doc.number || '—'}</span></TableCell>
-                    <TableCell className="text-default-500">{DOC_TYPES[row.doc.type] || row.doc.type}</TableCell>
-                    <TableCell className="font-medium">{row.doc.contact_name || '—'}</TableCell>
-                    <TableCell className="text-default-500">{fmtDate(row.doc.date)}</TableCell>
-                    <TableCell className="text-default-500">{fmtDate(row.doc.due_date)}</TableCell>
-                    <TableCell><span className="text-success font-semibold">฿{fmt(row.doc.total)}</span></TableCell>
-                    <TableCell>
-                      <Chip size="sm" variant="flat" color={STATUS_COLOR[row.doc.status] || 'default'}>
-                        {STATUS_LABELS[row.doc.status] || row.doc.status}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-end gap-2">
-                        <Btn size="sm" variant="ghost" onClick={() => openView(row.doc.id)}>{t('btn_update')}</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => doDuplicate(row.doc.id)}>{t('btn_duplicate')}</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => openPreview(row.doc.id)}>{t('btn_preview')}</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => generatePDF(row.doc.id)}>PDF</Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => openEdit(row.doc.id)}>{t('btn_edit')}</Btn>
-                        <Btn size="sm" variant="danger" onClick={() => doDelete(row.doc.id)}>{t('btn_delete')}</Btn>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  ...docs.map(doc => ({ kind: 'doc' as const, id: `d-${doc.id}`, sortDate: doc.date || '', doc })),
+                  ...whts.map(wht => ({ kind: 'wht' as const, id: `w-${wht.id}`, sortDate: wht.issue_date || '', wht })),
+                  ...paySlips.map(ps => ({ kind: 'ps' as const, id: `p-${ps.id}`, sortDate: ps.pay_date || '', ps })),
+                ].sort((a, b) => b.sortDate.localeCompare(a.sortDate)).map(row => {
+                  if (row.kind === 'wht') return (
+                    <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
+                      <TableCell>
+                        <span className="font-semibold text-primary">{row.wht.cert_no || `WHT-${row.wht.id}`}</span>
+                        {row.wht.book_no && <span className="text-[11px] text-default-400 ml-1.5">เล่ม {row.wht.book_no}</span>}
+                      </TableCell>
+                      <TableCell><Chip size="sm" variant="flat" color="secondary">{DOC_TYPES.withholding_tax}</Chip></TableCell>
+                      <TableCell className="font-medium">{row.wht.payee_name || '—'}</TableCell>
+                      <TableCell className="text-default-500">{fmtDate(row.wht.issue_date)}</TableCell>
+                      <TableCell className="text-default-500">—</TableCell>
+                      <TableCell>
+                        <div>
+                          <span className="text-success font-semibold">฿{fmt(row.wht.total_amount)}</span>
+                          <span className="text-[11px] text-default-400 ml-1">ภาษี ฿{fmt(row.wht.total_tax)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Chip size="sm" variant="flat" color="warning">
+                          {WHT_FORM_LABELS[row.wht.form_type || ''] || row.wht.form_type || '—'}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Btn size="sm" variant="ghost" onClick={() => openWHTPreview(row.wht.id)}>{t('btn_preview')}</Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => generateWHTPDF(row.wht.id)}>PDF</Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => openEditWHT(row.wht.id)}>{t('btn_edit')}</Btn>
+                          <Btn size="sm" variant="danger" onClick={() => doDeleteWht(row.wht.id)}>{t('btn_delete')}</Btn>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                  if (row.kind === 'ps') return (
+                    <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
+                      <TableCell>
+                        <span className="font-semibold text-primary">{row.ps.period || `PS-${row.ps.id}`}</span>
+                      </TableCell>
+                      <TableCell><Chip size="sm" variant="flat" color="primary">{DOC_TYPES.pay_slips}</Chip></TableCell>
+                      <TableCell className="font-medium">{row.ps.employee_name || '—'}</TableCell>
+                      <TableCell className="text-default-500">{fmtDate(row.ps.pay_date)}</TableCell>
+                      <TableCell className="text-default-500">—</TableCell>
+                      <TableCell>
+                        <div>
+                          <span className="text-success font-semibold">฿{fmt(row.ps.net_income)}</span>
+                          <span className="text-[11px] text-default-400 ml-1">หัก ฿{fmt(row.ps.total_deductions)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell><Chip size="sm" variant="flat" color="default">เงินเดือน</Chip></TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Btn size="sm" variant="ghost" onClick={() => generatePSPdf(row.ps)}>PDF</Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => openEditPS(row.ps)}>{t('btn_edit')}</Btn>
+                          <Btn size="sm" variant="danger" onClick={() => doDeletePS(row.ps.id)}>{t('btn_delete')}</Btn>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                  return (
+                    <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
+                      <TableCell><span className="font-semibold text-primary">{row.doc.number || '—'}</span></TableCell>
+                      <TableCell className="text-default-500">{DOC_TYPES[row.doc.type] || row.doc.type}</TableCell>
+                      <TableCell className="font-medium">{row.doc.contact_name || '—'}</TableCell>
+                      <TableCell className="text-default-500">{fmtDate(row.doc.date)}</TableCell>
+                      <TableCell className="text-default-500">{fmtDate(row.doc.due_date)}</TableCell>
+                      <TableCell><span className="text-success font-semibold">฿{fmt(row.doc.total)}</span></TableCell>
+                      <TableCell>
+                        <Chip size="sm" variant="flat" color={STATUS_COLOR[row.doc.status] || 'default'}>
+                          {STATUS_LABELS[row.doc.status] || row.doc.status}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          <Btn size="sm" variant="ghost" onClick={() => openView(row.doc.id)}>{t('btn_update')}</Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => doDuplicate(row.doc.id)}>{t('btn_duplicate')}</Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => openPreview(row.doc.id)}>{t('btn_preview')}</Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => generatePDF(row.doc.id)}>PDF</Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => openEdit(row.doc.id)}>{t('btn_edit')}</Btn>
+                          <Btn size="sm" variant="danger" onClick={() => doDelete(row.doc.id)}>{t('btn_delete')}</Btn>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
         </CardBody>
       </Card>
 
-      {/* Create/Edit Modal */}
+      {/* Create / Edit Modal */}
       <Modal open={modal === 'create' || modal === 'edit'} onClose={() => setModal('none')} size="xl"
-        title={modal === 'edit' ? t('modal_edit_doc') : t('modal_new_doc')}
+        title={modalTitle()}
         footer={<>
           <Btn variant="ghost" onClick={() => setModal('none')}>{t('btn_cancel')}</Btn>
+          {fType === 'withholding_tax' && wfEditId !== null && (
+            <Btn variant="ghost" onClick={() => openWHTPreview(wfEditId)}>{t('btn_preview')}</Btn>
+          )}
+          {fType === 'withholding_tax' && wfEditId !== null && (
+            <Btn variant="ghost" onClick={() => generateWHTPDF(wfEditId)}>PDF</Btn>
+          )}
+          {fType === 'pay_slips' && (
+            <Btn variant="ghost" onClick={generatePSPdfFromForm}>PDF</Btn>
+          )}
           <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
         </>}>
         <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_doc_type')}</label>
-                    <select value={fType} className={SELECT_CLASS} onChange={e => {
-                      if (e.target.value === 'withholding_tax') { setModal('none'); onNavigate?.('withholding_tax'); return }
-                      setFType(e.target.value)
-                    }}>
-                      {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
+
+          {/* Type selector — always visible */}
+          <div>
+            <label className={LABEL_CLASS}>{t('lbl_doc_type')}</label>
+            <select
+              value={fType}
+              disabled={modal === 'edit'}
+              className={SELECT_CLASS}
+              onChange={e => {
+                const v = e.target.value
+                setFType(v)
+                if (v === 'withholding_tax' && modal === 'create') resetWHTForm()
+                if (v === 'pay_slips' && modal === 'create') resetPSForm()
+              }}>
+              {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+
+          {/* ── WHT form ── */}
+          {fType === 'withholding_tax' && (
+            <div className="flex flex-col gap-4">
+              <SectionLabel label={t('wht_sec_cert')} />
+              <div className="grid grid-cols-2 gap-4">
+                <TextField label={t('wht_lbl_book_no')} placeholder="เล่มที่..." value={wfBookNo} onChange={e => setWfBookNo(e.target.value)} />
+                <TextField label={t('wht_lbl_cert_no')} placeholder="เลขที่..." value={wfCertNo} onChange={e => setWfCertNo(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4 items-start">
+                <TextField type="date" label={t('wht_lbl_issue_date')} value={wfIssueDate} onChange={e => setWfIssueDate(e.target.value)} />
+                <div>
+                  <label className={LABEL_CLASS}>{t('wht_lbl_form_type')}</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {WHT_FORM_TYPES.map(f => {
+                      const on = wfFormType === f.value
+                      return (
+                        <button key={f.value} type="button" onClick={() => setWfFormType(on ? '' : f.value)}
+                          className={`flex items-center gap-1.5 text-[12px] px-2.5 py-1.5 rounded-lg border transition-colors ${on ? 'border-primary/60 bg-primary/15' : 'border-content3 bg-content2'}`}>
+                          <span className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[10px] text-white flex-shrink-0 border-[1.5px] ${on ? 'border-primary bg-primary' : 'border-default-400 bg-transparent'}`}>{on ? '✓' : ''}</span>
+                          {t(f.key)}
+                        </button>
+                      )
+                    })}
                   </div>
-                  <TextField label={t('lbl_doc_number')}
-                    placeholder={t('lbl_auto_number')} value={fNumber} onChange={e => setFNumber(e.target.value)} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_contact_select')}</label>
-                    <select value={fContactId} onChange={e => {
-                      const id = e.target.value
-                      setFContactId(id)
-                      if (id) {
-                        const found = contacts.find(c => String(c.id) === id)
-                        if (found) {
-                          setFContactName(found.name)
-                        }
-                      } else {
-                        setFContactName('')
-                      }
-                    }} className={SELECT_CLASS}>
-                      <option value="">{t('lbl_select')}</option>
-                      {contacts.map(c => <option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ''}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <TextField label={t('lbl_contact_name')}
-                      placeholder={t('lbl_name_ph')} value={fContactName} onChange={e => setFContactName(e.target.value)} />
-                    {fContactId && contacts.find(c => String(c.id) === fContactId)?.company && (
-                      <div className="text-[12px] text-default-500 mt-1 px-1">
-                        🏢 {contacts.find(c => String(c.id) === fContactId)?.company}
+              </div>
+              <SectionLabel label={t('wht_sec_payer')} />
+              <TextField label={t('wht_lbl_payer_name')} placeholder="ชื่อบริษัท / บุคคล..." value={wfPayerName} onChange={e => setWfPayerName(e.target.value)} />
+              <TextAreaField label={t('wht_lbl_payer_address')} placeholder="ที่อยู่..." value={wfPayerAddress} onChange={e => setWfPayerAddress(e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <TextField label={t('wht_lbl_payer_tax_id')} placeholder="0000000000000 (13 หลัก)" maxLength={13} value={wfPayerTaxId} onChange={e => setWfPayerTaxId(e.target.value)} />
+                <TextField label={t('wht_lbl_payer_tin')} placeholder="0000000000 (10 หลัก)" maxLength={10} value={wfPayerTin} onChange={e => setWfPayerTin(e.target.value)} />
+              </div>
+              <SectionLabel label={t('wht_sec_payee')} />
+              <div>
+                <label className={LABEL_CLASS}>{t('wht_lbl_payee_contact')}</label>
+                <select value={wfPayeeId} onChange={e => handleWHTPayeeChange(e.target.value)} className={SELECT_CLASS}>
+                  <option value="">{t('lbl_select')}</option>
+                  {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <TextField label={t('wht_lbl_payee_name')} placeholder="ชื่อบริษัท / บุคคล..." value={wfPayeeName} onChange={e => setWfPayeeName(e.target.value)} />
+              <TextAreaField label={t('wht_lbl_payee_address')} placeholder="ที่อยู่..." value={wfPayeeAddress} onChange={e => setWfPayeeAddress(e.target.value)} />
+              <div className="grid grid-cols-2 gap-4">
+                <TextField label={t('wht_lbl_payee_tax_id')} placeholder="0000000000000 (13 หลัก)" maxLength={13} value={wfPayeeTaxId} onChange={e => setWfPayeeTaxId(e.target.value)} />
+                <TextField label={t('wht_lbl_payee_tin')} placeholder="0000000000 (10 หลัก)" maxLength={10} value={wfPayeeTin} onChange={e => setWfPayeeTin(e.target.value)} />
+              </div>
+              <SectionLabel label={t('wht_sec_income')} />
+              <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px' }}>
+                {[t('wht_lbl_income_type'), t('wht_lbl_pay_date'), t('wht_lbl_amount'), t('wht_lbl_tax_withheld'), ''].map((h, i) => (
+                  <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2">
+                {wfItems.map((item, idx) => {
+                  const def = WHT_INCOME_TYPES.find(d => d.value === item.income_type)
+                  return (
+                    <div key={idx}>
+                      <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px' }}>
+                        <select value={item.income_type} onChange={e => updateWHTItem(idx, 'income_type', e.target.value)}
+                          className={`${SELECT_CLASS} text-[11px] py-1.5`}>
+                          {WHT_INCOME_TYPES.map(opt => <option key={opt.value} value={opt.value}>{t(opt.key)}</option>)}
+                        </select>
+                        <TextField type="date" value={item.pay_date || ''} onChange={e => updateWHTItem(idx, 'pay_date', e.target.value)} />
+                        <TextField type="number" min={0} value={item.amount ? String(item.amount) : ''} onChange={e => updateWHTItem(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} />
+                        <TextField type="number" min={0} value={item.tax_withheld ? String(item.tax_withheld) : ''} onChange={e => updateWHTItem(idx, 'tax_withheld', e.target.value === '' ? 0 : Number(e.target.value))} />
+                        <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setWfItems(prev => prev.filter((_, j) => j !== idx))}>✕</Btn>
                       </div>
-                    )}
+                      {def?.hasDesc && (
+                        <TextField className="mt-1 w-[60%]" placeholder={t('wht_lbl_income_desc')}
+                          value={item.income_type_desc || ''} onChange={e => updateWHTItem(idx, 'income_type_desc', e.target.value)} />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <Btn size="sm" variant="ghost" onClick={() => setWfItems(prev => [...prev, emptyWHTItem()])}>{t('wht_btn_add_income')}</Btn>
+              <div className="bg-content2 border border-content3 rounded-lg px-4 py-3">
+                <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('wht_lbl_total_amount')}</span><span className="text-primary font-semibold">฿{fmt(wfTotalAmount)}</span></div>
+                <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('wht_lbl_total_tax')}</span><span className="text-danger font-semibold">฿{fmt(wfTotalTax)}</span></div>
+              </div>
+              <SectionLabel label={t('wht_sec_payer_type')} />
+              <div className="flex gap-2 flex-wrap">
+                {(['1', '2', '3', '4'] as const).map(pt => (
+                  <label key={pt} className={`flex items-center gap-1.5 cursor-pointer text-[13px] px-3 py-1.5 rounded-lg border ${wfPayerType === pt ? 'border-primary/50 bg-primary/15' : 'border-content3 bg-content2'}`}>
+                    <input type="radio" name="wf_payer_type" value={pt} checked={wfPayerType === pt} onChange={() => setWfPayerType(pt)} style={{ accentColor: '#7c6df3' }} />
+                    {t(`wht_payer_type_${pt}`)}
+                  </label>
+                ))}
+              </div>
+              {wfPayerType === '4' && (
+                <TextField label={t('wht_lbl_payer_type_other')} placeholder="ระบุ..." value={wfPayerTypeOther} onChange={e => setWfPayerTypeOther(e.target.value)} />
+              )}
+              <SectionLabel label={t('wht_sec_funds')} />
+              <div className="grid grid-cols-3 gap-4">
+                <TextField type="number" min={0} label={t('wht_lbl_fund_gpf')} value={wfFundGpf ? String(wfFundGpf) : ''} onChange={e => setWfFundGpf(e.target.value === '' ? 0 : Number(e.target.value))} />
+                <TextField type="number" min={0} label={t('wht_lbl_fund_sso')} value={wfFundSso ? String(wfFundSso) : ''} onChange={e => setWfFundSso(e.target.value === '' ? 0 : Number(e.target.value))} />
+                <TextField type="number" min={0} label={t('wht_lbl_fund_pvd')} value={wfFundPvd ? String(wfFundPvd) : ''} onChange={e => setWfFundPvd(e.target.value === '' ? 0 : Number(e.target.value))} />
+              </div>
+            </div>
+          )}
+
+          {/* ── PaySlip form ── */}
+          {fType === 'pay_slips' && (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL_CLASS}>{t('ps_lbl_employee')}</label>
+                  <select value={psForm.contact_id} onChange={e => {
+                    const id = e.target.value; setPs('contact_id', id)
+                    if (id) { const c = contacts.find(c => String(c.id) === id); if (c) setPs('employee_name', c.name) }
+                  }} className={SELECT_CLASS}>
+                    <option value="">— เลือกพนักงาน —</option>
+                    {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                  <input className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors"
+                    placeholder="หรือพิมพ์ชื่อโดยตรง..." value={psForm.employee_name} onChange={e => setPs('employee_name', e.target.value)} />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <TextField label={t('ps_lbl_dept')} value={psForm.department} onChange={e => setPs('department', e.target.value)} placeholder="แผนก..." />
+                  <div className="grid grid-cols-2 gap-2">
+                    <TextField label={t('ps_lbl_period')} value={psForm.period} onChange={e => setPs('period', e.target.value)} placeholder="เช่น เมษายน 2568" />
+                    <TextField type="date" label={t('ps_lbl_pay_date')} value={psForm.pay_date} onChange={e => setPs('pay_date', e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <TextField type="date" label={t('lbl_date')}
-                    value={fDate} onChange={e => setFDate(e.target.value)} />
-                  <TextField type="date" label={t('lbl_due_date')}
-                    value={fDue} onChange={e => setFDue(e.target.value)} />
-                </div>
-
-                <Divider className="my-1" />
-
-                {/* Items */}
-                <div className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">รายการสินค้า / บริการ</div>
-                <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
-                  {[t('lbl_product_col'), t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
-                    <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="bg-content2/50 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-primary uppercase tracking-wider mb-2">{t('ps_income_title')}</div>
+                  {([
+                    [t('ps_salary'), 'salary', 1], [t('ps_cost_living'), 'cost_of_living', 2],
+                    [t('ps_pos_allow'), 'position_allow', 3], [t('ps_meal_allow'), 'meal_allow', 4],
+                    [t('ps_overtime'), 'overtime', 5], [t('ps_shift_allow'), 'shift_allow', 6],
+                    [t('ps_travel_allow'), 'travel_allow', 7], [t('ps_subsidy'), 'subsidy', 8],
+                    [t('ps_welfare'), 'welfare', 9], [t('ps_bonus'), 'bonus', 10],
+                  ] as [string, keyof PSForm, number][]).map(([lbl, field, idx]) => (
+                    <PSNumRow key={field} label={lbl} idx={idx} value={(psForm as Record<string, unknown>)[field] as number} onChange={v => setPs(field, v)} />
                   ))}
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t-2 border-primary/30">
+                    <span className="text-[12px] font-bold text-primary">{t('ps_total_income')}</span>
+                    <span className="text-[15px] font-bold text-primary">฿{fmt(psTotalIncome)}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  {items.map((item, i) => (
-                    <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
-                      <select className={SELECT_CLASS + ' text-[12px]'}
-                        value={item.product_id ? String(item.product_id) : ''}
-                        onChange={e => {
-                          const pid = e.target.value
-                          if (pid) {
-                            const p = products.find(pr => String(pr.id) === pid)
-                            setItems(prev => {
-                              const next = [...prev]
-                              const it = { ...next[i] }
-                              if (p) { it.product_id = Number(pid); it.description = p.name; if (p.unit) it.unit = p.unit; it.price = p.price; it.amount = (it.qty || 1) * p.price }
-                              next[i] = it
-                              return next
-                            })
-                          }
-                        }}>
-                        <option value="">{t('lbl_select')}</option>
-                        {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
-                      </select>
-                      <TextField placeholder={t('lbl_item_ph')}
-                        value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
-                      <TextField type="number" min={0}
-                        value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
-                      <TextField placeholder={t('lbl_unit_ph')}
-                        value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} />
-                      <TextField type="number" min={0}
-                        value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
-                      <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
-                      <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Btn>
-                    </div>
+                <div className="bg-content2/50 rounded-xl p-3">
+                  <div className="text-[11px] font-bold text-danger uppercase tracking-wider mb-2">{t('ps_deduct_title')}</div>
+                  {([
+                    [t('ps_tax_withheld'), 'tax_withheld', 11], [t('ps_social_sec'), 'social_security', 12],
+                    [t('ps_late_deduct'), 'late_deduct', 13], [t('ps_absent_deduct'), 'absent_deduct', 14],
+                    [t('ps_loan_deduct'), 'loan_deduct', 15], [t('ps_advance_deduct'), 'advance_deduct', 16],
+                    [t('ps_other_deduct'), 'other_deduct', 17],
+                  ] as [string, keyof PSForm, number][]).map(([lbl, field, idx]) => (
+                    <PSNumRow key={field} label={lbl} idx={idx} value={(psForm as Record<string, unknown>)[field] as number} onChange={v => setPs(field, v)} />
                   ))}
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t-2 border-danger/30">
+                    <span className="text-[12px] font-bold text-danger">{t('ps_total_deduct')}</span>
+                    <span className="text-[15px] font-bold text-danger">-฿{fmt(psTotalDeductions)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-success/10 border border-success/30 rounded-xl px-5 py-3 flex justify-between items-center">
+                <span className="text-[14px] font-bold text-success">{t('ps_net_income')}</span>
+                <span className="text-[22px] font-bold text-success">฿{fmt(psNetIncome)}</span>
+              </div>
+              <div className="bg-content2/50 rounded-xl p-3">
+                <div className="text-[11px] font-bold text-default-500 uppercase tracking-wider mb-2">{t('ps_cum_title')}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <TextField type="number" label={t('ps_cum_income')} value={psForm.cum_income === 0 ? '' : String(psForm.cum_income)} onChange={e => setPs('cum_income', e.target.value === '' ? 0 : Number(e.target.value))} />
+                  <TextField type="number" label={t('ps_cum_tax')} value={psForm.cum_tax === 0 ? '' : String(psForm.cum_tax)} onChange={e => setPs('cum_tax', e.target.value === '' ? 0 : Number(e.target.value))} />
+                  <TextField type="number" label={t('ps_cum_social')} value={psForm.cum_social_sec === 0 ? '' : String(psForm.cum_social_sec)} onChange={e => setPs('cum_social_sec', e.target.value === '' ? 0 : Number(e.target.value))} />
+                  <TextField type="number" label={t('ps_cum_provident')} value={psForm.cum_provident === 0 ? '' : String(psForm.cum_provident)} onChange={e => setPs('cum_provident', e.target.value === '' ? 0 : Number(e.target.value))} />
+                </div>
+              </div>
+              <TextAreaField label={t('lbl_notes')} value={psForm.notes} onChange={e => setPs('notes', e.target.value)} />
+            </div>
+          )}
+
+          {/* ── Standard doc form ── */}
+          {fType !== 'withholding_tax' && fType !== 'pay_slips' && (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL_CLASS}>{t('lbl_contact_select')}</label>
+                  <select value={fContactId} onChange={e => {
+                    const id = e.target.value; setFContactId(id)
+                    if (id) { const found = contacts.find(c => String(c.id) === id); if (found) setFContactName(found.name) }
+                    else setFContactName('')
+                  }} className={SELECT_CLASS}>
+                    <option value="">{t('lbl_select')}</option>
+                    {contacts.map(c => <option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ''}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description: '', qty: 1, unit: '', price: 0, amount: 0 }])}>{t('btn_add_item')}</Btn>
+                  <TextField label={t('lbl_contact_name')} placeholder={t('lbl_name_ph')} value={fContactName} onChange={e => setFContactName(e.target.value)} />
+                  {fContactId && contacts.find(c => String(c.id) === fContactId)?.company && (
+                    <div className="text-[12px] text-default-500 mt-1 px-1">🏢 {contacts.find(c => String(c.id) === fContactId)?.company}</div>
+                  )}
                 </div>
-
-                <Divider className="my-1" />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_discount')}</label>
-                    <div className="flex gap-1.5">
-                      <TextField type="number" min={0} className="flex-1"
-                        value={fDiscount === 0 ? '' : String(fDiscount)} onChange={e => setFDiscount(e.target.value === '' ? 0 : Number(e.target.value))} />
-                      <ModeToggle mode={fDiscountMode} onChange={setFDiscountMode} />
-                    </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <TextField type="text" label={t('lbl_doc_number')} placeholder={t('lbl_auto_number')} value={fNumber} onChange={e => setFNumber(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <TextField type="date" label={t('lbl_date')} value={fDate} onChange={e => setFDate(e.target.value)} />
+                <TextField type="date" label={t('lbl_due_date')} value={fDue} onChange={e => setFDue(e.target.value)} />
+              </div>
+              <Divider className="my-1" />
+              <div className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">รายการสินค้า / บริการ</div>
+              <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
+                {[t('lbl_product_col'), t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
+                  <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
+                ))}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {items.map((item, i) => (
+                  <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
+                    <select className={SELECT_CLASS + ' text-[12px]'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
+                      const pid = e.target.value
+                      if (pid) {
+                        const p = products.find(pr => String(pr.id) === pid)
+                        setItems(prev => { const next = [...prev]; const it = { ...next[i] }; if (p) { it.product_id = Number(pid); it.description = p.name; if (p.unit) it.unit = p.unit; it.price = p.price; it.amount = (it.qty || 1) * p.price }; next[i] = it; return next })
+                      }
+                    }}>
+                      <option value="">{t('lbl_select')}</option>
+                      {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
+                    </select>
+                    <TextField placeholder={t('lbl_item_ph')} value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
+                    <TextField type="number" min={0} value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
+                    <TextField placeholder={t('lbl_unit_ph')} value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} />
+                    <TextField type="number" min={0} value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
+                    <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
+                    <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Btn>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">VAT</label>
-                    <div className="flex gap-1.5">
-                      <TextField type="number" min={0} className="flex-1"
-                        value={fVat === 0 ? '' : String(fVat)} onChange={e => setFVat(e.target.value === '' ? 0 : Number(e.target.value))} />
-                      <ModeToggle mode={fVatMode} onChange={setFVatMode} />
-                    </div>
+                ))}
+              </div>
+              <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description: '', qty: 1, unit: '', price: 0, amount: 0 }])}>{t('btn_add_item')}</Btn>
+              <Divider className="my-1" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={LABEL_CLASS}>{t('lbl_discount')}</label>
+                  <div className="flex gap-1.5">
+                    <TextField type="number" min={0} className="flex-1" value={fDiscount === 0 ? '' : String(fDiscount)} onChange={e => setFDiscount(e.target.value === '' ? 0 : Number(e.target.value))} />
+                    <ModeToggle mode={fDiscountMode} onChange={setFDiscountMode} />
                   </div>
                 </div>
-
-                {/* Totals */}
-                <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5">
-                  {[
-                    { label: t('lbl_subtotal'), value: `฿${fmt(subtotal)}`, color: '' },
-                    { label: `${t('lbl_discount')}${fDiscountMode === 'percent' ? ` (${fDiscount}%)` : ''}`, value: `-฿${fmt(discountAmt)}`, color: 'text-danger' },
-                    { label: `VAT${fVatMode === 'percent' ? ` (${fVat}%)` : ''}`, value: `฿${fmt(vatAmt)}`, color: '' },
-                  ].map((row, i) => (
-                    <div key={i} className="flex justify-between text-[13px] py-0.5">
-                      <span className="text-default-500">{row.label}</span>
-                      <span className={row.color}>{row.value}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-[16px] font-bold border-t border-content3 mt-1.5 pt-2.5">
-                    <span>{t('lbl_grand_total')}</span>
-                    <span className="text-success">฿{fmt(total)}</span>
+                <div>
+                  <label className={LABEL_CLASS}>VAT</label>
+                  <div className="flex gap-1.5">
+                    <TextField type="number" min={0} className="flex-1" value={fVat === 0 ? '' : String(fVat)} onChange={e => setFVat(e.target.value === '' ? 0 : Number(e.target.value))} />
+                    <ModeToggle mode={fVatMode} onChange={setFVatMode} />
                   </div>
                 </div>
-
-                <TextAreaField label={t('lbl_notes')}
-                  value={fNotes} onChange={e => setFNotes(e.target.value)} />
+              </div>
+              <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5">
+                {[
+                  { label: t('lbl_subtotal'), value: `฿${fmt(subtotal)}`, color: '' },
+                  { label: `${t('lbl_discount')}${fDiscountMode === 'percent' ? ` (${fDiscount}%)` : ''}`, value: `-฿${fmt(discountAmt)}`, color: 'text-danger' },
+                  { label: `VAT${fVatMode === 'percent' ? ` (${fVat}%)` : ''}`, value: `฿${fmt(vatAmt)}`, color: '' },
+                ].map((row, i) => (
+                  <div key={i} className="flex justify-between text-[13px] py-0.5">
+                    <span className="text-default-500">{row.label}</span><span className={row.color}>{row.value}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-[16px] font-bold border-t border-content3 mt-1.5 pt-2.5">
+                  <span>{t('lbl_grand_total')}</span><span className="text-success">฿{fmt(total)}</span>
+                </div>
+              </div>
+              <TextAreaField label={t('lbl_notes')} value={fNotes} onChange={e => setFNotes(e.target.value)} />
+            </div>
+          )}
         </div>
       </Modal>
 
@@ -538,109 +959,73 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
         </> : undefined}>
         {viewDoc && (
           <div className="flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_contact_select')}</label>
-                    <div className="font-semibold">{viewDoc.contact_name || '—'}</div>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('col_status')}</label>
-                    <Chip size="sm" variant="flat" color={STATUS_COLOR[viewDoc.status] || 'default'}>
-                      {STATUS_LABELS[viewDoc.status] || viewDoc.status}
-                    </Chip>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_date')}</label>
-                    <div>{fmtDate(viewDoc.date)}</div>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_due_date')}</label>
-                    <div>{fmtDate(viewDoc.due_date)}</div>
-                  </div>
-                </div>
-
-                <Card className="bg-content2 border border-content3" shadow="none">
-                  <CardBody className="p-0">
-                    <Table removeWrapper aria-label={t('lbl_items_col')}
-                      classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
-                      <TableHeader>
-                        <TableColumn>{t('lbl_items_col')}</TableColumn>
-                        <TableColumn>{t('lbl_qty')}</TableColumn>
-                        <TableColumn>{t('lbl_unit')}</TableColumn>
-                        <TableColumn>{t('lbl_price_per')}</TableColumn>
-                        <TableColumn align="end">{t('lbl_total_col')}</TableColumn>
-                      </TableHeader>
-                      <TableBody emptyContent={<div className="py-5 text-default-500">{t('no_items')}</div>}>
-                        {(viewDoc.items || []).map((item, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="font-medium">{item.description}</TableCell>
-                            <TableCell>{item.qty}</TableCell>
-                            <TableCell className="text-default-500">{item.unit || '—'}</TableCell>
-                            <TableCell>฿{fmt(item.price)}</TableCell>
-                            <TableCell><div className="text-right font-semibold">฿{fmt(item.amount)}</div></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardBody>
-                </Card>
-
-                {/* Totals */}
-                <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5">
-                  <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('lbl_subtotal')}</span><span>฿{fmt(viewDoc.subtotal)}</span></div>
-                  <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('lbl_discount')}</span><span className="text-danger">-฿{fmt(viewDoc.discount)}</span></div>
-                  <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">VAT</span><span>฿{fmt(viewDoc.vat)}</span></div>
-                  <div className="flex justify-between text-[16px] font-bold border-t border-content3 mt-1.5 pt-2.5">
-                    <span>{t('lbl_grand_total')}</span><span className="text-success">฿{fmt(viewDoc.total)}</span>
-                  </div>
-                  {paidAmount > 0 && (
-                    <div className="flex justify-between text-[12px] mt-1.5">
-                      <span className="text-default-500">{t('paid_amount')}</span>
-                      <span className="text-success">฿{fmt(paidAmount)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {viewDoc.notes && (
-                  <div className="px-3 py-2.5 bg-content2 rounded-lg text-[12px] text-default-500">💬 {viewDoc.notes}</div>
-                )}
-
-                {/* Payment History */}
-                {(viewDoc.payments || []).length > 0 && (
-                  <div>
-                    <Divider className="mb-3" />
-                    <div className="text-[12px] font-semibold text-default-500 uppercase tracking-wide mb-2.5">{t('payment_history')}</div>
-                    {viewDoc.payments!.map((p, i) => (
-                      <div key={i} className="flex justify-between py-1.5 border-b border-content3 text-[13px]">
-                        <span className="text-default-500">{fmtDate(p.date)} · {p.method}</span>
-                        <span className="text-success font-semibold">฿{fmt(p.amount)}</span>
-                      </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_contact_select')}</label><div className="font-semibold">{viewDoc.contact_name || '—'}</div></div>
+              <div><label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('col_status')}</label><Chip size="sm" variant="flat" color={STATUS_COLOR[viewDoc.status] || 'default'}>{STATUS_LABELS[viewDoc.status] || viewDoc.status}</Chip></div>
+              <div><label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_date')}</label><div>{fmtDate(viewDoc.date)}</div></div>
+              <div><label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1">{t('lbl_due_date')}</label><div>{fmtDate(viewDoc.due_date)}</div></div>
+            </div>
+            <Card className="bg-content2 border border-content3" shadow="none">
+              <CardBody className="p-0">
+                <Table removeWrapper aria-label={t('lbl_items_col')} classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
+                  <TableHeader>
+                    <TableColumn>{t('lbl_items_col')}</TableColumn><TableColumn>{t('lbl_qty')}</TableColumn>
+                    <TableColumn>{t('lbl_unit')}</TableColumn><TableColumn>{t('lbl_price_per')}</TableColumn>
+                    <TableColumn align="end">{t('lbl_total_col')}</TableColumn>
+                  </TableHeader>
+                  <TableBody emptyContent={<div className="py-5 text-default-500">{t('no_items')}</div>}>
+                    {(viewDoc.items || []).map((item, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{item.description}</TableCell>
+                        <TableCell>{item.qty}</TableCell>
+                        <TableCell className="text-default-500">{item.unit || '—'}</TableCell>
+                        <TableCell>฿{fmt(item.price)}</TableCell>
+                        <TableCell><div className="text-right font-semibold">฿{fmt(item.amount)}</div></TableCell>
+                      </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardBody>
+            </Card>
+            <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5">
+              <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('lbl_subtotal')}</span><span>฿{fmt(viewDoc.subtotal)}</span></div>
+              <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">{t('lbl_discount')}</span><span className="text-danger">-฿{fmt(viewDoc.discount)}</span></div>
+              <div className="flex justify-between text-[13px] py-0.5"><span className="text-default-500">VAT</span><span>฿{fmt(viewDoc.vat)}</span></div>
+              <div className="flex justify-between text-[16px] font-bold border-t border-content3 mt-1.5 pt-2.5"><span>{t('lbl_grand_total')}</span><span className="text-success">฿{fmt(viewDoc.total)}</span></div>
+              {paidAmount > 0 && <div className="flex justify-between text-[12px] mt-1.5"><span className="text-default-500">{t('paid_amount')}</span><span className="text-success">฿{fmt(paidAmount)}</span></div>}
+            </div>
+            {viewDoc.notes && <div className="px-3 py-2.5 bg-content2 rounded-lg text-[12px] text-default-500">💬 {viewDoc.notes}</div>}
+            {(viewDoc.payments || []).length > 0 && (
+              <div>
+                <Divider className="mb-3" />
+                <div className="text-[12px] font-semibold text-default-500 uppercase tracking-wide mb-2.5">{t('payment_history')}</div>
+                {viewDoc.payments!.map((p, i) => (
+                  <div key={i} className="flex justify-between py-1.5 border-b border-content3 text-[13px]">
+                    <span className="text-default-500">{fmtDate(p.date)} · {p.method}</span>
+                    <span className="text-success font-semibold">฿{fmt(p.amount)}</span>
                   </div>
-                )}
-
-                {/* Change Status */}
-                <Divider className="my-1" />
-                <div className="flex items-center gap-2">
-                  <label className="text-[13px] font-medium">{t('change_status')}</label>
-                  <select value={statusChange} onChange={e => setStatusChange(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
-                    {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  </select>
-                  <Btn size="sm" variant="primary" onClick={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</Btn>
-                </div>
-
-                {/* Convert Document */}
-                <Divider className="my-1" />
-                <div className="flex items-center gap-2">
-                  <label className="text-[13px] font-medium whitespace-nowrap">{t('btn_convert_label')}</label>
-                  <select value={convertType} onChange={e => setConvertType(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
-                    <option value="">{t('lbl_select')}</option>
-                    {Object.entries(DOC_TYPES).filter(([k]) => k !== viewDoc?.type && k !== 'withholding_tax').map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                  <Btn size="sm" variant="ghost" onClick={doConvert} disabled={!convertType}>{t('btn_convert')}</Btn>
-                </div>
+                ))}
+              </div>
+            )}
+            <Divider className="my-1" />
+            <div className="flex items-center gap-2">
+              <label className="text-[13px] font-medium">{t('change_status')}</label>
+              <select value={statusChange} onChange={e => setStatusChange(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
+                {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+              <Btn size="sm" variant="primary" onClick={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</Btn>
+            </div>
+            <Divider className="my-1" />
+            <div className="flex items-center gap-2">
+              <label className="text-[13px] font-medium whitespace-nowrap">{t('btn_convert_label')}</label>
+              <select value={convertType} onChange={e => setConvertType(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
+                <option value="">{t('lbl_select')}</option>
+                {Object.entries(DOC_TYPES).filter(([k]) => k !== viewDoc?.type && !['withholding_tax', 'pay_slips'].includes(k)).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+              <Btn size="sm" variant="ghost" onClick={doConvert} disabled={!convertType}>{t('btn_convert')}</Btn>
+            </div>
           </div>
         )}
       </Modal>
@@ -648,6 +1033,11 @@ export default function Documents({ onNavigate }: { onNavigate?: (page: Page) =>
       <PreviewModal open={!!preview} onClose={() => setPreview(null)}
         title={t('btn_preview')} html={preview?.html || ''}
         onDownload={() => { if (preview) generatePDF(preview.id) }}
+        downloadLabel={t('btn_print_pdf')} closeLabel={t('btn_close')} />
+
+      <PreviewModal open={!!whtPreview} onClose={() => setWhtPreview(null)}
+        title={t('btn_preview')} html={whtPreview?.html || ''}
+        onDownload={() => { if (whtPreview) generateWHTPDF(whtPreview.id) }}
         downloadLabel={t('btn_print_pdf')} closeLabel={t('btn_close')} />
     </div>
   )
@@ -658,7 +1048,6 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
   const fmtN = (n: number | undefined | null) =>
     new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)
   const fmtD = (d: string | undefined | null) => d ? d.slice(0, 10) : '-'
-
   const PDF_TL: Record<string, string> = {
     quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt_f'),
     billing_note: t('type_billing_note_f'), cash_invoice: t('type_cash_invoice_f'),
@@ -668,19 +1057,16 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
     draft: t('status_draft_f'), sent: t('status_sent_f'), approved: t('status_approved_f'),
     paid: t('status_paid_f'), cancelled: t('status_cancelled_f'),
   }
-
   const docTitle = PDF_TL[doc.type] || doc.type
   const statusColor: Record<string, string> = { draft: '#94a3b8', sent: '#60a5fa', approved: '#34d399', paid: '#10b981', cancelled: '#f87171' }
   const logoHtml = company?.logo_url
     ? `<img src="${company.logo_url}" style="max-height:64px;max-width:140px;object-fit:contain" />`
     : `<div style="width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff">${(company?.name || 'B').slice(0, 2)}</div>`
-
   const itemsRows = (doc.items || []).map((item, i) =>
     `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:10px 12px;font-size:13px;color:#374151">${i + 1}</td><td style="padding:10px 12px;font-size:13px;color:#111827;font-weight:500">${item.description || '-'}</td><td style="padding:10px 12px;font-size:13px;color:#374151;text-align:center">${item.qty}</td><td style="padding:10px 12px;font-size:13px;color:#374151;text-align:center">${item.unit || '-'}</td><td style="padding:10px 12px;font-size:13px;color:#374151;text-align:right">${fmtN(item.price)}</td><td style="padding:10px 12px;font-size:13px;color:#111827;font-weight:600;text-align:right">${fmtN(item.amount)}</td></tr>`
   ).join('')
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${docTitle} ${doc.number || ''}</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${docTitle} ${doc.number || ''}</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Sarabun',sans-serif;background:#fff;color:#111827;font-size:14px;line-height:1.6}@page{size:A4;margin:16mm 16mm 20mm}@media print{.no-print{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}.page{max-width:800px;margin:0 auto;padding:32px}.print-btn{position:fixed;top:16px;right:16px;background:#6366f1;color:#fff;border:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,.35)}</style></head>
 <body>
 <button class="no-print print-btn" onclick="window.print()">${t('pdf_print_btn')}</button>
@@ -747,20 +1133,38 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
     <div style="text-align:center"><div style="border-top:1px solid #d1d5db;padding-top:8px;margin-top:48px"><div style="font-size:12px;color:#6b7280">${t('pdf_auth_sig')}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${company?.name || ''}</div></div></div>
     <div style="text-align:center"><div style="border-top:1px solid #d1d5db;padding-top:8px;margin-top:48px"><div style="font-size:12px;color:#6b7280">${t('pdf_recv_sig')}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${doc.contact_name || ''}</div></div></div>
   </div>
-
 </div></body></html>`
-
-  return html
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
 function ModeToggle({ mode, onChange }: { mode: 'amount' | 'percent'; onChange: (m: 'amount' | 'percent') => void }) {
   return (
     <div className="flex border border-content3 rounded-lg overflow-hidden flex-shrink-0">
-      <button onClick={() => onChange('amount')}
-        className={`px-2.5 text-[12px] font-semibold transition-colors ${mode === 'amount' ? 'bg-primary/40 text-primary-300' : 'bg-content2 text-default-500'}`}>฿</button>
-      <button onClick={() => onChange('percent')}
-        className={`px-2.5 text-[12px] font-semibold transition-colors ${mode === 'percent' ? 'bg-primary/40 text-primary-300' : 'bg-content2 text-default-500'}`}>%</button>
+      <button onClick={() => onChange('amount')} className={`px-2.5 text-[12px] font-semibold transition-colors ${mode === 'amount' ? 'bg-primary/40 text-primary-300' : 'bg-content2 text-default-500'}`}>฿</button>
+      <button onClick={() => onChange('percent')} className={`px-2.5 text-[12px] font-semibold transition-colors ${mode === 'percent' ? 'bg-primary/40 text-primary-300' : 'bg-content2 text-default-500'}`}>%</button>
+    </div>
+  )
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 text-[11px] font-semibold text-primary uppercase tracking-wide mt-2">
+      <div className="flex-1 h-px bg-primary/20" />
+      {label}
+      <div className="flex-1 h-px bg-primary/20" />
+    </div>
+  )
+}
+
+function PSNumRow({ label, idx, value, onChange }: { label: string; idx: number; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex items-center gap-2 py-1 border-b border-content3/50">
+      <span className="text-[11px] text-default-400 w-4 flex-shrink-0">{idx}</span>
+      <span className="text-[12px] text-default-600 flex-1">{label}</span>
+      <input type="number" min={0} step="0.01"
+        value={value === 0 ? '' : String(value)}
+        onChange={e => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+        className="w-28 bg-content2 border border-content3 rounded-lg px-2 py-1 text-sm text-right text-foreground outline-none focus:border-primary transition-colors" />
     </div>
   )
 }
