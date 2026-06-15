@@ -3,12 +3,12 @@ import {
   Card, CardBody, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
-import { FileText } from 'lucide-react'
+import { FileText, Plus } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
-import { getPaySlips, createPaySlip, updatePaySlip, deletePaySlip, getContacts, getActiveCompany as getActiveCompanyApi } from '../api'
-import type { PaySlip, Contact } from '../types'
+import { getPaySlips, createPaySlip, updatePaySlip, deletePaySlip, getEmployees, getActiveCompany as getActiveCompanyApi } from '../api'
+import type { PaySlip, Employee } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
@@ -34,7 +34,7 @@ export default function PaySlipPage() {
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState<'none' | 'create' | 'edit'>('none')
   const [editId, setEditId] = useState<number | null>(null)
-  const [contacts, setContacts] = useState<Contact[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [form, setForm] = useState<FormState>({ ...ZERO_FORM })
 
   const setF = (field: keyof FormState, value: string | number) =>
@@ -53,14 +53,14 @@ export default function PaySlipPage() {
   useEffect(() => { load() }, [])
 
   const openCreate = async () => {
-    try { const { data } = await getContacts(); setContacts(data) } catch {}
+    try { const { data } = await getEmployees(); setEmployees(data) } catch {}
     setForm({ ...ZERO_FORM })
     setEditId(null)
     setModal('create')
   }
 
   const openEdit = async (slip: PaySlip) => {
-    try { const { data } = await getContacts(); setContacts(data) } catch {}
+    try { const { data } = await getEmployees(); setEmployees(data) } catch {}
     setForm({
       employee_name: slip.employee_name,
       contact_id: slip.contact_id ? String(slip.contact_id) : '',
@@ -95,6 +95,7 @@ export default function PaySlipPage() {
   }
 
   const save = async () => {
+    if (!form.employee_name.trim()) { toast(t('ps_select_employee'), 'err'); return }
     const payload = {
       employee_name: form.employee_name,
       contact_id: form.contact_id ? Number(form.contact_id) : null,
@@ -174,10 +175,12 @@ export default function PaySlipPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
-        <TextField className="min-w-[220px]" placeholder="🔍  ค้นหาพนักงาน / แผนก / งวด..."
+      <div className="flex items-center gap-3">
+        <TextField className="flex-1 min-w-0" placeholder="🔍  ค้นหาพนักงาน / แผนก / งวด..."
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value || undefined) }} />
-        <Btn variant="primary" onClick={openCreate}>{t('ps_btn_create')}</Btn>
+        <Btn variant="primary" size="sm" onClick={openCreate}
+          className="flex-shrink-0 whitespace-nowrap"
+          startContent={<Plus size={15} strokeWidth={2.5} />}>{t('ps_btn_create')}</Btn>
       </div>
 
       <Card className="bg-content1 border border-content3 rounded-xl" shadow="none">
@@ -238,16 +241,23 @@ export default function PaySlipPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('ps_lbl_employee')}</label>
-              <select value={form.contact_id} onChange={e => {
-                const id = e.target.value
-                setF('contact_id', id)
-                if (id) {
-                  const c = contacts.find(c => String(c.id) === id)
-                  if (c) setF('employee_name', c.name)
+              <select value={form.employee_name} onChange={e => {
+                const name = e.target.value
+                setF('employee_name', name)
+                if (name) {
+                  const emp = employees.find(em => em.name === name)
+                  if (emp) {
+                    if (emp.department) setF('department', emp.department)
+                    if (emp.salary) setF('salary', emp.salary)
+                  }
                 }
               }} className={SELECT_CLASS}>
                 <option value="">— เลือกพนักงาน —</option>
-                {contacts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {employees.map(em => (
+                  <option key={em.id} value={em.name}>
+                    {em.name}{em.department ? ` (${em.department})` : ''}{em.employee_no ? ` #${em.employee_no}` : ''}
+                  </option>
+                ))}
               </select>
               <input
                 className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors"
