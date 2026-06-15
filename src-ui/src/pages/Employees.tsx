@@ -6,6 +6,7 @@ import { useToast, useActiveCompany } from '../App'
 import {
   getEmployees, createEmployee, updateEmployee, deleteEmployee,
   getEmployeePayments, createEmployeePayment, deleteEmployeePayment,
+  createPaySlip,
 } from '../api'
 import type { Employee, EmployeePayment } from '../types'
 import Btn from '../ui/Btn'
@@ -119,6 +120,25 @@ export default function Employees() {
     if (!payEmp) return
     try {
       await createEmployeePayment({ employee_id: payEmp.id, period: pPeriod, amount: pAmount, pay_date: pDate, method: pMethod, notes: pNotes || null })
+      // Auto-create a pay slip record so it appears in the Pay Slips page
+      try {
+        await createPaySlip({
+          employee_name: payEmp.name,
+          contact_id: null,
+          department: payEmp.department || null,
+          period: pPeriod,
+          pay_date: pDate,
+          salary: pAmount,
+          cost_of_living: 0, position_allow: 0, meal_allow: 0, overtime: 0,
+          shift_allow: 0, travel_allow: 0, subsidy: 0, welfare: 0, bonus: 0,
+          total_income: pAmount,
+          tax_withheld: 0, social_security: 0, late_deduct: 0, absent_deduct: 0,
+          loan_deduct: 0, advance_deduct: 0, other_deduct: 0,
+          total_deductions: 0, net_income: pAmount,
+          cum_income: 0, cum_tax: 0, cum_social_sec: 0, cum_provident: 0,
+          notes: pNotes || null,
+        })
+      } catch {} // don't block if pay slip creation fails
       toast(t('toast_emp_paid'))
       setPayEmp(null); load()
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }

@@ -3,7 +3,7 @@ import {
   Card, CardBody, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
-import { FileText, Plus } from 'lucide-react'
+import { FileText, Plus, Eye } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
@@ -36,6 +36,7 @@ export default function PaySlipPage() {
   const [editId, setEditId] = useState<number | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [form, setForm] = useState<FormState>({ ...ZERO_FORM })
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
 
   const setF = (field: keyof FormState, value: string | number) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -146,6 +147,13 @@ export default function PaySlipPage() {
     catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const openPreview = async (slip: PaySlip) => {
+    try {
+      const company = await getActiveCompanyApi().catch(() => null)
+      setPreviewHtml(buildPaySlipHtml(slip, company))
+    } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
   const printPDF = async (slip: PaySlip) => {
     try {
       const company = await getActiveCompanyApi().catch(() => null)
@@ -217,6 +225,7 @@ export default function PaySlipPage() {
                     <TableCell><span className="text-success font-bold">฿{fmt(s.net_income)}</span></TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        <Btn size="sm" variant="ghost" onClick={() => openPreview(s)} title={t('btn_preview')}><Eye size={14} /></Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openEdit(s)}>{t('btn_edit')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => printPDF(s)}>PDF</Btn>
                         <Btn size="sm" variant="danger" onClick={() => doDelete(s.id)}>{t('btn_delete')}</Btn>
@@ -229,6 +238,15 @@ export default function PaySlipPage() {
           )}
         </CardBody>
       </Card>
+
+      {/* Preview modal */}
+      <Modal open={!!previewHtml} onClose={() => setPreviewHtml(null)} size="xl"
+        title={t('ps_preview_title')}
+        footer={<Btn variant="ghost" onClick={() => setPreviewHtml(null)}>{t('btn_close')}</Btn>}>
+        {previewHtml && (
+          <iframe srcDoc={previewHtml} className="w-full rounded-lg border border-content3" style={{ height: '68vh' }} />
+        )}
+      </Modal>
 
       <Modal open={modal !== 'none'} onClose={() => setModal('none')} size="xl"
         title={modal === 'edit' ? t('ps_modal_edit') : t('ps_modal_create')}

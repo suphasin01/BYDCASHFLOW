@@ -334,7 +334,7 @@ export default function App() {
             {/* Main */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Topbar */}
-              <div className="drag h-[60px] px-7 flex items-center justify-between border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md">
+              <div className="drag h-[60px] px-7 flex items-center justify-between border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md relative z-20">
                 <h1 className="text-[15px] font-semibold">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
                 <div className="no-drag flex items-center gap-2.5">
                   {/* Notifications */}
