@@ -1,4 +1,4 @@
-import type { Contact, Product, Document, Payment, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax, PaySlip, Employee } from './types'
+import type { Contact, Product, Document, Payment, PayableDoc, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax, PaySlip, Employee, EmployeePayment } from './types'
 
 const BASE = 'http://localhost:3737/api'
 
@@ -51,6 +51,8 @@ export const deleteDocument = (id: number) => DEL<void>('/documents/' + id)
 
 // Payments
 export const getPayments = () => GET<{ data: Payment[] }>('/payments')
+export const getPaymentDocuments = (direction?: 'in' | 'out') =>
+  GET<{ data: PayableDoc[] }>('/payments/documents' + (direction ? '?direction=' + direction : ''))
 export const createPayment = (data: Partial<Payment>) => POST<Payment>('/payments', data)
 export const deletePayment = (id: number) => DEL<void>('/payments/' + id)
 
@@ -93,3 +95,9 @@ export const getEmployees = (q?: string) =>
 export const createEmployee = (data: Partial<Employee>) => POST<Employee>('/employees', data)
 export const updateEmployee = (id: number, data: Partial<Employee>) => PUT<Employee>('/employees/' + id, data)
 export const deleteEmployee = (id: number) => DEL<void>('/employees/' + id)
+
+// ── Employee Salary Payments ────────────────────────────────────────────────────
+export const getEmployeePayments = (employeeId?: number) =>
+  GET<{ data: EmployeePayment[] }>('/employee-payments' + (employeeId ? '?employee_id=' + employeeId : ''))
+export const createEmployeePayment = (data: Partial<EmployeePayment>) => POST<EmployeePayment>('/employee-payments', data)
+export const deleteEmployeePayment = (id: number) => DEL<void>('/employee-payments/' + id)

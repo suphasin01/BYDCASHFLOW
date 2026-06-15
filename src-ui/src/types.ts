@@ -48,6 +48,13 @@ export interface Payment {
   created_at?: string
 }
 
+// A money-bearing document (receivable/payable) with how much has been paid.
+export interface PayableDoc extends Document {
+  contact_display?: string | null
+  contact_type?: 'customer' | 'vendor' | null
+  paid_amount: number
+}
+
 export interface Document {
   id: number
   type: 'quotation' | 'invoice' | 'receipt' | 'billing_note' | 'cash_invoice' | 'purchase_order' | 'expense'
@@ -183,6 +190,18 @@ export interface Employee {
   notes?: string | null
   created_at?: string
   updated_at?: string
+}
+
+export interface EmployeePayment {
+  id: number
+  employee_id: number
+  period?: string | null
+  amount: number
+  pay_date: string
+  method: 'cash' | 'transfer' | 'cheque' | 'credit_card'
+  notes?: string | null
+  employee_name?: string | null
+  created_at?: string
 }
 
 export interface ReportSummary {

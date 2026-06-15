@@ -368,7 +368,7 @@ export default function App() {
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-7 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,109,243,.08),transparent)] relative">
                 <div className="dot-grid-bg absolute inset-0 pointer-events-none opacity-[0.35]" />
-                <ErrorBoundary key={page}>
+                <ErrorBoundary key={page + ':' + (activeCompany?.id ?? '')}>
                   <div className="page-content relative z-10">
                     {pageComponent()}
                   </div>

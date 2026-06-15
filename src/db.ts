@@ -200,6 +200,17 @@ db.exec(`
     notes            TEXT,
     created_at       TEXT NOT NULL DEFAULT (datetime('now','localtime'))
   );
+
+  CREATE TABLE IF NOT EXISTS employee_payments (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    employee_id  INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    period       TEXT,
+    amount       REAL NOT NULL DEFAULT 0,
+    pay_date     TEXT NOT NULL DEFAULT (date('now','localtime')),
+    method       TEXT NOT NULL DEFAULT 'transfer',
+    notes        TEXT,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
 `);
 
 // Migration: add company column to contacts if it doesn't exist
@@ -368,6 +379,23 @@ export const documentRepo = {
   updateStatus: (id: number, status: string) => {
     db.prepare(`UPDATE documents SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`).run(status, id);
     return documentRepo.get(id);
+  },
+  // Documents that involve money flow, with how much has been paid against each.
+  // direction 'in'  = money we collect from customers (invoice, billing note, ...)
+  // direction 'out' = money we pay to vendors (purchase order, expense)
+  listForPayments: (direction?: 'in' | 'out') => {
+    const IN_TYPES = ['invoice', 'billing_note', 'cash_invoice', 'receipt'];
+    const OUT_TYPES = ['purchase_order', 'expense'];
+    const types = direction === 'in' ? IN_TYPES : direction === 'out' ? OUT_TYPES : [...IN_TYPES, ...OUT_TYPES];
+    const placeholders = types.map(() => '?').join(',');
+    return all(
+      `SELECT d.*, c.name as contact_display, c.type as contact_type,
+        COALESCE((SELECT SUM(amount) FROM payments WHERE document_id = d.id), 0) as paid_amount
+       FROM documents d LEFT JOIN contacts c ON d.contact_id = c.id
+       WHERE d.type IN (${placeholders}) AND d.status != 'cancelled'
+       ORDER BY (d.due_date IS NULL), d.due_date ASC, d.date DESC`,
+      ...types
+    );
   },
 };
 
@@ -623,6 +651,28 @@ export const paySlipRepo = {
   delete: (id: number) => db.prepare('DELETE FROM pay_slips WHERE id = ?').run(id),
 };
 
+// ── Employee Salary Payments ───────────────────────────────────────────────────────
+
+export const employeePaymentRepo = {
+  list: (employee_id?: number) => employee_id
+    ? all('SELECT * FROM employee_payments WHERE employee_id = ? ORDER BY pay_date DESC, id DESC', employee_id)
+    : all('SELECT ep.*, e.name as employee_name FROM employee_payments ep LEFT JOIN employees e ON e.id = ep.employee_id ORDER BY ep.pay_date DESC, ep.id DESC'),
+  create: (data: Record<string, unknown>) => {
+    const r = run(
+      `INSERT INTO employee_payments (employee_id,period,amount,pay_date,method,notes)
+       VALUES (:employee_id,:period,:amount,:pay_date,:method,:notes)`,
+      {
+        ':employee_id': data.employee_id, ':period': data.period ?? null,
+        ':amount': data.amount ?? 0,
+        ':pay_date': data.pay_date ?? new Date().toISOString().slice(0,10),
+        ':method': data.method ?? 'transfer', ':notes': data.notes ?? null,
+      }
+    );
+    return get('SELECT * FROM employee_payments WHERE id = ?', r.lastInsertRowid);
+  },
+  delete: (id: number) => db.prepare('DELETE FROM employee_payments WHERE id = ?').run(id),
+};
+
 // ── Export / Import ──────────────────────────────────────────────────────────────
 
 export function exportAll(): Record<string, unknown> {
@@ -640,6 +690,7 @@ export function exportAll(): Record<string, unknown> {
     withholding_tax_items: all('SELECT * FROM withholding_tax_items ORDER BY id'),
     employees: all('SELECT * FROM employees ORDER BY id'),
     pay_slips: all('SELECT * FROM pay_slips ORDER BY id'),
+    employee_payments: all('SELECT * FROM employee_payments ORDER BY id'),
   };
 }
 
@@ -647,6 +698,7 @@ export function importAll(data: Record<string, unknown[]>): void {
   db.exec('PRAGMA foreign_keys = OFF');
 
   const doImport = db.transaction(() => {
+    db.exec('DELETE FROM employee_payments');
     db.exec('DELETE FROM pay_slips');
     db.exec('DELETE FROM withholding_tax_items');
     db.exec('DELETE FROM withholding_tax');
@@ -679,8 +731,9 @@ export function importAll(data: Record<string, unknown[]>): void {
     insert('withholding_tax_items', (data.withholding_tax_items || []) as Record<string, unknown>[]);
     insert('employees', (data.employees || []) as Record<string, unknown>[]);
     insert('pay_slips', (data.pay_slips || []) as Record<string, unknown>[]);
+    insert('employee_payments', (data.employee_payments || []) as Record<string, unknown>[]);
 
-    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments', 'withholding_tax', 'withholding_tax_items', 'employees', 'pay_slips']) {
+    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments', 'withholding_tax', 'withholding_tax_items', 'employees', 'pay_slips', 'employee_payments']) {
       const r = db.prepare(`SELECT COALESCE(MAX(id), 0) as m FROM ${table}`).get() as { m: number };
       if (r.m > 0) db.prepare('INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(table, r.m);
     }

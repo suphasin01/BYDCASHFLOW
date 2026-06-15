@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import {
   Chip, Spinner,
@@ -102,31 +102,41 @@ export default function Dashboard({ onNavigate }: Props) {
     paid: t('status_paid'), cancelled: t('status_cancelled'),
   }
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      try {
-        const [sum, mon, rec, top] = await Promise.all([
-          getReportSummary(),
-          getReportMonthly(),
-          getDocuments({ limit: '6' }),
-          getReportTopContacts(5),
-        ])
-        setSummary(sum)
-        const mData = Array.from({ length: 12 }, (_, i) => {
-          const m = String(i + 1).padStart(2, '0')
-          const found = mon.data?.find(r => r.month === m)
-          return { month: MONTHS[i] || m, revenue: found?.revenue || 0, expense: found?.expense || 0 }
-        })
-        setMonthly(mData)
-        setRecent(rec.data || [])
-        setTopContacts(top.data || [])
-      } catch {}
-      setLoading(false)
-    }
-    load()
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true)
+    try {
+      const [sum, mon, rec, top] = await Promise.all([
+        getReportSummary(),
+        getReportMonthly(),
+        getDocuments({ limit: '6' }),
+        getReportTopContacts(5),
+      ])
+      setSummary(sum)
+      const mData = Array.from({ length: 12 }, (_, i) => {
+        const m = String(i + 1).padStart(2, '0')
+        const found = mon.data?.find(r => r.month === m)
+        return { month: MONTHS[i] || m, revenue: found?.revenue || 0, expense: found?.expense || 0 }
+      })
+      setMonthly(mData)
+      setRecent(rec.data || [])
+      setTopContacts(top.data || [])
+    } catch {}
+    setLoading(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t])
+
+  useEffect(() => {
+    load()
+    // Refetch when the user returns to the app/tab so the dashboard never goes stale.
+    const onFocus = () => load(false)
+    const onVisible = () => { if (!document.hidden) load(false) }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [load])
 
   if (loading) {
     return (

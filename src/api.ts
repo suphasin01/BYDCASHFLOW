@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
-import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, withholdingTaxRepo, employeeRepo, paySlipRepo, exportAll, importAll } from './db';
+import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, withholdingTaxRepo, employeeRepo, paySlipRepo, employeePaymentRepo, exportAll, importAll } from './db';
 
 const app = express();
 const PORT = process.env.PORT ?? 3737;
@@ -161,6 +161,15 @@ app.delete('/api/documents/:id', (req, res) => {
 app.get('/api/payments', (req, res) => {
   const { document_id } = req.query as Record<string, string>;
   res.json({ data: paymentRepo.list(document_id ? Number(document_id) : undefined) });
+});
+
+// Documents that carry a balance (receivables / payables) with paid totals
+app.get('/api/payments/documents', (req, res) => {
+  try {
+    const { direction } = req.query as Record<string, string>;
+    const dir = direction === 'in' || direction === 'out' ? direction : undefined;
+    res.json({ data: documentRepo.listForPayments(dir) });
+  } catch (e: unknown) { res.status(500).json({ error: String(e) }); }
 });
 
 app.post('/api/payments', (req, res) => {
@@ -331,6 +340,23 @@ app.put('/api/pay-slips/:id', (req, res) => {
 
 app.delete('/api/pay-slips/:id', (req, res) => {
   paySlipRepo.delete(Number(req.params.id));
+  res.json({ success: true });
+});
+
+// ── Employee Salary Payments ────────────────────────────────────────────────────
+
+app.get('/api/employee-payments', (req, res) => {
+  const { employee_id } = req.query as Record<string, string>;
+  res.json({ data: employeePaymentRepo.list(employee_id ? Number(employee_id) : undefined) });
+});
+
+app.post('/api/employee-payments', (req, res) => {
+  try { res.status(201).json(employeePaymentRepo.create(req.body)); }
+  catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+});
+
+app.delete('/api/employee-payments/:id', (req, res) => {
+  employeePaymentRepo.delete(Number(req.params.id));
   res.json({ success: true });
 });
 
