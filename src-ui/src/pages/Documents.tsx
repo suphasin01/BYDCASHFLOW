@@ -76,6 +76,7 @@ const PS_INCOME_KEYS = ['salary','cost_of_living','position_allow','meal_allow',
 const PS_DEDUCT_KEYS = ['tax_withheld','social_security','late_deduct','absent_deduct','loan_deduct','advance_deduct','other_deduct'] as const
 
 type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'reports' | 'withholding_tax' | 'pay_slips' | 'companies' | 'settings'
+type SortKey = 'num' | 'type' | 'contact' | 'date' | 'due' | 'amount'
 
 export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (page: Page) => void }) {
   const { t } = useI18n()
@@ -102,6 +103,12 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const [filterStatus, setFilterStatus] = useState('')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('date')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(d => (d === 'desc' ? 'asc' : 'desc'))
+    else { setSortKey(k); setSortDir('desc') }
+  }
 
   // ── Modal state ─────────────────────────────────────────────────────────────
   const [modal, setModal] = useState<'none' | 'create' | 'edit' | 'view'>('none')
@@ -507,6 +514,15 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     return modal === 'edit' ? t('modal_edit_doc') : t('modal_new_doc')
   }
 
+  // Clickable, sortable column header
+  const sortBtn = (k: SortKey, label: string) => (
+    <button onClick={() => toggleSort(k)}
+      className={`inline-flex items-center gap-1 cursor-pointer transition-colors select-none uppercase ${sortKey === k ? 'text-primary' : 'hover:text-foreground'}`}>
+      {label}
+      <span className="text-[8px] leading-none">{sortKey === k ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}</span>
+    </button>
+  )
+
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
@@ -535,12 +551,12 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
             <Table removeWrapper aria-label={t('btn_create_doc')}
               classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
               <TableHeader>
-                <TableColumn>{t('col_number')}</TableColumn>
-                <TableColumn>{t('col_type')}</TableColumn>
-                <TableColumn>{t('col_contact')}</TableColumn>
-                <TableColumn>{t('col_date')}</TableColumn>
-                <TableColumn>{t('col_due_date')}</TableColumn>
-                <TableColumn>{t('col_amount')}</TableColumn>
+                <TableColumn>{sortBtn('num', t('col_number'))}</TableColumn>
+                <TableColumn>{sortBtn('type', t('col_type'))}</TableColumn>
+                <TableColumn>{sortBtn('contact', t('col_contact'))}</TableColumn>
+                <TableColumn>{sortBtn('date', t('col_date'))}</TableColumn>
+                <TableColumn>{sortBtn('due', t('col_due_date'))}</TableColumn>
+                <TableColumn>{sortBtn('amount', t('col_amount'))}</TableColumn>
                 <TableColumn>{t('col_status')}</TableColumn>
                 <TableColumn align="end">{t('col_actions')}</TableColumn>
               </TableHeader>
@@ -552,10 +568,25 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                 </div>
               }>
                 {[
-                  ...docs.map(doc => ({ kind: 'doc' as const, id: `d-${doc.id}`, sortDate: doc.date || '', doc })),
-                  ...whts.map(wht => ({ kind: 'wht' as const, id: `w-${wht.id}`, sortDate: wht.issue_date || '', wht })),
-                  ...paySlips.map(ps => ({ kind: 'ps' as const, id: `p-${ps.id}`, sortDate: ps.pay_date || '', ps })),
-                ].sort((a, b) => b.sortDate.localeCompare(a.sortDate)).map(row => {
+                  ...docs.map(doc => ({ kind: 'doc' as const, id: `d-${doc.id}`, doc,
+                    s_num: doc.number || '', s_type: DOC_TYPES[doc.type] || doc.type, s_contact: doc.contact_name || '',
+                    s_date: doc.date || '', s_due: doc.due_date || '', s_amount: doc.total || 0 })),
+                  ...whts.map(wht => ({ kind: 'wht' as const, id: `w-${wht.id}`, wht,
+                    s_num: wht.cert_no || `WHT-${wht.id}`, s_type: DOC_TYPES.withholding_tax, s_contact: wht.payee_name || '',
+                    s_date: wht.issue_date || '', s_due: '', s_amount: wht.total_amount || 0 })),
+                  ...paySlips.map(ps => ({ kind: 'ps' as const, id: `p-${ps.id}`, ps,
+                    s_num: ps.period || `PS-${ps.id}`, s_type: DOC_TYPES.pay_slips, s_contact: ps.employee_name || '',
+                    s_date: ps.pay_date || '', s_due: '', s_amount: ps.net_income || 0 })),
+                ].sort((a, b) => {
+                  let cmp: number
+                  if (sortKey === 'amount') cmp = a.s_amount - b.s_amount
+                  else if (sortKey === 'num') cmp = a.s_num.localeCompare(b.s_num, undefined, { numeric: true })
+                  else {
+                    const key = ('s_' + sortKey) as 's_type' | 's_contact' | 's_date' | 's_due'
+                    cmp = String(a[key]).localeCompare(String(b[key]), 'th')
+                  }
+                  return sortDir === 'asc' ? cmp : -cmp
+                }).map(row => {
                   if (row.kind === 'wht') return (
                     <TableRow key={row.id} className="hover:bg-content2/60 transition-colors">
                       <TableCell>

@@ -406,8 +406,8 @@ export default function App() {
 
             {/* Update Banner */}
             {updateBanner && (
-              <div className="fixed bottom-6 left-[260px] z-[998] min-w-[320px] max-w-[420px] modal-panel rounded-2xl overflow-hidden"
-                style={{ boxShadow: '0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.06)' }}>
+              <div className="fixed bottom-6 left-[260px] z-[998] min-w-[320px] max-w-[420px] modal-panel rounded-2xl overflow-hidden bg-content1 border border-content3"
+                style={{ boxShadow: '0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08)' }}>
                 {/* Accent bar */}
                 <div className={`h-0.5 w-full ${
                   updateBanner.type === 'ready' ? 'bg-gradient-to-r from-success/60 via-success to-success/60' :
