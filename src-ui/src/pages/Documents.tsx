@@ -511,6 +511,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center gap-2">
+        <TextField className="flex-1 min-w-0" placeholder={t('search_doc')}
+          value={search} onChange={e => setSearch(e.target.value)} />
         <select value={filterType} onChange={e => setFilterType(e.target.value)}
           className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-[148px] flex-shrink-0">
           <option value="">{t('all_types')}</option>
@@ -521,8 +523,6 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
           <option value="">{t('all_statuses')}</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <TextField className="flex-1 min-w-0" placeholder={t('search_doc')}
-          value={search} onChange={e => setSearch(e.target.value)} />
         <Btn size="sm" variant="primary" onClick={openCreate} className="flex-shrink-0">{t('btn_create_doc')}</Btn>
       </div>
 
