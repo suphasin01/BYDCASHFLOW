@@ -187,6 +187,7 @@ export interface Employee {
   id_card?: string | null
   bank_name?: string | null
   bank_account?: string | null
+  photo_url?: string | null
   notes?: string | null
   created_at?: string
   updated_at?: string

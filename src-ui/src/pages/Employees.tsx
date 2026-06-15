@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Avatar, Card, CardBody, Chip, Spinner } from '@heroui/react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
@@ -10,7 +10,7 @@ import {
 import type { Employee, EmployeePayment } from '../types'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
-import { Users, Wallet, History, CheckCircle2 } from 'lucide-react'
+import { Users, Wallet, History, CheckCircle2, Camera, Pencil, Trash2 } from 'lucide-react'
 import { today } from '../utils'
 
 const fmt = (n: number) => n.toLocaleString('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -21,7 +21,7 @@ type Method = 'cash' | 'transfer' | 'cheque' | 'credit_card'
 const ZERO: Partial<Employee> = {
   employee_no: '', name: '', nickname: '', department: '', position: '',
   start_date: '', salary: 0, phone: '', email: '',
-  id_card: '', bank_name: '', bank_account: '', notes: '',
+  id_card: '', bank_name: '', bank_account: '', photo_url: '', notes: '',
 }
 
 export default function Employees() {
@@ -52,6 +52,16 @@ export default function Employees() {
   }
 
   const set = (k: keyof Employee, v: string | number) => setForm(f => ({ ...f, [k]: v }))
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { toast(t('toast_logo_too_large'), 'err'); return }
+    const reader = new FileReader()
+    reader.onload = ev => set('photo_url', ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   const load = async (q?: string) => {
     setLoading(true)
@@ -151,52 +161,61 @@ export default function Employees() {
           {employees.map(emp => {
             const paid = isPaidThisMonth(emp.id)
             return (
-              <Card key={emp.id} className="card-panel card-lift hover:border-primary/30 transition-colors">
-                <CardBody className="p-4">
-                  <div className="flex gap-3 items-start">
-                    <Avatar
-                      name={emp.name.slice(0, 2)}
-                      radius="md"
-                      className="w-10 h-10 flex-shrink-0 text-sm font-bold bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white"
-                    />
+              <Card key={emp.id} className="card-panel card-lift hover:border-primary/40 transition-colors overflow-hidden">
+                <CardBody className="p-0">
+                  {/* Header */}
+                  <div className="flex items-start gap-3 p-4 pb-3">
+                    {emp.photo_url ? (
+                      <img src={emp.photo_url} alt={emp.name}
+                        className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 border border-content3 shadow-sm" />
+                    ) : (
+                      <Avatar name={emp.name.slice(0, 2)} radius="md"
+                        className="w-14 h-14 flex-shrink-0 text-base font-bold rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white shadow-sm" />
+                    )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-semibold truncate">{emp.name}</span>
-                        {emp.nickname && <span className="text-[11px] text-default-400">({emp.nickname})</span>}
-                        <div className="ml-auto">
-                          {paid ? (
-                            <Chip size="sm" variant="flat" color="success" startContent={<CheckCircle2 size={12} />}>
-                              {t('emp_pay_status_paid')} · {t('emp_pay_this_month')}
-                            </Chip>
-                          ) : (
-                            <Chip size="sm" variant="flat" color="warning">{t('emp_pay_status_unpaid')} · {t('emp_pay_this_month')}</Chip>
-                          )}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-semibold truncate">{emp.name}</span>
+                            {emp.nickname && <span className="text-[11px] text-default-400 flex-shrink-0">({emp.nickname})</span>}
+                          </div>
+                          {emp.employee_no && <div className="text-[11px] text-default-500 mt-0.5">#{emp.employee_no}</div>}
                         </div>
+                        {paid ? (
+                          <Chip size="sm" variant="flat" color="success" startContent={<CheckCircle2 size={12} />} className="flex-shrink-0">
+                            {t('emp_pay_status_paid')}
+                          </Chip>
+                        ) : (
+                          <Chip size="sm" variant="flat" color="warning" className="flex-shrink-0">{t('emp_pay_status_unpaid')}</Chip>
+                        )}
                       </div>
-                      {emp.employee_no && (
-                        <div className="text-[11px] text-default-500 mt-0.5">#{emp.employee_no}</div>
-                      )}
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
-                        {emp.position && <span className="text-[11px] text-default-500">{emp.position}</span>}
-                        {emp.department && <span className="text-[11px] text-primary/70">{emp.department}</span>}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {emp.position && <span className="text-[10px] px-2 py-0.5 rounded-md bg-content2 text-default-500">{emp.position}</span>}
+                        {emp.department && <span className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary/80">{emp.department}</span>}
                       </div>
-                      {(emp.phone || emp.email) && (
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1">
-                          {emp.phone && <span className="text-[11px] text-default-400">{emp.phone}</span>}
-                          {emp.email && <span className="text-[11px] text-default-400 truncate">{emp.email}</span>}
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-content3">
-                        <span className="text-[12px] font-semibold text-success">{fmt(emp.salary)} ฿/เดือน</span>
-                        <div className="flex gap-1.5">
-                          <Btn size="sm" variant="primary" onClick={() => openPay(emp)} startContent={<Wallet size={13} strokeWidth={2} />}>{t('emp_btn_pay_salary')}</Btn>
-                          <Btn size="sm" variant="ghost" onClick={() => setHistEmp(emp)} startContent={<History size={13} strokeWidth={2} />}>{t('emp_btn_pay_history')}</Btn>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 mt-1.5 justify-end">
-                        <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)}>{t('btn_edit')}</Btn>
-                        <Btn size="sm" variant="danger" onClick={() => doDelete(emp.id)}>{t('btn_delete')}</Btn>
-                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact (only if present) */}
+                  {(emp.phone || emp.email) && (
+                    <div className="px-4 pb-3 flex flex-col gap-0.5">
+                      {emp.phone && <span className="text-[11px] text-default-400">☎ {emp.phone}</span>}
+                      {emp.email && <span className="text-[11px] text-default-400 truncate">✉ {emp.email}</span>}
+                    </div>
+                  )}
+
+                  {/* Footer: salary + actions */}
+                  <div className="px-4 py-3 border-t border-content3 bg-content2/30 flex items-center justify-between gap-2">
+                    <div className="leading-none">
+                      <span className="text-[15px] font-bold text-success">{fmt(emp.salary)}</span>
+                      <span className="text-[11px] text-default-500"> ฿/เดือน</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Btn size="sm" variant="primary" onClick={() => openPay(emp)} className="whitespace-nowrap"
+                        startContent={<Wallet size={13} strokeWidth={2} />}>{t('emp_btn_pay_salary')}</Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => setHistEmp(emp)} title={t('emp_btn_pay_history')} aria-label={t('emp_btn_pay_history')}><History size={14} strokeWidth={2} /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)} title={t('btn_edit')} aria-label={t('btn_edit')}><Pencil size={14} strokeWidth={2} /></Btn>
+                      <Btn size="sm" variant="danger" onClick={() => doDelete(emp.id)} title={t('btn_delete')} aria-label={t('btn_delete')}><Trash2 size={14} strokeWidth={2} /></Btn>
                     </div>
                   </div>
                 </CardBody>
@@ -220,6 +239,27 @@ export default function Employees() {
         }
       >
         <div className="flex flex-col gap-3">
+          {/* Photo upload */}
+          <div className="flex items-center gap-4">
+            {form.photo_url ? (
+              <img src={form.photo_url} alt="" className="w-20 h-20 rounded-2xl object-cover border border-content3" />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-content2 border border-dashed border-content3 flex items-center justify-center text-default-400">
+                <Camera size={24} strokeWidth={1.6} />
+              </div>
+            )}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-medium text-default-500 uppercase tracking-wide">{t('emp_photo')}</span>
+              <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handlePhoto} />
+              <div className="flex items-center gap-2">
+                <Btn size="sm" variant="ghost" onClick={() => fileInputRef.current?.click()}
+                  startContent={<Camera size={13} strokeWidth={2} />}>{t('emp_photo_upload')}</Btn>
+                {form.photo_url && (
+                  <button onClick={() => set('photo_url', '')} className="text-[11px] text-danger hover:underline cursor-pointer">{t('emp_photo_remove')}</button>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <TextField label={t('emp_no')} value={form.employee_no || ''} onChange={e => set('employee_no', e.target.value)} placeholder="EMP001" />
             <div className="col-span-2">

@@ -161,6 +161,7 @@ db.exec(`
     id_card      TEXT,
     bank_name    TEXT,
     bank_account TEXT,
+    photo_url    TEXT,
     notes        TEXT,
     created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
     updated_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
@@ -217,6 +218,7 @@ db.exec(`
 try { db.exec('ALTER TABLE contacts ADD COLUMN company TEXT'); } catch {}
 try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payer_tin TEXT'); } catch {}
 try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payee_tin TEXT'); } catch {}
+try { db.exec('ALTER TABLE employees ADD COLUMN photo_url TEXT'); } catch {}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -570,7 +572,7 @@ export const withholdingTaxRepo = {
 
 // ── Employees ─────────────────────────────────────────────────────────────────────
 
-const EMP_FIELDS = ['employee_no','name','nickname','department','position','start_date','salary','phone','email','id_card','bank_name','bank_account','notes'];
+const EMP_FIELDS = ['employee_no','name','nickname','department','position','start_date','salary','phone','email','id_card','bank_name','bank_account','photo_url','notes'];
 
 export const employeeRepo = {
   list: (q?: string) => q
@@ -579,8 +581,8 @@ export const employeeRepo = {
   get: (id: number) => get('SELECT * FROM employees WHERE id = ?', id),
   create: (data: Record<string, unknown>) => {
     const r = run(
-      `INSERT INTO employees (employee_no,name,nickname,department,position,start_date,salary,phone,email,id_card,bank_name,bank_account,notes)
-       VALUES (:employee_no,:name,:nickname,:department,:position,:start_date,:salary,:phone,:email,:id_card,:bank_name,:bank_account,:notes)`,
+      `INSERT INTO employees (employee_no,name,nickname,department,position,start_date,salary,phone,email,id_card,bank_name,bank_account,photo_url,notes)
+       VALUES (:employee_no,:name,:nickname,:department,:position,:start_date,:salary,:phone,:email,:id_card,:bank_name,:bank_account,:photo_url,:notes)`,
       {
         ':employee_no': data.employee_no ?? null, ':name': data.name ?? '',
         ':nickname': data.nickname ?? null, ':department': data.department ?? null,
@@ -588,7 +590,7 @@ export const employeeRepo = {
         ':salary': data.salary ?? 0, ':phone': data.phone ?? null,
         ':email': data.email ?? null, ':id_card': data.id_card ?? null,
         ':bank_name': data.bank_name ?? null, ':bank_account': data.bank_account ?? null,
-        ':notes': data.notes ?? null,
+        ':photo_url': data.photo_url ?? null, ':notes': data.notes ?? null,
       }
     );
     return get('SELECT * FROM employees WHERE id = ?', r.lastInsertRowid);
