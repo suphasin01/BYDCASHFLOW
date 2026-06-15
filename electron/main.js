@@ -202,8 +202,9 @@ async function checkWindowsSameVersionUpdate() {
         clearInterval(autoInstallTimer); autoInstallTimer = null;
         isQuittingForUpdate = true;
         const { spawn } = require('child_process');
-        spawn(installerPath, ['--updated'], { detached: true, stdio: 'ignore' }).unref();
-        setTimeout(() => app.quit(), 300);
+        // /S = NSIS silent install: replaces in place and relaunches, no wizard
+        spawn(installerPath, ['/S', '--force-run'], { detached: true, stdio: 'ignore' }).unref();
+        setTimeout(() => app.quit(), 500);
       }
     }, 1000);
     return true;
@@ -374,7 +375,8 @@ function setupAutoUpdater() {
         autoInstallTimer = null;
         log.info('[updater] Auto-installing update...');
         isQuittingForUpdate = true;
-        try { autoUpdater.quitAndInstall(false, true); } catch (e) { log.error('[updater] quitAndInstall failed:', e); isQuittingForUpdate = false; }
+        // (true, true) = silent install + relaunch → no installer wizard, in-place update
+        try { autoUpdater.quitAndInstall(true, true); } catch (e) { log.error('[updater] quitAndInstall failed:', e); isQuittingForUpdate = false; }
       }
     }, 1000);
   });
@@ -513,7 +515,7 @@ ipcMain.handle('install-update', () => {
   isQuittingForUpdate = true;
   setImmediate(() => {
     try {
-      autoUpdater.quitAndInstall(false, true);
+      autoUpdater.quitAndInstall(true, true);
     } catch (err) {
       isQuittingForUpdate = false;
       log.error('[updater] quitAndInstall failed:', err);

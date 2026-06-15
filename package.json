@@ -1,6 +1,6 @@
 {
   "name": "fruitbiz",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "description": "Local offline business document system",
   "author": {
     "name": "Suphasin",
@@ -107,9 +107,9 @@
       "icon": "assets/icon.png"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
+      "perMachine": false,
       "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "FruitBiz",
