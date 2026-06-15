@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
 import ErrorBoundary from './ErrorBoundary'
+import NotificationBell from './NotificationBell'
 import Btn from './ui/Btn'
 import Modal from './ui/Modal'
 import type { Company } from './types'
@@ -336,6 +337,8 @@ export default function App() {
               <div className="drag h-[60px] px-7 flex items-center justify-between border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md">
                 <h1 className="text-[15px] font-semibold">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
                 <div className="no-drag flex items-center gap-2.5">
+                  {/* Notifications */}
+                  <NotificationBell onNavigate={navigate} />
                   {/* Check for Updates */}
                   <button disabled={checkingUpdate}
                     onClick={checkForUpdates} title={t('btn_check_update')}
