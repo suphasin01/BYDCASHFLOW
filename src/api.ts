@@ -364,7 +364,15 @@ app.post('/api/employee-payments', (req, res) => {
 });
 
 app.delete('/api/employee-payments/:id', (req, res) => {
-  employeePaymentRepo.delete(Number(req.params.id));
+  const id = Number(req.params.id);
+  // Cascade: remove the auto-created pay slip for the same employee + period
+  // so deleting a salary payment doesn't leave an orphaned slip behind.
+  const pay = employeePaymentRepo.get(id) as Record<string, unknown> | undefined;
+  if (pay?.employee_id && pay?.period) {
+    const emp = employeeRepo.get(pay.employee_id as number) as { name?: string } | undefined;
+    if (emp?.name) paySlipRepo.deleteByEmployeePeriod(emp.name, pay.period as string);
+  }
+  employeePaymentRepo.delete(id);
   res.json({ success: true });
 });
 

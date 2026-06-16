@@ -402,7 +402,9 @@ export const documentRepo = {
   // direction 'in'  = money we collect from customers (invoice, billing note, ...)
   // direction 'out' = money we pay to vendors (purchase order, expense)
   listForPayments: (direction?: 'in' | 'out') => {
-    const IN_TYPES = ['invoice', 'billing_note', 'cash_invoice', 'receipt'];
+    // A `receipt` is issued AFTER money is received — it is proof of payment,
+    // not an amount still owed — so it is intentionally excluded from receivables.
+    const IN_TYPES = ['invoice', 'billing_note', 'cash_invoice'];
     const OUT_TYPES = ['purchase_order', 'expense'];
     const types = direction === 'in' ? IN_TYPES : direction === 'out' ? OUT_TYPES : [...IN_TYPES, ...OUT_TYPES];
     const placeholders = types.map(() => '?').join(',');
@@ -632,7 +634,14 @@ export const paySlipRepo = {
     ? all(`SELECT * FROM pay_slips WHERE employee_name LIKE ? OR department LIKE ? OR period LIKE ? ORDER BY pay_date DESC, created_at DESC`, `%${q}%`, `%${q}%`, `%${q}%`)
     : all('SELECT * FROM pay_slips ORDER BY pay_date DESC, created_at DESC'),
   get: (id: number) => get('SELECT * FROM pay_slips WHERE id = ?', id),
+  deleteByEmployeePeriod: (employee_name: string, period: string) =>
+    db.prepare('DELETE FROM pay_slips WHERE employee_name = ? AND period = ?').run(employee_name, period),
   create: (data: Record<string, unknown>) => {
+    // Replace any existing slip for the same employee + period so paying salary
+    // and creating a slip for the same month never produces duplicates.
+    if (data.employee_name && data.period) {
+      db.prepare('DELETE FROM pay_slips WHERE employee_name = ? AND period = ?').run(data.employee_name, data.period);
+    }
     const r = run(
       `INSERT INTO pay_slips (employee_name,contact_id,department,period,pay_date,salary,cost_of_living,position_allow,meal_allow,overtime,shift_allow,travel_allow,subsidy,welfare,bonus,total_income,tax_withheld,social_security,late_deduct,absent_deduct,loan_deduct,advance_deduct,other_deduct,total_deductions,net_income,cum_income,cum_tax,cum_social_sec,cum_provident,notes,receipt_image)
        VALUES (:employee_name,:contact_id,:department,:period,:pay_date,:salary,:cost_of_living,:position_allow,:meal_allow,:overtime,:shift_allow,:travel_allow,:subsidy,:welfare,:bonus,:total_income,:tax_withheld,:social_security,:late_deduct,:absent_deduct,:loan_deduct,:advance_deduct,:other_deduct,:total_deductions,:net_income,:cum_income,:cum_tax,:cum_social_sec,:cum_provident,:notes,:receipt_image)`,
@@ -676,7 +685,13 @@ export const employeePaymentRepo = {
   list: (employee_id?: number) => employee_id
     ? all('SELECT * FROM employee_payments WHERE employee_id = ? ORDER BY pay_date DESC, id DESC', employee_id)
     : all('SELECT ep.*, e.name as employee_name FROM employee_payments ep LEFT JOIN employees e ON e.id = ep.employee_id ORDER BY ep.pay_date DESC, ep.id DESC'),
+  get: (id: number) => get('SELECT * FROM employee_payments WHERE id = ?', id),
   create: (data: Record<string, unknown>) => {
+    // Replace any existing payment for the same employee + period to avoid
+    // duplicate salary-payment rows for one month.
+    if (data.employee_id && data.period) {
+      db.prepare('DELETE FROM employee_payments WHERE employee_id = ? AND period = ?').run(data.employee_id, data.period);
+    }
     const r = run(
       `INSERT INTO employee_payments (employee_id,period,amount,pay_date,method,notes,receipt_image)
        VALUES (:employee_id,:period,:amount,:pay_date,:method,:notes,:receipt_image)`,
