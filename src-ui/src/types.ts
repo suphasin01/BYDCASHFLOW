@@ -201,6 +201,7 @@ export interface EmployeePayment {
   pay_date: string
   method: 'cash' | 'transfer' | 'cheque' | 'credit_card'
   notes?: string | null
+  receipt_image?: string | null
   employee_name?: string | null
   created_at?: string
 }

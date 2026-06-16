@@ -65,9 +65,13 @@ export default function Companies() {
     reader.readAsDataURL(file)
   }
 
+  const onTaxChange = (v: string) => setFTax(v.replace(/\D/g, '').slice(0, 13))
+
   const save = async () => {
+    const cleanTax = fTax.replace(/\D/g, '')
+    if (cleanTax && cleanTax.length !== 13) { toast(t('err_tax_id_invalid'), 'err'); return }
     try {
-      const payload = { name: fName, tax_id: fTax || null, branch: fBranch || null, phone: fPhone || null, email: fEmail || null, website: fWebsite || null, address: fAddress || null, note: fNote || null, logo_url: fLogo || null }
+      const payload = { name: fName, tax_id: cleanTax || null, branch: fBranch || null, phone: fPhone || null, email: fEmail || null, website: fWebsite || null, address: fAddress || null, note: fNote || null, logo_url: fLogo || null }
       if (editing) { await updateCompany(editing.id, payload); toast(t('toast_company_edited')) }
       else { await createCompany(payload); toast(t('toast_company_added')) }
       setModal(false); load(); reloadActive()
@@ -171,8 +175,12 @@ export default function Companies() {
                 <TextField label={t('lbl_company_name')}
                   placeholder={t('lbl_company_name_ph')} value={fName} onChange={e => setFName(e.target.value)} />
                 <div className="grid grid-cols-2 gap-4">
-                  <TextField label={t('lbl_tax_number')}
-                    placeholder="0000000000000" value={fTax} onChange={e => setFTax(e.target.value)} />
+                  <div>
+                    <TextField label={t('lbl_tax_number')} inputMode="numeric"
+                      placeholder="0000000000000" value={fTax} onChange={e => onTaxChange(e.target.value)} />
+                    {fTax.length > 0 && fTax.length < 13 && <div className="text-[11px] text-warning mt-1">{fTax.length}/13 หลัก</div>}
+                    {fTax.length === 13 && <div className="text-[11px] text-success mt-1">✓ ครบ 13 หลัก</div>}
+                  </div>
                   <TextField label={t('lbl_company_branch')}
                     placeholder={t('lbl_branch_ph')} value={fBranch} onChange={e => setFBranch(e.target.value)} />
                 </div>

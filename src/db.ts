@@ -219,6 +219,7 @@ try { db.exec('ALTER TABLE contacts ADD COLUMN company TEXT'); } catch {}
 try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payer_tin TEXT'); } catch {}
 try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payee_tin TEXT'); } catch {}
 try { db.exec('ALTER TABLE employees ADD COLUMN photo_url TEXT'); } catch {}
+try { db.exec('ALTER TABLE employee_payments ADD COLUMN receipt_image TEXT'); } catch {}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -661,18 +662,21 @@ export const employeePaymentRepo = {
     : all('SELECT ep.*, e.name as employee_name FROM employee_payments ep LEFT JOIN employees e ON e.id = ep.employee_id ORDER BY ep.pay_date DESC, ep.id DESC'),
   create: (data: Record<string, unknown>) => {
     const r = run(
-      `INSERT INTO employee_payments (employee_id,period,amount,pay_date,method,notes)
-       VALUES (:employee_id,:period,:amount,:pay_date,:method,:notes)`,
+      `INSERT INTO employee_payments (employee_id,period,amount,pay_date,method,notes,receipt_image)
+       VALUES (:employee_id,:period,:amount,:pay_date,:method,:notes,:receipt_image)`,
       {
         ':employee_id': data.employee_id, ':period': data.period ?? null,
         ':amount': data.amount ?? 0,
         ':pay_date': data.pay_date ?? new Date().toISOString().slice(0,10),
         ':method': data.method ?? 'transfer', ':notes': data.notes ?? null,
+        ':receipt_image': data.receipt_image ?? null,
       }
     );
     return get('SELECT * FROM employee_payments WHERE id = ?', r.lastInsertRowid);
   },
   delete: (id: number) => db.prepare('DELETE FROM employee_payments WHERE id = ?').run(id),
+  deleteByEmployeePeriod: (employee_id: number, period: string) =>
+    db.prepare('DELETE FROM employee_payments WHERE employee_id = ? AND period = ?').run(employee_id, period),
 };
 
 // ── Export / Import ──────────────────────────────────────────────────────────────
@@ -757,7 +761,7 @@ export const reportRepo = {
     const params = safePeriod ? [safePeriod] : [];
     const revenue = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('invoice','receipt','cash_invoice') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
     const expense = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('expense','purchase_order') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
-    const pending = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('invoice','billing_note') AND status = 'sent' ${whereClause}`, ...params) ?? { v: 0 }).v;
+    const pending = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE ((type IN ('invoice','billing_note') AND status = 'sent') OR (type IN ('expense','purchase_order') AND status = 'approved')) ${whereClause}`, ...params) ?? { v: 0 }).v;
     const counts = all<{ type: string; cnt: number }>(`SELECT type, COUNT(*) as cnt FROM documents WHERE 1=1 ${whereClause} GROUP BY type`, ...params);
     const countMap: Record<string, number> = {};
     counts.forEach(r => { countMap[r.type] = r.cnt; });

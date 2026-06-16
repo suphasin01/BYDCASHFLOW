@@ -44,6 +44,8 @@ export default function Employees() {
   const [pDate, setPDate] = useState(today())
   const [pMethod, setPMethod] = useState<Method>('transfer')
   const [pNotes, setPNotes] = useState('')
+  const [pImage, setPImage] = useState<string | null>(null)
+  const payImageRef = useRef<HTMLInputElement>(null)
 
   // History modal
   const [histEmp, setHistEmp] = useState<Employee | null>(null)
@@ -111,15 +113,24 @@ export default function Employees() {
   }
 
   // ── Salary payment ───────────────────────────────────────────────────────────
+  const payImageHandler = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 5MB', 'err'); return }
+    const reader = new FileReader()
+    reader.onload = ev => setPImage(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
   const openPay = (e: Employee) => {
     setPayEmp(e)
-    setPPeriod(curPeriod()); setPAmount(e.salary || 0); setPDate(today()); setPMethod('transfer'); setPNotes('')
+    setPPeriod(curPeriod()); setPAmount(e.salary || 0); setPDate(today()); setPMethod('transfer'); setPNotes(''); setPImage(null)
   }
 
   const savePay = async () => {
     if (!payEmp) return
     try {
-      await createEmployeePayment({ employee_id: payEmp.id, period: pPeriod, amount: pAmount, pay_date: pDate, method: pMethod, notes: pNotes || null })
+      await createEmployeePayment({ employee_id: payEmp.id, period: pPeriod, amount: pAmount, pay_date: pDate, method: pMethod, notes: pNotes || null, receipt_image: pImage || null })
       // Auto-create a pay slip record so it appears in the Pay Slips page
       try {
         await createPaySlip({
@@ -342,6 +353,24 @@ export default function Employees() {
               </div>
             </div>
             <TextAreaField label={t('emp_notes')} value={pNotes} onChange={e => setPNotes(e.target.value)} rows={2} />
+            {/* Receipt image */}
+            <div>
+              <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('emp_pay_receipt')}</div>
+              <input type="file" ref={payImageRef} accept="image/*" className="hidden" onChange={payImageHandler} />
+              {pImage ? (
+                <div className="relative rounded-xl overflow-hidden border border-content3 bg-content2">
+                  <img src={pImage} alt="receipt" className="w-full max-h-48 object-contain" />
+                  <button onClick={() => setPImage(null)}
+                    className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-danger/80 text-white text-[13px] cursor-pointer hover:bg-danger transition-colors">✕</button>
+                </div>
+              ) : (
+                <button onClick={() => payImageRef.current?.click()}
+                  className="w-full border-2 border-dashed border-content3 rounded-xl py-5 flex flex-col items-center gap-2 text-default-400 hover:border-primary hover:text-primary transition-colors cursor-pointer">
+                  <Camera size={20} strokeWidth={1.6} />
+                  <span className="text-[12px]">{t('emp_pay_receipt_add')}</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </Modal>
@@ -362,6 +391,9 @@ export default function Employees() {
                     {p.period ? `${p.period} · ` : ''}{p.pay_date} · {METHODS[p.method] || p.method}
                   </div>
                   {p.notes && <div className="text-[11px] text-default-400 mt-0.5">{p.notes}</div>}
+                  {p.receipt_image && (
+                    <img src={p.receipt_image} alt="receipt" className="mt-2 max-h-32 rounded-lg border border-content3 object-contain" />
+                  )}
                 </div>
                 <Btn size="sm" variant="danger" onClick={() => deletePay(p.id)}>{t('btn_delete')}</Btn>
               </div>

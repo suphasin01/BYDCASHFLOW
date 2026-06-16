@@ -53,9 +53,13 @@ export default function Contacts() {
     setModal(true)
   }
 
+  const onTaxChange = (v: string) => setFTax(v.replace(/\D/g, '').slice(0, 13))
+
   const save = async () => {
+    const cleanTax = fTax.replace(/\D/g, '')
+    if (cleanTax && cleanTax.length !== 13) { toast(t('err_tax_id_invalid'), 'err'); return }
     try {
-      const payload = { type: fType, name: fName, company: fCompany || null, tax_id: fTax || null, branch: fBranch || null, email: fEmail || null, phone: fPhone || null, address: fAddress || null, note: fNote || null }
+      const payload = { type: fType, name: fName, company: fCompany || null, tax_id: cleanTax || null, branch: fBranch || null, email: fEmail || null, phone: fPhone || null, address: fAddress || null, note: fNote || null }
       if (editing) { await updateContact(editing.id, payload); toast(t('toast_contact_edited')) }
       else { await createContact(payload); toast(t('toast_contact_added')) }
       setModal(false); load()
@@ -155,8 +159,14 @@ export default function Contacts() {
                 <TextField label={t('lbl_contact_company')} placeholder={t('lbl_contact_company_ph')}
                   value={fCompany} onChange={e => setFCompany(e.target.value)} />
                 <div className="grid grid-cols-2 gap-4">
-                  <TextField label={t('col_tax_id')}
-                    value={fTax} onChange={e => setFTax(e.target.value)} />
+                  <div>
+                    <TextField label={t('col_tax_id')} inputMode="numeric" placeholder="0000000000000"
+                      value={fTax} onChange={e => onTaxChange(e.target.value)} />
+                    {fTax.length > 0 && fTax.length < 13 && (
+                      <div className="text-[11px] text-warning mt-1">{fTax.length}/13 หลัก</div>
+                    )}
+                    {fTax.length === 13 && <div className="text-[11px] text-success mt-1">✓ ครบ 13 หลัก</div>}
+                  </div>
                   <TextField label={t('lbl_branch')}
                     placeholder={t('lbl_branch_ph')} value={fBranch} onChange={e => setFBranch(e.target.value)} />
                 </div>

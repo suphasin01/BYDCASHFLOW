@@ -413,6 +413,18 @@ function apiRequest(method, path, body) {
 // ── Get App Version IPC ───────────────────────────────────────────────
 ipcMain.handle('get-version', () => app.getVersion());
 
+// ── Get Local IP IPC ──────────────────────────────────────────────────
+ipcMain.handle('get-local-ip', () => {
+  const os = require('os');
+  const ifaces = os.networkInterfaces();
+  for (const name of Object.keys(ifaces)) {
+    for (const iface of ifaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) return iface.address;
+    }
+  }
+  return '127.0.0.1';
+});
+
 // ── Export Data IPC ───────────────────────────────────────────────────
 ipcMain.handle('export-data', async () => {
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {

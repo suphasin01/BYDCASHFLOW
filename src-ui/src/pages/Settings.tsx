@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
 import Btn from '../ui/Btn'
 import { TextField, TextAreaField } from '../ui/Field'
@@ -8,6 +8,7 @@ import type { Settings } from '../types'
 
 type ElectronAPI = {
   exportData: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>
+  getLocalIP?: () => Promise<string>
   importData: () => Promise<{ success: boolean; canceled?: boolean; error?: string }>
 }
 const eAPI = () => (window as unknown as { electronAPI?: ElectronAPI }).electronAPI
@@ -32,6 +33,9 @@ export default function Settings() {
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [localIP, setLocalIP] = useState('')
+  const [lanCopied, setLanCopied] = useState(false)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [fName, setFName] = useState('')
   const [fTax, setFTax] = useState('')
@@ -39,6 +43,19 @@ export default function Settings() {
   const [fEmail, setFEmail] = useState('')
   const [fWebsite, setFWebsite] = useState('')
   const [fAddress, setFAddress] = useState('')
+
+  useEffect(() => {
+    eAPI()?.getLocalIP?.().then(ip => setLocalIP(ip || '127.0.0.1')).catch(() => setLocalIP('127.0.0.1'))
+  }, [])
+
+  const lanUrl = `http://${localIP || '...'  }:3737`
+  const copyLanUrl = () => {
+    navigator.clipboard.writeText(lanUrl).then(() => {
+      setLanCopied(true)
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = setTimeout(() => setLanCopied(false), 2000)
+    }).catch(() => {})
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -126,10 +143,29 @@ export default function Settings() {
           </div>
         </SectionCard>
 
-        {/* Claude tips */}
+        {/* LAN / Mobile Access */}
         <SectionCard>
-          <SectionTitle>{t('settings_claude_title')}</SectionTitle>
-          <div className="text-[12px] text-default-500 leading-relaxed" dangerouslySetInnerHTML={{ __html: t('claude_tips') }} />
+          <SectionTitle>{t('settings_lan_title')}</SectionTitle>
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('settings_lan_url_label')}</div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-primary bg-primary/10 px-3 py-2 rounded-lg text-[13px] font-mono truncate border border-primary/20">
+                  {lanUrl}
+                </code>
+                <Btn size="sm" variant={lanCopied ? 'success' : 'ghost'} onClick={copyLanUrl} className="flex-shrink-0 whitespace-nowrap">
+                  {lanCopied ? t('settings_lan_copied') : t('settings_lan_copy')}
+                </Btn>
+              </div>
+            </div>
+            <div className="bg-content2/60 rounded-xl p-3 flex flex-col gap-1.5 text-[12px]">
+              <div className="font-semibold text-foreground mb-0.5">📋 {t('settings_lan_steps').split('1)')[0]}</div>
+              <div className="text-default-500 flex items-start gap-2"><span className="text-primary font-bold flex-shrink-0">1)</span><span>{t('settings_lan_steps').split('1)')[1]?.split('2)')[0]}</span></div>
+              <div className="text-default-500 flex items-start gap-2"><span className="text-primary font-bold flex-shrink-0">2)</span><span>{t('settings_lan_steps').split('2)')[1]?.split('3)')[0]}</span></div>
+              <div className="text-default-500 flex items-start gap-2"><span className="text-primary font-bold flex-shrink-0">3)</span><span>{t('settings_lan_steps').split('3)')[1]}</span></div>
+            </div>
+            <div className="text-[11px] text-warning/80 bg-warning/10 border border-warning/20 rounded-lg px-3 py-2">⚠️ {t('settings_lan_note')}</div>
+          </div>
         </SectionCard>
 
         {/* Data Backup */}

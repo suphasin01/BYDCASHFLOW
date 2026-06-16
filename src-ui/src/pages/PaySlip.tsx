@@ -7,7 +7,7 @@ import { FileText, Plus, Eye } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
-import { getPaySlips, createPaySlip, updatePaySlip, deletePaySlip, getEmployees, getActiveCompany as getActiveCompanyApi } from '../api'
+import { getPaySlips, createPaySlip, updatePaySlip, deletePaySlip, getEmployees, getActiveCompany as getActiveCompanyApi, createEmployeePayment } from '../api'
 import type { PaySlip, Employee } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
@@ -134,6 +134,20 @@ export default function PaySlipPage() {
         await updatePaySlip(editId, payload)
       } else {
         await createPaySlip(payload)
+        // Sync: create employee_payment so Employees page shows "paid" status
+        if (form.employee_name && form.period) {
+          try {
+            const { data: emps } = await getEmployees()
+            const emp = emps.find((e: Employee) => e.name === form.employee_name)
+            if (emp) {
+              await createEmployeePayment({
+                employee_id: emp.id, period: form.period,
+                amount: totalIncome, pay_date: form.pay_date,
+                method: 'transfer', notes: null,
+              })
+            }
+          } catch {} // don't block if linking fails
+        }
       }
       toast(t('toast_ps_saved'))
       setModal('none')

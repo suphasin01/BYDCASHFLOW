@@ -27,4 +27,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startMacDownload: (url, version) => ipcRenderer.invoke('start-mac-download', url, version),
   openReleasesPage: () => ipcRenderer.invoke('open-releases-page'),
   quitApp: () => ipcRenderer.invoke('quit-app'),
+  getLocalIP: () => ipcRenderer.invoke('get-local-ip'),
 })

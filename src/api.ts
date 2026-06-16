@@ -339,7 +339,15 @@ app.put('/api/pay-slips/:id', (req, res) => {
 });
 
 app.delete('/api/pay-slips/:id', (req, res) => {
-  paySlipRepo.delete(Number(req.params.id));
+  const id = Number(req.params.id);
+  // Cascade: remove the matching employee_payment so the employee's paid status resets
+  const slip = paySlipRepo.get(id) as Record<string, unknown> | undefined;
+  if (slip?.employee_name && slip?.period) {
+    const emps = employeeRepo.list('') as { id: number; name: string }[];
+    const emp = emps.find(e => e.name === slip.employee_name);
+    if (emp) employeePaymentRepo.deleteByEmployeePeriod(emp.id, slip.period as string);
+  }
+  paySlipRepo.delete(id);
   res.json({ success: true });
 });
 
