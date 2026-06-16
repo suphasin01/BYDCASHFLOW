@@ -6,14 +6,14 @@ import {
 import { FileText, Plus, Eye, Paperclip } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
-import { useToast } from '../App'
+import { useToast, usePeriod } from '../App'
 import { getPaySlips, createPaySlip, updatePaySlip, deletePaySlip, getEmployees, getActiveCompany as getActiveCompanyApi, createEmployeePayment } from '../api'
 import type { PaySlip, Employee } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
 const ZERO_FORM = {
   employee_name: '', contact_id: '', department: '', period: '', pay_date: today(),
@@ -29,6 +29,7 @@ type FormState = typeof ZERO_FORM
 export default function PaySlipPage() {
   const { t } = useI18n()
   const { toast } = useToast()
+  const { period } = usePeriod()
   const [slips, setSlips] = useState<PaySlip[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -248,7 +249,7 @@ export default function PaySlipPage() {
                   <p>{t('no_pay_slips')}</p>
                 </div>
               }>
-                {slips.map(s => (
+                {slips.filter(s => (s.pay_date || s.period || '').slice(0, 7) === period).map(s => (
                   <TableRow key={s.id} className="hover:bg-content2/60 transition-colors">
                     <TableCell className="font-semibold">{s.employee_name}</TableCell>
                     <TableCell className="text-default-500">{s.department || '—'}</TableCell>
@@ -338,7 +339,7 @@ export default function PaySlipPage() {
                 ))}
               </select>
               <input
-                className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors"
+                className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors"
                 placeholder="หรือพิมพ์ชื่อโดยตรง..."
                 value={form.employee_name}
                 onChange={e => setF('employee_name', e.target.value)}

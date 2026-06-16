@@ -12,7 +12,7 @@ import { fmt } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
 type ChipColor = 'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'danger'
 

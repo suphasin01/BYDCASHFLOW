@@ -380,7 +380,7 @@ export default function Employees() {
               <div>
                 <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('emp_pay_method')}</label>
                 <select value={pMethod} onChange={e => setPMethod(e.target.value as Method)}
-                  className="w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]">
+                  className="w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]">
                   <option value="transfer">{t('method_transfer')}</option>
                   <option value="cash">{t('method_cash')}</option>
                   <option value="cheque">{t('method_cheque')}</option>

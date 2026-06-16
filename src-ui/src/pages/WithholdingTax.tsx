@@ -6,7 +6,7 @@ import {
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
-import { useActiveCompany } from '../App'
+import { useActiveCompany, usePeriod } from '../App'
 import {
   getWithholdingTaxList, getWithholdingTax,
   createWithholdingTax, updateWithholdingTax, deleteWithholdingTax,
@@ -19,7 +19,7 @@ import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
 import PreviewModal from '../ui/PreviewModal'
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
 
 // ─── Income type definitions ────────────────────────────────────────────────────────────
@@ -59,6 +59,7 @@ export default function WithholdingTax() {
   const { t } = useI18n()
   const { toast } = useToast()
   const { activeCompany } = useActiveCompany()
+  const { period } = usePeriod()
 
   const [list, setList] = useState<WithholdingTax[]>([])
   const [loading, setLoading] = useState(true)
@@ -234,12 +235,15 @@ export default function WithholdingTax() {
     return def ? t(def.key) : value
   }
 
+  // Scope to the selected month by issue date.
+  const shown = list.filter(w => (w.issue_date || '').slice(0, 7) === period)
+
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div className="text-[13px] text-default-500">
-          {list.length} {t('records_suffix')}
+          {shown.length} {t('records_suffix')}
         </div>
         <Btn variant="primary" onClick={openCreate} className="w-full sm:w-auto">{t('wht_btn_create')}</Btn>
       </div>
@@ -268,7 +272,7 @@ export default function WithholdingTax() {
                   <p className="mt-1 text-[12px]" dangerouslySetInnerHTML={{ __html: t('wht_no_data_hint') }} />
                 </div>
               }>
-                {list.map(wht => (
+                {shown.map(wht => (
                   <TableRow key={wht.id} className="hover:bg-content2/60 transition-colors">
                     <TableCell><span className="font-semibold text-primary">{wht.cert_no || `#${wht.id}`}</span></TableCell>
                     <TableCell className="text-default-500">{wht.form_type ? formTypeLabel(wht.form_type) : '—'}</TableCell>

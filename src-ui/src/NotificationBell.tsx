@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ArrowDownLeft, ArrowUpRight, Wallet, CalendarClock, CheckCircle2, ChevronRight } from 'lucide-react'
+import { Bell, ArrowDownLeft, ArrowUpRight, Wallet, CalendarClock, CheckCircle2, ChevronRight, AlertTriangle } from 'lucide-react'
 import { useI18n } from './i18n'
 import { useActiveCompany } from './App'
 import { getPaymentDocuments, getEmployees, getEmployeePayments } from './api'
@@ -47,6 +47,18 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: (p: Page
   const totalPay = payables.reduce((s, d) => s + outstanding(d), 0)
   const count = receivables.length + payables.length + unpaidEmps.length
 
+  // Due-date classification: overdue (past due) / due soon (within 3 days)
+  const todayStr = today()
+  const soonStr = (() => { const d = new Date(); d.setDate(d.getDate() + 3); const z = (n: number) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}` })()
+  const dueClass = (d: PayableDoc): 'overdue' | 'soon' | null => {
+    if (!d.due_date || d.status === 'paid') return null
+    if (d.due_date < todayStr) return 'overdue'
+    if (d.due_date <= soonStr) return 'soon'
+    return null
+  }
+  const dueRank = (d: PayableDoc) => { const c = dueClass(d); return c === 'overdue' ? 0 : c === 'soon' ? 1 : 2 }
+  const overdueCount = [...receivables, ...payables].filter(d => dueClass(d) === 'overdue').length
+
   // Pop the panel open once per launch when there is something worth seeing
   useEffect(() => {
     if (!autoShown.current && (count > 0 || newMonth)) {
@@ -86,15 +98,25 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: (p: Page
     </div>
   )
 
-  const docRows = (docs: PayableDoc[]) => (<>
-    {docs.slice(0, 4).map(d => (
-      <div key={d.id} className="flex items-center justify-between text-[11px] gap-2">
-        <span className="text-default-500 truncate">{d.number || `#${d.id}`} · {d.contact_name || d.contact_display || '—'}</span>
-        <span className="text-warning font-semibold flex-shrink-0">฿{fmt(outstanding(d))}</span>
-      </div>
-    ))}
-    {docs.length > 4 && <div className="text-[11px] text-default-400">+{docs.length - 4} {t('notif_items')}</div>}
-  </>)
+  const docRows = (docs: PayableDoc[]) => {
+    const sorted = [...docs].sort((a, b) => dueRank(a) - dueRank(b) || (a.due_date || '').localeCompare(b.due_date || ''))
+    return (<>
+      {sorted.slice(0, 4).map(d => {
+        const cls = dueClass(d)
+        return (
+          <div key={d.id} className="flex items-center justify-between text-[11px] gap-2">
+            <span className="text-default-500 truncate flex items-center gap-1.5 min-w-0">
+              <span className="truncate">{d.number || `#${d.id}`} · {d.contact_name || d.contact_display || '—'}</span>
+              {cls === 'overdue' && <span className="flex-shrink-0 text-[9px] font-bold text-danger bg-danger/10 border border-danger/25 rounded px-1 leading-tight py-px">{t('notif_overdue')}</span>}
+              {cls === 'soon' && <span className="flex-shrink-0 text-[9px] font-bold text-warning bg-warning/10 border border-warning/25 rounded px-1 leading-tight py-px">{t('notif_due_soon')}</span>}
+            </span>
+            <span className={`font-semibold flex-shrink-0 ${cls === 'overdue' ? 'text-danger' : 'text-warning'}`}>฿{fmt(outstanding(d))}</span>
+          </div>
+        )
+      })}
+      {docs.length > 4 && <div className="text-[11px] text-default-400">+{docs.length - 4} {t('notif_items')}</div>}
+    </>)
+  }
 
   return (
     <div className="relative" ref={wrapRef}>
@@ -122,6 +144,14 @@ export default function NotificationBell({ onNavigate }: { onNavigate?: (p: Page
               <div className="flex items-start gap-2.5 rounded-xl bg-primary/10 border border-primary/25 px-3 py-2.5">
                 <CalendarClock size={16} className="text-primary flex-shrink-0 mt-0.5" />
                 <div className="text-[12px] text-foreground leading-snug">{t('notif_new_month')}</div>
+              </div>
+            )}
+
+            {overdueCount > 0 && (
+              <div className="flex items-center gap-2.5 rounded-xl bg-danger/10 border border-danger/30 px-3 py-2.5">
+                <AlertTriangle size={16} className="text-danger flex-shrink-0" />
+                <div className="text-[12px] text-danger font-semibold leading-snug flex-1">{t('notif_overdue_title')}</div>
+                <span className="text-[11px] font-bold text-white bg-danger rounded-full px-2 py-0.5 flex-shrink-0">{overdueCount}</span>
               </div>
             )}
 

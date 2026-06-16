@@ -337,13 +337,15 @@ export const productRepo = {
 // ── Documents ─────────────────────────────────────────────────────────────────────
 
 export const documentRepo = {
-  list: (filters: { type?: string; status?: string; contact_id?: number; limit?: number; offset?: number; q?: string } = {}) => {
+  list: (filters: { type?: string; status?: string; contact_id?: number; limit?: number; offset?: number; q?: string; month?: string } = {}) => {
     let sql = 'SELECT d.*, c.name as contact_display FROM documents d LEFT JOIN contacts c ON d.contact_id = c.id WHERE 1=1';
     const params: unknown[] = [];
     if (filters.type)       { sql += ' AND d.type = ?';       params.push(filters.type); }
     if (filters.status)     { sql += ' AND d.status = ?';     params.push(filters.status); }
     if (filters.contact_id) { sql += ' AND d.contact_id = ?'; params.push(filters.contact_id); }
     if (filters.q) { sql += ' AND (d.number LIKE ? OR d.contact_name LIKE ?)'; params.push(`%${filters.q}%`, `%${filters.q}%`); }
+    // Month filter (YYYY-MM) — scopes documents to a single month by issue date.
+    if (filters.month && /^\d{4}-\d{2}$/.test(filters.month)) { sql += " AND strftime('%Y-%m', d.date) = ?"; params.push(filters.month); }
     sql += ` ORDER BY d.created_at DESC LIMIT ${filters.limit ?? 50} OFFSET ${filters.offset ?? 0}`;
     return all(sql, ...params);
   },
@@ -849,8 +851,14 @@ export const reportRepo = {
       FROM documents WHERE strftime('%Y', date) = ?
       GROUP BY month ORDER BY month`, String(y));
   },
-  topContacts: (limit = 10) => all(`
-    SELECT c.id, c.name, c.type, COUNT(d.id) as doc_count, COALESCE(SUM(d.total),0) as total_amount
-    FROM contacts c LEFT JOIN documents d ON d.contact_id = c.id AND d.status NOT IN ('cancelled','draft')
-    GROUP BY c.id ORDER BY total_amount DESC LIMIT ?`, limit),
+  topContacts: (limit = 10, period?: string) => {
+    // Optionally scope to a single month (YYYY-MM) by document date.
+    const safePeriod = period && /^\d{4}-\d{2}$/.test(period) ? period : null;
+    const dateClause = safePeriod ? "AND strftime('%Y-%m', d.date) = ?" : '';
+    const params: unknown[] = safePeriod ? [safePeriod, limit] : [limit];
+    return all(`
+      SELECT c.id, c.name, c.type, COUNT(d.id) as doc_count, COALESCE(SUM(d.total),0) as total_amount
+      FROM contacts c LEFT JOIN documents d ON d.contact_id = c.id AND d.status NOT IN ('cancelled','draft') ${dateClause}
+      GROUP BY c.id HAVING doc_count > 0 ORDER BY total_amount DESC LIMIT ?`, ...params);
+  },
 };

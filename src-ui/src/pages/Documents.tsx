@@ -5,7 +5,7 @@ import {
 } from '@heroui/react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
-import { useToast, useActiveCompany } from '../App'
+import { useToast, useActiveCompany, usePeriod } from '../App'
 import {
   getDocuments, getDocument, createDocument, updateDocument, deleteDocument, patchDocumentStatus,
   getContacts, getActiveCompany, getContact, getProducts, getEmployees,
@@ -25,7 +25,7 @@ const STATUS_COLOR: Record<string, ChipColor> = {
   draft: 'default', sent: 'primary', approved: 'success', paid: 'success', cancelled: 'danger',
 }
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
 
 // ─── WHT constants ────────────────────────────────────────────────────────────
@@ -82,6 +82,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const { t } = useI18n()
   const { toast } = useToast()
   const { activeCompany } = useActiveCompany()
+  const { period } = usePeriod()
 
   const DOC_TYPES: Record<string, string> = {
     quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
@@ -183,7 +184,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
       const showDocs = !filterType || !['withholding_tax', 'pay_slips'].includes(filterType)
       const showWhts = !filterType || filterType === 'withholding_tax'
       const showPSs = !filterType || filterType === 'pay_slips'
-      const params: Record<string, string> = {}
+      const params: Record<string, string> = { month: period }
       if (filterType && showDocs) params.type = filterType
       if (filterStatus) params.status = filterStatus
       if (search) params.q = search
@@ -194,21 +195,24 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
       ])
       setDocs(docsRes.data)
       const q = search.toLowerCase()
-      setWhts(q ? whtsRes.data.filter(w =>
+      // Scope WHT certificates (by issue date) and pay slips (by pay date) to the selected month.
+      const whtMonth = whtsRes.data.filter(w => (w.issue_date || '').slice(0, 7) === period)
+      setWhts(q ? whtMonth.filter(w =>
         (w.cert_no || '').toLowerCase().includes(q) ||
         w.payee_name.toLowerCase().includes(q) ||
         w.payer_name.toLowerCase().includes(q)
-      ) : whtsRes.data)
-      setPaySlips(q ? psRes.data.filter(s =>
+      ) : whtMonth)
+      const psMonth = psRes.data.filter(s => (s.pay_date || s.period || '').slice(0, 7) === period)
+      setPaySlips(q ? psMonth.filter(s =>
         s.employee_name.toLowerCase().includes(q) ||
         (s.department || '').toLowerCase().includes(q) ||
         (s.period || '').toLowerCase().includes(q)
-      ) : psRes.data)
+      ) : psMonth)
     } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [filterType, filterStatus, search])
+  useEffect(() => { load() }, [filterType, filterStatus, search, period])
 
   // ── Standard doc helpers ─────────────────────────────────────────────────────
   const updateItem = (i: number, field: keyof DocumentItem, value: string | number) => {
@@ -530,12 +534,12 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
         <TextField className="flex-1 min-w-0 sm:min-w-[200px]" placeholder={t('search_doc')}
           value={search} onChange={e => setSearch(e.target.value)} />
         <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-full sm:w-[148px] flex-shrink-0">
+          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-full sm:w-[148px] flex-shrink-0">
           <option value="">{t('all_types')}</option>
           {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-full sm:w-[120px] flex-shrink-0">
+          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-full sm:w-[120px] flex-shrink-0">
           <option value="">{t('all_statuses')}</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -830,7 +834,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                     <option value="">— เลือกพนักงาน —</option>
                     {employees.map(em => <option key={em.id} value={em.name}>{em.name}{em.department ? ` (${em.department})` : ''}{em.employee_no ? ` #${em.employee_no}` : ''}</option>)}
                   </select>
-                  <input className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors"
+                  <input className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors"
                     placeholder="หรือพิมพ์ชื่อโดยตรง..." value={psForm.employee_name} onChange={e => setPs('employee_name', e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-2">

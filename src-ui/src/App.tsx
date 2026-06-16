@@ -12,6 +12,8 @@ import Btn from './ui/Btn'
 import Modal from './ui/Modal'
 import type { Company } from './types'
 import { getHealth, getActiveCompany, activateCompany as apiActivateCompany, getCompanies } from './api'
+import { today } from './utils'
+import PeriodPicker from './PeriodPicker'
 import Dashboard from './pages/Dashboard'
 import Documents from './pages/Documents'
 import Payments from './pages/Payments'
@@ -36,7 +38,17 @@ type CompanyCtxType = { activeCompany: Company | null; reload: () => void }
 export const CompanyContext = createContext<CompanyCtxType>({ activeCompany: null, reload: () => {} })
 export const useActiveCompany = () => useContext(CompanyContext)
 
+// ─── Viewing Period (month filter) ───────────────────────────────────────────
+// Global selected month (YYYY-MM). Defaults to the current month on every launch
+// so each new month starts fresh; users can pick a past month to review old data.
+type PeriodCtxType = { period: string; setPeriod: (p: string) => void }
+export const PeriodContext = createContext<PeriodCtxType>({ period: today().slice(0, 7), setPeriod: () => {} })
+export const usePeriod = () => useContext(PeriodContext)
+
 type Page = 'dashboard' | 'documents' | 'payments' | 'contacts' | 'products' | 'employees' | 'evidence' | 'reports' | 'withholding_tax' | 'pay_slips' | 'companies' | 'settings'
+
+// Pages whose data is scoped to the selected month — the period picker shows only on these.
+const MONTH_SCOPED: Page[] = ['dashboard', 'documents', 'evidence', 'pay_slips', 'withholding_tax']
 
 const NAV_ITEMS: { page: Page; Icon: LucideIcon; key: string }[] = [
   { page: 'dashboard', Icon: LayoutDashboard, key: 'nav_dashboard' },
@@ -59,6 +71,7 @@ export default function App() {
 
   const [page, setPage] = useState<Page>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [period, setPeriod] = useState(() => today().slice(0, 7))
   const [apiOnline, setApiOnline] = useState(false)
   const [activeCompany, setActiveCompany] = useState<Company | null>(null)
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -246,6 +259,7 @@ export default function App() {
     <I18nContext.Provider value={i18n}>
       <ToastContext.Provider value={{ toast }}>
         <CompanyContext.Provider value={{ activeCompany, reload: reloadCompany }}>
+        <PeriodContext.Provider value={{ period, setPeriod }}>
           {/* Splash screen */}
           {showSplash && (
             <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center splash-out"
@@ -358,6 +372,8 @@ export default function App() {
                   <h1 className="text-[15px] font-semibold truncate">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
                 </div>
                 <div className="no-drag flex items-center gap-1.5 md:gap-2.5 flex-shrink-0">
+                  {/* Month picker (month-scoped pages only) */}
+                  {MONTH_SCOPED.includes(page) && <PeriodPicker />}
                   {/* Notifications */}
                   <NotificationBell onNavigate={navigate} />
                   {/* Check for Updates */}
@@ -541,6 +557,7 @@ export default function App() {
               ))}
             </div>
           </div>
+        </PeriodContext.Provider>
         </CompanyContext.Provider>
       </ToastContext.Provider>
     </I18nContext.Provider>

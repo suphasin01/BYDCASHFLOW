@@ -76,10 +76,12 @@ export const updateWithholdingTax = (id: number, data: Partial<WithholdingTax>) 
 export const deleteWithholdingTax = (id: number) => DEL<void>('/withholding-tax/' + id)
 
 // Reports
-export const getReportSummary = () => GET<ReportSummary>('/reports/summary')
-export const getReportMonthly = () => GET<{ data: MonthlyData[] }>('/reports/monthly')
-export const getReportTopContacts = (limit = 5) =>
-  GET<{ data: TopContact[] }>('/reports/top-contacts?limit=' + limit)
+export const getReportSummary = (period?: string) =>
+  GET<ReportSummary>('/reports/summary' + (period ? '?period=' + period : ''))
+export const getReportMonthly = (year?: number) =>
+  GET<{ data: MonthlyData[] }>('/reports/monthly' + (year ? '?year=' + year : ''))
+export const getReportTopContacts = (limit = 5, period?: string) =>
+  GET<{ data: TopContact[] }>('/reports/top-contacts?limit=' + limit + (period ? '&period=' + period : ''))
 
 // Pay Slips
 export const getPaySlips = (q?: string) =>

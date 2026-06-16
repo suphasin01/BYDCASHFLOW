@@ -7,7 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useI18n } from '../i18n'
-import { useActiveCompany } from '../App'
+import { useActiveCompany, usePeriod } from '../App'
 import Btn from '../ui/Btn'
 import { getReportSummary, getReportMonthly, getDocuments, getReportTopContacts } from '../api'
 import type { ReportSummary, MonthlyData, Document, TopContact } from '../types'
@@ -131,6 +131,7 @@ function QuickBtn({ Icon, label, onClick, color }: { Icon: LucideIcon; label: st
 export default function Dashboard({ onNavigate }: Props) {
   const { t, tArr } = useI18n()
   const { activeCompany } = useActiveCompany()
+  const { period } = usePeriod()
   const [summary, setSummary] = useState<ReportSummary | null>(null)
   const [monthly, setMonthly] = useState<MonthlyData[]>([])
   const [recent, setRecent] = useState<Document[]>([])
@@ -156,10 +157,10 @@ export default function Dashboard({ onNavigate }: Props) {
     else setRefreshing(true)
     try {
       const [sum, mon, rec, top] = await Promise.all([
-        getReportSummary(),
+        getReportSummary(period),
         getReportMonthly(),
-        getDocuments({ limit: '8' }),
-        getReportTopContacts(5),
+        getDocuments({ limit: '8', month: period }),
+        getReportTopContacts(5, period),
       ])
       setSummary(sum)
       const mData = Array.from({ length: 12 }, (_, i) => {
@@ -175,7 +176,7 @@ export default function Dashboard({ onNavigate }: Props) {
     setLoading(false)
     setRefreshing(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t])
+  }, [t, period])
 
   useEffect(() => {
     load()
@@ -230,6 +231,9 @@ export default function Dashboard({ onNavigate }: Props) {
     ? `${t('dash_updated')} ${lastUpdated.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}`
     : ''
 
+  const [py, pm] = period.split('-')
+  const periodLabel = `${MONTHS[Number(pm) - 1] || pm} ${py}`
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -260,7 +264,8 @@ export default function Dashboard({ onNavigate }: Props) {
         <SectionHeader Icon={FilePlus} title={t('dash_quick_actions')}
           action={
             <div className="flex items-center gap-2">
-              {timeAgo && <span className="text-[11px] text-default-400">{timeAgo}</span>}
+              <span className="text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 rounded-full px-2 py-0.5 whitespace-nowrap">{periodLabel}</span>
+              {timeAgo && <span className="hidden sm:inline text-[11px] text-default-400">{timeAgo}</span>}
               <button onClick={() => load(false)} title={t('dash_refresh')}
                 className={`w-8 h-8 flex items-center justify-center rounded-lg text-default-400 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer ${refreshing ? 'pointer-events-none' : ''}`}>
                 <RefreshCw size={14} strokeWidth={2} className={refreshing ? 'animate-spin text-primary' : ''} />

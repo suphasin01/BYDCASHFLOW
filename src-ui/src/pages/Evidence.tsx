@@ -5,7 +5,7 @@ import {
   Receipt, HelpCircle, Pencil, Trash2, X,
 } from 'lucide-react'
 import { useI18n } from '../i18n'
-import { useToast } from '../App'
+import { useToast, usePeriod } from '../App'
 import { getEvidence, createEvidence, updateEvidence, deleteEvidence } from '../api'
 import type { Evidence } from '../types'
 import Btn from '../ui/Btn'
@@ -14,7 +14,7 @@ import IconBtn from '../ui/IconBtn'
 import { TextField, TextAreaField } from '../ui/Field'
 import { fmtDate, today } from '../utils'
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
 const CATEGORIES = [
   { key: 'receipt',   label: 'บิล/ใบเสร็จ',   color: 'success',  Icon: Receipt },
@@ -35,6 +35,7 @@ const ZERO_FORM: Partial<Evidence> = {
 export default function EvidencePage() {
   const { t } = useI18n()
   const { toast } = useToast()
+  const { period } = usePeriod()
   const [items, setItems] = useState<Evidence[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -125,6 +126,9 @@ export default function EvidencePage() {
   const getCatConfig = (key: string) =>
     CATEGORIES.find(c => c.key === key) ?? CATEGORIES[CATEGORIES.length - 1]
 
+  // Scope to the selected month by document date.
+  const shown = items.filter(i => (i.doc_date || '').slice(0, 7) === period)
+
   return (
     <div className="flex flex-col gap-4">
       {/* Top bar */}
@@ -166,16 +170,16 @@ export default function EvidencePage() {
       {/* Content */}
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
-      ) : items.length === 0 ? (
+      ) : shown.length === 0 ? (
         <Card>
           <CardBody className="flex flex-col items-center py-12 gap-3 text-default-400">
             <ImageIcon size={40} strokeWidth={1.2} />
-            <p>{t('ev_no_data')}</p>
+            <p>{items.length === 0 ? t('ev_no_data') : t('period_empty')}</p>
           </CardBody>
         </Card>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 stagger">
-          {items.map(item => {
+          {shown.map(item => {
             const catCfg = getCatConfig(item.category)
             return (
               <Card key={item.id} className="card-panel card-lift sheen overflow-hidden hover:border-primary/40">

@@ -109,7 +109,7 @@ app.delete('/api/products/:id', (req, res) => {
 
 app.get('/api/documents', (req, res) => {
   try {
-    const { type, status, contact_id, limit, offset, q } = req.query as Record<string, string>;
+    const { type, status, contact_id, limit, offset, q, month } = req.query as Record<string, string>;
     const data = documentRepo.list({
       type,
       status,
@@ -117,6 +117,7 @@ app.get('/api/documents', (req, res) => {
       limit: limit ? Number(limit) : 50,
       offset: offset ? Number(offset) : 0,
       q,
+      month,
     });
     res.json({ data });
   } catch (e: unknown) { res.status(500).json({ error: String(e) }); }
@@ -249,8 +250,8 @@ app.get('/api/reports/monthly', (req, res) => {
 });
 
 app.get('/api/reports/top-contacts', (req, res) => {
-  const { limit } = req.query as Record<string, string>;
-  res.json({ data: reportRepo.topContacts(limit ? Number(limit) : 10) });
+  const { limit, period } = req.query as Record<string, string>;
+  res.json({ data: reportRepo.topContacts(limit ? Number(limit) : 10, period) });
 });
 
 // ── Withholding Tax ───────────────────────────────────────────────────────────
