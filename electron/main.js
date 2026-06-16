@@ -194,6 +194,7 @@ async function checkWindowsSameVersionUpdate() {
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'downloading', version: result.version });
     const installerPath = await downloadWindowsUpdate(result.version, result.winDownloadUrl);
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: result.version });
+    if (autoInstallTimer) clearInterval(autoInstallTimer);
     let countdown = 10;
     autoInstallTimer = setInterval(() => {
       countdown--;
@@ -366,6 +367,7 @@ function setupAutoUpdater() {
     log.info('[updater] Update downloaded:', info.version, '— auto-installing in 10s');
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version: info.version });
 
+    if (autoInstallTimer) clearInterval(autoInstallTimer);
     let countdown = 10;
     autoInstallTimer = setInterval(() => {
       countdown--;
@@ -486,6 +488,7 @@ ipcMain.handle('start-mac-download', async (_, url, version) => {
     await downloadMacUpdate(version, url);
     log.info(`[updater-mac] Download complete: ${macUpdatePath}`);
     if (mainWindow) mainWindow.webContents.send('update-status', { type: 'ready', version });
+    if (autoInstallTimer) clearInterval(autoInstallTimer);
     let countdown = 10;
     autoInstallTimer = setInterval(() => {
       countdown--;

@@ -526,28 +526,29 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <TextField className="flex-1 min-w-0" placeholder={t('search_doc')}
+      <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-2">
+        <TextField className="flex-1 min-w-0 sm:min-w-[200px]" placeholder={t('search_doc')}
           value={search} onChange={e => setSearch(e.target.value)} />
         <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-[148px] flex-shrink-0">
+          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-full sm:w-[148px] flex-shrink-0">
           <option value="">{t('all_types')}</option>
           {Object.entries(DOC_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-[120px] flex-shrink-0">
+          className="bg-content2 border border-content3 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark] w-full sm:w-[120px] flex-shrink-0">
           <option value="">{t('all_statuses')}</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <Btn size="sm" variant="primary" onClick={openCreate} className="flex-shrink-0">{t('btn_create_doc')}</Btn>
+        <Btn size="sm" variant="primary" onClick={openCreate} className="w-full sm:w-auto flex-shrink-0">{t('btn_create_doc')}</Btn>
       </div>
 
       {/* Table */}
-      <Card className="bg-content1 border border-content3 rounded-xl" shadow="none">
+      <Card className="bg-content1 border border-content3 rounded-xl glow-hover" shadow="none">
         <CardBody className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
           ) : (
+            <div className="overflow-x-auto">
             <Table removeWrapper aria-label={t('btn_create_doc')}
               classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
               <TableHeader>
@@ -671,6 +672,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardBody>
       </Card>

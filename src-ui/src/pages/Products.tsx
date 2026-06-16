@@ -77,16 +77,16 @@ export default function Products() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <TextField
-          className="max-w-[280px]"
+          className="w-full sm:max-w-[280px]"
           placeholder={t('search_product')}
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
-        <Btn variant="primary" onClick={openCreate}>{t('btn_add_product')}</Btn>
+        <Btn variant="primary" onClick={openCreate} className="w-full sm:w-auto">{t('btn_add_product')}</Btn>
       </div>
 
-      <Card className="bg-content1 border border-content3" shadow="none">
+      <Card className="bg-content1 border border-content3 glow-hover" shadow="none">
         <CardBody className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>

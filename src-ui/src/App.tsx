@@ -3,7 +3,7 @@ import { Avatar, Progress } from '@heroui/react'
 import {
   LayoutDashboard, FileText, CreditCard, Users, Package,
   TrendingUp, Receipt, Building2, Settings as SettingsIcon, LogOut,
-  RefreshCw, Sun, Moon, Download, Sparkles, ImageIcon, type LucideIcon,
+  RefreshCw, Sun, Moon, Download, Sparkles, ImageIcon, Menu, type LucideIcon,
 } from 'lucide-react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
 import ErrorBoundary from './ErrorBoundary'
@@ -58,6 +58,7 @@ export default function App() {
   const { lang, t, switchLang } = i18n
 
   const [page, setPage] = useState<Page>('dashboard')
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [apiOnline, setApiOnline] = useState(false)
   const [activeCompany, setActiveCompany] = useState<Company | null>(null)
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -179,6 +180,7 @@ export default function App() {
   }, [lang])
 
   const openCompanySwitcher = async () => {
+    setSidebarOpen(false)
     try {
       const { data } = await getCompanies()
       setAllCompanies(data)
@@ -260,8 +262,16 @@ export default function App() {
             </div>
           )}
           <div className="flex h-screen overflow-hidden text-foreground text-sm">
+            {/* Mobile sidebar backdrop */}
+            {sidebarOpen && (
+              <div className="fixed inset-0 z-40 bg-black/55 backdrop-blur-sm md:hidden animate-[fadeIn_.2s_ease]"
+                onClick={() => setSidebarOpen(false)} />
+            )}
             {/* Sidebar */}
-            <aside className="w-60 flex-shrink-0 flex flex-col border-r border-content3" style={{ background: 'var(--bg-sidebar)' }}>
+            <aside className={`w-60 flex-shrink-0 flex flex-col border-r border-content3 z-50
+              fixed inset-y-0 left-0 md:static md:translate-x-0 transition-transform duration-300 ease-out
+              ${sidebarOpen ? 'translate-x-0 shadow-[0_0_60px_rgba(0,0,0,.6)]' : '-translate-x-full'}`}
+              style={{ background: 'var(--bg-sidebar)' }}>
               {/* Logo — drag region for Mac traffic lights */}
               <div className="drag px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
@@ -286,11 +296,11 @@ export default function App() {
                       const active = page === p
                       const { Icon } = item
                       return (
-                        <button key={p} onClick={() => setPage(p as Page)}
-                          className={`w-full flex items-center gap-3 py-2.5 px-3 text-[13px] font-medium transition-all duration-150 ${active ? 'nav-item-active' : 'nav-item-inactive text-default-500 rounded-lg'}`}>
-                          <Icon size={16} className={`flex-shrink-0 transition-transform duration-150 ${active ? 'scale-110 text-primary' : ''}`} strokeWidth={active ? 2.5 : 1.8} />
-                          <span>{t(item.key)}</span>
-                          {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(124,109,243,.8)]" />}
+                        <button key={p} onClick={() => { setPage(p as Page); setSidebarOpen(false) }}
+                          className={`group/nav w-full flex items-center gap-3 py-2.5 px-3 text-[13px] font-medium transition-all duration-150 ${active ? 'nav-item-active' : 'nav-item-inactive text-default-500 rounded-lg'}`}>
+                          <Icon size={16} className={`flex-shrink-0 transition-transform duration-200 ${active ? 'scale-110 text-primary' : 'group-hover/nav:scale-110 group-hover/nav:-rotate-6'}`} strokeWidth={active ? 2.5 : 1.8} />
+                          <span className="transition-transform duration-150 group-hover/nav:translate-x-0.5">{t(item.key)}</span>
+                          {active && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(124,109,243,.8)] animate-pulse" />}
                         </button>
                       )
                     })}
@@ -338,15 +348,22 @@ export default function App() {
             {/* Main */}
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Topbar */}
-              <div className="drag h-[60px] px-7 flex items-center justify-between border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md relative z-20">
-                <h1 className="text-[15px] font-semibold">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
-                <div className="no-drag flex items-center gap-2.5">
+              <div className="drag h-[60px] px-3 md:px-7 flex items-center justify-between gap-2 border-b border-content3 flex-shrink-0 bg-content1/90 backdrop-blur-md relative z-20">
+                <div className="flex items-center gap-2 min-w-0">
+                  {/* Hamburger (mobile only) */}
+                  <button onClick={() => setSidebarOpen(true)} aria-label="menu"
+                    className="no-drag md:hidden w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-500 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer flex-shrink-0">
+                    <Menu size={17} strokeWidth={1.8} />
+                  </button>
+                  <h1 className="text-[15px] font-semibold truncate">{t(NAV_ITEMS.find(n => n.page === page)?.key || 'nav_dashboard')}</h1>
+                </div>
+                <div className="no-drag flex items-center gap-1.5 md:gap-2.5 flex-shrink-0">
                   {/* Notifications */}
                   <NotificationBell onNavigate={navigate} />
                   {/* Check for Updates */}
                   <button disabled={checkingUpdate}
                     onClick={checkForUpdates} title={t('btn_check_update')}
-                    className="w-9 h-9 flex items-center justify-center rounded-lg bg-content2 border border-content3 text-default-500 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
+                    className="hidden sm:flex w-9 h-9 items-center justify-center rounded-lg bg-content2 border border-content3 text-default-500 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
                     <RefreshCw size={15} strokeWidth={1.8} className={checkingUpdate ? 'animate-spin' : ''} />
                   </button>
                   {/* Dark/Light toggle */}
@@ -373,7 +390,7 @@ export default function App() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-7 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,109,243,.08),transparent)] relative">
+              <div className="flex-1 overflow-y-auto p-4 md:p-7 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,109,243,.08),transparent)] relative">
                 <div className="dot-grid-bg absolute inset-0 pointer-events-none opacity-[0.35]" />
                 <ErrorBoundary key={page + ':' + (activeCompany?.id ?? '')}>
                   <div className="page-content relative z-10">
@@ -413,7 +430,7 @@ export default function App() {
 
             {/* Update Banner */}
             {updateBanner && (
-              <div className="fixed bottom-6 left-[260px] z-[998] min-w-[320px] max-w-[420px] modal-panel rounded-2xl overflow-hidden bg-content1 border border-content3"
+              <div className="fixed bottom-6 left-4 right-4 md:left-[260px] md:right-auto z-[998] md:min-w-[320px] max-w-[420px] modal-panel rounded-2xl overflow-hidden bg-content1 border border-content3"
                 style={{ boxShadow: '0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08)' }}>
                 {/* Accent bar */}
                 <div className={`h-0.5 w-full ${

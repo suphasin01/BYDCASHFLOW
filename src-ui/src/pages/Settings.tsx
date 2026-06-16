@@ -15,7 +15,7 @@ const eAPI = () => (window as unknown as { electronAPI?: ElectronAPI }).electron
 
 function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-content1 border border-content3 rounded-xl p-5 ${className}`}>
+    <div className={`glow-hover bg-content1 border border-content3 rounded-xl p-5 ${className}`}>
       {children}
     </div>
   )
@@ -105,17 +105,17 @@ export default function Settings() {
   if (loading) return <div className="flex items-center justify-center py-16 text-default-500">{t('loading')}</div>
 
   return (
-    <div className="grid gap-5" style={{ gridTemplateColumns: '1fr 340px' }}>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
       {/* Business Info */}
       <SectionCard>
         <SectionTitle>{t('settings_biz_info')}</SectionTitle>
         <div className="flex flex-col gap-4">
           <TextField label={t('lbl_biz_name')} value={fName} onChange={e => setFName(e.target.value)} />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TextField label={t('col_tax_id')} value={fTax} onChange={e => setFTax(e.target.value)} />
             <TextField label={t('col_phone')} value={fPhone} onChange={e => setFPhone(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TextField type="email" label={t('col_email')} value={fEmail} onChange={e => setFEmail(e.target.value)} />
             <TextField label={t('lbl_website')} value={fWebsite} onChange={e => setFWebsite(e.target.value)} />
           </div>

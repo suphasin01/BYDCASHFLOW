@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes, ReactNode } from 'react'
 
-const BASE = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors placeholder:text-default-400 [color-scheme:dark]'
+const BASE = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none transition-all duration-150 hover:border-default-300 focus:border-primary focus:ring-2 focus:ring-primary/25 placeholder:text-default-400 [color-scheme:dark]'
 
 /** Label + control wrapper. Label sits ABOVE the control (never overlaps). */
 export function Field({ label, children, className = '' }: { label?: ReactNode; children: ReactNode; className?: string }) {

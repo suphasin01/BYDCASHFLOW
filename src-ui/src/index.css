@@ -67,7 +67,7 @@ select option {
 @keyframes shimmer     { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
 @keyframes pulseGlow   { 0%,100%{opacity:.7} 50%{opacity:1} }
 @keyframes countUp     { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
-@keyframes pageEnter   { from { opacity:0; transform:translateY(22px) scale(.975); filter:blur(4px) } to { opacity:1; transform:translateY(0) scale(1); filter:blur(0) } }
+@keyframes pageEnter   { from { opacity:0; transform:translateY(18px) scale(.985) } to { opacity:1; transform:translateY(0) scale(1) } }
 
 /* ── 3D Buttons ──────────────────────────────────────────────── */
 .btn-3d-primary {
@@ -177,7 +177,11 @@ select option {
 .stat-card:hover { transform: translateY(-3px); }
 
 /* ── Page transition ─────────────────────────────────────────── */
-.page-content { animation: pageEnter .35s cubic-bezier(.22,1,.36,1) both; }
+/* NOTE: must use `backwards` (not `both`/`forwards`) fill-mode. A persisted
+   transform/filter on .page-content would establish a containing block for
+   position:fixed descendants, which would break every modal/overlay rendered
+   inside a page (they'd anchor to the content box instead of the viewport). */
+.page-content { animation: pageEnter .35s cubic-bezier(.22,1,.36,1) backwards; }
 
 /* ── Modal slide-up ───────────────────────────────────────────── */
 .modal-panel { animation: slideUpFade .2s ease; }
@@ -267,7 +271,9 @@ table tbody tr:hover { transform: translateX(3px); }
 .card-lift {
   transition: transform .28s cubic-bezier(.34,1.56,.64,1), box-shadow .28s ease, border-color .28s ease;
   will-change: transform;
-  animation: slideUpFade .38s ease both;
+  /* `backwards` (not `both`): a persisted entrance transform would win over
+     :hover/inline transforms and kill hover-lift + the Dashboard 3D tilt. */
+  animation: slideUpFade .38s ease backwards;
 }
 .card-lift:hover {
   transform: translateY(-4px);
@@ -278,7 +284,9 @@ table tbody tr:hover { transform: translateX(3px); }
 }
 
 /* ── Staggered entrance for grid/list children ───────────────────────────── */
-.stagger > * { animation: slideUpFade .4s ease both; }
+/* `backwards` so the lingering transform doesn't override children's :hover /
+   inline transforms (e.g. the Dashboard stat-card 3D tilt). */
+.stagger > * { animation: slideUpFade .4s ease backwards; }
 .stagger > *:nth-child(1){animation-delay:.03s}
 .stagger > *:nth-child(2){animation-delay:.07s}
 .stagger > *:nth-child(3){animation-delay:.11s}
@@ -315,6 +323,25 @@ table tbody tr:hover { transform: translateX(3px); }
   transform: translateX(-130%);
 }
 .sheen:hover::after { animation: sheenSweep .8s ease; }
+
+/* ── Press / tap feedback (interactive elements) ─────────────────────────── */
+.press { transition: transform .12s cubic-bezier(.34,1.56,.64,1); }
+.press:active { transform: scale(.94); }
+
+/* ── Glow on hover (cards / accents) ─────────────────────────────────────── */
+.glow-hover { transition: box-shadow .3s ease, border-color .3s ease; }
+.glow-hover:hover { box-shadow: 0 0 0 1px rgba(124,109,243,.35), 0 8px 30px rgba(124,109,243,.22); }
+
+/* ── Pop-in entrance ─────────────────────────────────────────────────────── */
+.pop-in { animation: popIn .3s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ── Soft pulsing ring (status / live indicators) ────────────────────────── */
+@keyframes ringPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(34,211,160,.45); }
+  70%  { box-shadow: 0 0 0 7px rgba(34,211,160,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,211,160,0); }
+}
+.ring-pulse { animation: ringPulse 2s ease-out infinite; }
 
 /* ── Notification bell ring ──────────────────────────────────────────────── */
 @keyframes bellRing {

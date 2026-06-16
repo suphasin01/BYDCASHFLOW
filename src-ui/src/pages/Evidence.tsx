@@ -10,6 +10,7 @@ import { getEvidence, createEvidence, updateEvidence, deleteEvidence } from '../
 import type { Evidence } from '../types'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
+import IconBtn from '../ui/IconBtn'
 import { TextField, TextAreaField } from '../ui/Field'
 import { fmtDate, today } from '../utils'
 
@@ -128,8 +129,8 @@ export default function EvidencePage() {
     <div className="flex flex-col gap-4">
       {/* Top bar */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 relative">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <div className="w-full sm:max-w-[280px] relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-default-400 pointer-events-none" />
             <input
               className="w-full pl-9 pr-4 py-2 bg-content2 border border-content3 rounded-lg text-sm text-foreground placeholder:text-default-400 outline-none focus:border-primary transition-colors"
@@ -138,7 +139,7 @@ export default function EvidencePage() {
               onChange={e => applySearch(e.target.value)}
             />
           </div>
-          <Btn variant="primary" onClick={openCreate} startContent={<Plus size={15} strokeWidth={2.2} />}>
+          <Btn variant="primary" onClick={openCreate} className="w-full sm:w-auto" startContent={<Plus size={15} strokeWidth={2.2} />}>
             {t('ev_btn_add')}
           </Btn>
         </div>
@@ -147,14 +148,14 @@ export default function EvidencePage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => applyFilter('')}
-            className={`text-[12px] px-3 py-1 rounded-full border transition-all cursor-pointer ${catFilter === '' ? 'bg-primary text-white border-primary' : 'bg-content2 border-content3 text-default-500 hover:border-primary hover:text-primary'}`}>
+            className={`press text-[12px] px-3 py-1 rounded-full border transition-all cursor-pointer ${catFilter === '' ? 'bg-primary text-white border-primary' : 'bg-content2 border-content3 text-default-500 hover:border-primary hover:text-primary'}`}>
             {t('ev_all_cats')}
           </button>
           {CATEGORIES.map(cat => (
             <button
               key={cat.key}
               onClick={() => applyFilter(cat.key)}
-              className={`text-[12px] px-3 py-1 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 ${catFilter === cat.key ? 'bg-primary text-white border-primary' : 'bg-content2 border-content3 text-default-500 hover:border-primary hover:text-primary'}`}>
+              className={`press text-[12px] px-3 py-1 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 ${catFilter === cat.key ? 'bg-primary text-white border-primary' : 'bg-content2 border-content3 text-default-500 hover:border-primary hover:text-primary'}`}>
               <cat.Icon size={11} strokeWidth={2} />
               {cat.label}
             </button>
@@ -173,11 +174,11 @@ export default function EvidencePage() {
           </CardBody>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 stagger">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 gap-3 stagger">
           {items.map(item => {
             const catCfg = getCatConfig(item.category)
             return (
-              <Card key={item.id} className="card-panel card-lift overflow-hidden">
+              <Card key={item.id} className="card-panel card-lift sheen overflow-hidden hover:border-primary/40">
                 <CardBody className="p-0">
                   {/* Image or placeholder */}
                   {item.image_url ? (
@@ -186,53 +187,47 @@ export default function EvidencePage() {
                         src={item.image_url}
                         alt={item.title}
                         className="w-full object-cover"
-                        style={{ maxHeight: 160, minHeight: 80 }}
+                        style={{ maxHeight: 108, minHeight: 64 }}
                       />
                     </div>
                   ) : (
-                    <div className="bg-content2 flex items-center justify-center rounded-t-xl" style={{ height: 128 }}>
-                      <ImageIcon size={32} strokeWidth={1.2} className="text-default-300" />
+                    <div className="bg-content2 flex items-center justify-center rounded-t-xl" style={{ height: 88 }}>
+                      <ImageIcon size={26} strokeWidth={1.2} className="text-default-300" />
                     </div>
                   )}
 
                   {/* Info */}
-                  <div className="p-3 flex flex-col gap-1.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <Chip
-                        size="sm"
-                        variant="flat"
-                        color={catCfg.color as 'success' | 'primary' | 'warning' | 'danger' | 'default'}
-                        startContent={<catCfg.Icon size={10} strokeWidth={2} />}
-                        className="flex-shrink-0 text-[10px]">
-                        {catCfg.label}
-                      </Chip>
-                    </div>
+                  <div className="p-2.5 flex flex-col gap-1">
+                    <Chip
+                      size="sm"
+                      variant="flat"
+                      color={catCfg.color as 'success' | 'primary' | 'warning' | 'danger' | 'default'}
+                      startContent={<catCfg.Icon size={9} strokeWidth={2} />}
+                      className="flex-shrink-0 text-[9px] h-5 self-start">
+                      {catCfg.label}
+                    </Chip>
 
-                    <div className="text-[13px] font-semibold leading-snug line-clamp-2">{item.title}</div>
+                    <div className="text-[12px] font-semibold leading-snug line-clamp-2">{item.title}</div>
 
                     {item.reference && (
-                      <div className="text-[11px] text-default-400 truncate">#{item.reference}</div>
+                      <div className="text-[10px] text-default-400 truncate">#{item.reference}</div>
                     )}
                     {item.contact_name && (
-                      <div className="text-[11px] text-default-500 truncate">{item.contact_name}</div>
+                      <div className="text-[10px] text-default-500 truncate">{item.contact_name}</div>
                     )}
 
-                    <div className="flex items-center justify-between mt-1">
+                    <div className="flex items-center justify-between mt-0.5">
                       {item.amount != null && item.amount !== undefined ? (
-                        <span className="text-[13px] font-bold text-success">฿{fmt(item.amount)}</span>
+                        <span className="text-[12px] font-bold text-success">฿{fmt(item.amount)}</span>
                       ) : <span />}
-                      <span className="text-[11px] text-default-400">{fmtDate(item.doc_date)}</span>
+                      <span className="text-[10px] text-default-400">{fmtDate(item.doc_date)}</span>
                     </div>
                   </div>
 
                   {/* Footer actions */}
-                  <div className="px-3 py-2 border-t border-content3 bg-content2/30 flex items-center justify-end gap-1.5">
-                    <Btn size="sm" variant="ghost" onClick={() => openEdit(item)} title={t('btn_edit')} aria-label={t('btn_edit')}>
-                      <Pencil size={13} strokeWidth={2} />
-                    </Btn>
-                    <Btn size="sm" variant="danger" onClick={() => doDelete(item.id)} title={t('btn_delete')} aria-label={t('btn_delete')}>
-                      <Trash2 size={13} strokeWidth={2} />
-                    </Btn>
+                  <div className="px-2 py-1.5 border-t border-content3 bg-content2/30 flex items-center justify-end gap-1">
+                    <IconBtn onClick={() => openEdit(item)} title={t('btn_edit')}><Pencil size={12} strokeWidth={2} /></IconBtn>
+                    <IconBtn danger onClick={() => doDelete(item.id)} title={t('btn_delete')}><Trash2 size={12} strokeWidth={2} /></IconBtn>
                   </div>
                 </CardBody>
               </Card>

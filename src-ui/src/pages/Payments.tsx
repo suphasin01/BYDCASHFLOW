@@ -170,7 +170,7 @@ export default function Payments() {
   return (
     <div className="flex flex-col gap-4">
       {/* Direction tabs */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center flex-wrap gap-2">
         <button onClick={() => { setDirection('in'); setFilter('all') }}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer border ${
             direction === 'in' ? 'bg-success/15 border-success/40 text-success' : 'bg-content2 border-content3 text-default-500 hover:text-foreground'}`}>
@@ -185,7 +185,7 @@ export default function Payments() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 stagger">
-        <Card className="bg-content1 border border-content3 card-lift" shadow="none">
+        <Card className="bg-content1 border border-content3 card-lift sheen hover:border-primary/40" shadow="none">
           <CardBody className="py-3.5 px-4">
             <div className="text-[11px] text-default-500 uppercase tracking-wide mb-1">
               {direction === 'in' ? t('pay_sum_in') : t('pay_sum_out')}
@@ -193,13 +193,13 @@ export default function Payments() {
             <div className={`text-xl font-bold stat-value ${accent === 'success' ? 'text-success' : 'text-warning'}`}>฿{fmt(summary.totalOutstanding)}</div>
           </CardBody>
         </Card>
-        <Card className="bg-content1 border border-content3 card-lift" shadow="none">
+        <Card className="bg-content1 border border-content3 card-lift sheen hover:border-primary/40" shadow="none">
           <CardBody className="py-3.5 px-4">
             <div className="text-[11px] text-default-500 uppercase tracking-wide mb-1">{t('pay_sum_docs')}</div>
             <div className="text-xl font-bold text-foreground stat-value">{summary.openDocs}</div>
           </CardBody>
         </Card>
-        <Card className="bg-content1 border border-content3 card-lift" shadow="none">
+        <Card className="bg-content1 border border-content3 card-lift sheen hover:border-primary/40" shadow="none">
           <CardBody className="py-3.5 px-4">
             <div className="text-[11px] text-default-500 uppercase tracking-wide mb-1 flex items-center gap-1">
               {summary.overdue > 0 && <AlertCircle size={12} className="text-danger" />} {t('pay_sum_overdue')}
@@ -210,7 +210,7 @@ export default function Payments() {
       </div>
 
       {/* Status filter */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center flex-wrap gap-1.5">
         {filterBtns.map(b => (
           <button key={b.key} onClick={() => setFilter(b.key)}
             className={`px-3 py-1.5 rounded-lg text-[13px] transition-colors cursor-pointer ${
@@ -221,11 +221,12 @@ export default function Payments() {
       </div>
 
       {/* Documents table */}
-      <Card className="bg-content1 border border-content3" shadow="none">
+      <Card className="bg-content1 border border-content3 glow-hover" shadow="none">
         <CardBody className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
           ) : (
+            <div className="overflow-x-auto">
             <Table removeWrapper aria-label="payments"
               classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
               <TableHeader>
@@ -279,6 +280,7 @@ export default function Payments() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardBody>
       </Card>

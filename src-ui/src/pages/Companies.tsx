@@ -99,15 +99,15 @@ export default function Companies() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <Btn variant="primary" onClick={openCreate}>{t('btn_add_company')}</Btn>
+        <Btn variant="primary" onClick={openCreate} className="w-full sm:w-auto">{t('btn_add_company')}</Btn>
       </div>
 
-      <div className="flex flex-col gap-3.5">
+      <div className="flex flex-col gap-3.5 stagger">
         {companies.map(c => {
           const isActive = active?.id === c.id
           return (
             <Card key={c.id} shadow="none"
-              className={isActive ? 'bg-primary/5 border border-primary/40' : 'bg-content1 border border-content3'}>
+              className={`card-lift sheen hover:border-primary/40 ${isActive ? 'bg-primary/5 border border-primary/40' : 'bg-content1 border border-content3'}`}>
               <CardBody className="flex flex-row items-center gap-4 p-[18px_20px]">
                 <div className="w-9 h-9 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center">
                   {c.logo_url

@@ -166,7 +166,7 @@ export default function WithholdingTax() {
   }
 
   const save = async () => {
-    if (!fPayerName.trim()) { toast(t('lbl_payer_name') + ' required', 'err'); return }
+    if (!fPayerName.trim()) { toast(t('wht_lbl_payer_name') + ' required', 'err'); return }
     if (!fPayeeName.trim()) { toast(t('wht_lbl_payee_name') + ' required', 'err'); return }
     const payload: Partial<WithholdingTax> = {
       book_no: fBookNo || null,
@@ -237,11 +237,11 @@ export default function WithholdingTax() {
   return (
     <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div className="text-[13px] text-default-500">
           {list.length} {t('records_suffix')}
         </div>
-        <Btn variant="primary" onClick={openCreate}>{t('wht_btn_create')}</Btn>
+        <Btn variant="primary" onClick={openCreate} className="w-full sm:w-auto">{t('wht_btn_create')}</Btn>
       </div>
 
       {/* Table */}

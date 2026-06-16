@@ -248,7 +248,7 @@ export default function Dashboard({ onNavigate }: Props) {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4 stagger">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
         {statCards.map((card, i) => (
           <StatCard key={i} Icon={card.Icon} label={card.label} value={card.value} rawValue={card.rawValue}
             sub={card.sub} color={card.color} glow={card.glow} gradient={card.gradient} pulse={card.pulse} />
@@ -267,7 +267,7 @@ export default function Dashboard({ onNavigate }: Props) {
               </button>
             </div>
           } />
-        <div className="px-5 pb-5 grid grid-cols-4 gap-3">
+        <div className="px-5 pb-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
           <QuickBtn Icon={FilePlus}      label={t('dash_qa_new_doc')}    onClick={() => onNavigate('documents')} color="bg-primary/15 text-primary" />
           <QuickBtn Icon={CreditCard}    label={t('dash_qa_payments')}   onClick={() => onNavigate('payments')}  color="bg-warning/15 text-warning" />
           <QuickBtn Icon={UserPlus}      label={t('dash_qa_contacts')}   onClick={() => onNavigate('contacts')}  color="bg-success/15 text-success" />
@@ -276,7 +276,7 @@ export default function Dashboard({ onNavigate }: Props) {
       </div>
 
       {/* Chart + Top Contacts */}
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Revenue vs Expense chart */}
         <div className="bg-content1 border border-content3 rounded-2xl overflow-hidden">
           <SectionHeader Icon={TrendingUp} title={t('dash_chart_title')} />

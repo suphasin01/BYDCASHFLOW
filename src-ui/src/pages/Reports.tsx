@@ -50,9 +50,9 @@ export default function Reports() {
   return (
     <div className="flex flex-col gap-6">
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
         {statCards.map((card, i) => (
-          <Card key={i} className="bg-content1 border border-content3 rounded-xl hover:border-primary/30 transition-colors" shadow="none">
+          <Card key={i} className="bg-content1 border border-content3 rounded-xl card-lift sheen hover:border-primary/40 transition-colors" shadow="none">
             <CardBody className="p-5">
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg mb-3 ${card.glow}`}>{card.icon}</div>
               <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-2.5">{card.label}</div>
@@ -63,7 +63,7 @@ export default function Reports() {
       </div>
 
       {/* Chart */}
-      <Card className="bg-content1 border border-content3" shadow="none">
+      <Card className="bg-content1 border border-content3 glow-hover" shadow="none">
         <CardHeader className="text-[13px] font-semibold pb-0">📈 {t('report_monthly_title')} ({new Date().getFullYear()})</CardHeader>
         <CardBody>
           <ResponsiveContainer width="100%" height={200}>
@@ -84,9 +84,10 @@ export default function Reports() {
       </Card>
 
       {/* Top Contacts */}
-      <Card className="bg-content1 border border-content3" shadow="none">
+      <Card className="bg-content1 border border-content3 glow-hover" shadow="none">
         <CardHeader className="text-[13px] font-semibold pb-0">🏆 {t('dash_top_contacts')}</CardHeader>
         <CardBody className="pt-0">
+          <div className="overflow-x-auto">
           <Table removeWrapper aria-label={t('dash_top_contacts')}
             classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
             <TableHeader>
@@ -112,6 +113,7 @@ export default function Reports() {
               ))}
             </TableBody>
           </Table>
+          </div>
         </CardBody>
       </Card>
     </div>

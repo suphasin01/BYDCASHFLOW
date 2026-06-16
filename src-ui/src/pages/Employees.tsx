@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Avatar, Card, CardBody, Chip, Spinner } from '@heroui/react'
+import { Card, CardBody, Spinner } from '@heroui/react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
@@ -11,6 +11,7 @@ import {
 import type { Employee, EmployeePayment } from '../types'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
+import IconBtn from '../ui/IconBtn'
 import { Users, Wallet, History, CheckCircle2, Camera, Pencil, Trash2 } from 'lucide-react'
 import { today } from '../utils'
 
@@ -183,15 +184,27 @@ export default function Employees() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <TextField
-          className="max-w-[280px]"
+          className="w-full sm:max-w-[280px]"
           placeholder={t('emp_search')}
           value={search}
           onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
-        <Btn variant="primary" onClick={openCreate}>{t('emp_btn_add')}</Btn>
+        <Btn variant="primary" onClick={openCreate} className="w-full sm:w-auto"
+          startContent={<Users size={15} strokeWidth={2} />}>{t('emp_btn_add')}</Btn>
       </div>
+
+      {/* Count summary */}
+      {!loading && employees.length > 0 && (
+        <div className="flex items-center gap-2 text-[12px] text-default-400 -mt-1">
+          <Users size={13} strokeWidth={2} className="text-primary/70" />
+          <span>{employees.length} {t('emp_title')}</span>
+          <span className="text-content3">·</span>
+          <CheckCircle2 size={13} strokeWidth={2} className="text-success/80" />
+          <span>{employees.filter(e => isPaidThisMonth(e.id)).length} {t('emp_pay_status_paid')}</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
@@ -203,76 +216,77 @@ export default function Employees() {
           </CardBody>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 stagger">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 stagger">
           {employees.map(emp => {
             const paid = isPaidThisMonth(emp.id)
             return (
-              <Card key={emp.id} className="card-panel card-lift hover:border-primary/40 transition-colors overflow-hidden">
-                <CardBody className="p-0">
+              <div key={emp.id}
+                className="group card-lift sheen relative rounded-2xl border border-content3 bg-content1 overflow-hidden hover:border-primary/40">
+                {/* Status accent bar */}
+                <div className={`absolute inset-x-0 top-0 h-[3px] ${paid
+                  ? 'bg-gradient-to-r from-success/40 via-success to-success/40'
+                  : 'bg-gradient-to-r from-warning/30 via-warning to-warning/40'}`} />
+
+                <div className="p-3.5 flex flex-col gap-3">
                   {/* Header */}
-                  <div className="flex items-start gap-3 p-4 pb-3">
+                  <div className="flex items-center gap-3">
                     {emp.photo_url ? (
                       <img src={emp.photo_url} alt={emp.name}
-                        className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 border border-content3 shadow-sm" />
+                        className="w-12 h-12 rounded-xl object-cover flex-shrink-0 ring-2 ring-content3 group-hover:ring-primary/40 transition-all duration-300" />
                     ) : (
-                      <Avatar name={emp.name.slice(0, 2)} radius="md"
-                        className="w-14 h-14 flex-shrink-0 text-base font-bold rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white shadow-sm" />
+                      <div className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-[15px] font-bold text-white bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] ring-2 ring-white/10 group-hover:scale-105 transition-transform duration-300">
+                        {emp.name.slice(0, 2)}
+                      </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-semibold truncate">{emp.name}</span>
-                            {emp.nickname && <span className="text-[11px] text-default-400 flex-shrink-0">({emp.nickname})</span>}
-                          </div>
-                          {emp.employee_no && <div className="text-[11px] text-default-500 mt-0.5">#{emp.employee_no}</div>}
-                        </div>
-                        {paid ? (
-                          <Chip size="sm" variant="flat" color="success" startContent={<CheckCircle2 size={12} />} className="flex-shrink-0">
-                            {t('emp_pay_status_paid')}
-                          </Chip>
-                        ) : (
-                          <Chip size="sm" variant="flat" color="warning" className="flex-shrink-0">{t('emp_pay_status_unpaid')}</Chip>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[13.5px] font-semibold truncate">{emp.name}</span>
+                        {emp.nickname && <span className="text-[10.5px] text-default-400 flex-shrink-0">({emp.nickname})</span>}
+                      </div>
+                      <div className="text-[10.5px] text-default-500 truncate mt-0.5 flex items-center gap-1.5">
+                        {emp.employee_no && <span className="text-primary/70 font-semibold">#{emp.employee_no}</span>}
+                        {(emp.position || emp.department) && (
+                          <span className="truncate">{[emp.position, emp.department].filter(Boolean).join(' · ')}</span>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {emp.position && <span className="text-[10px] px-2 py-0.5 rounded-md bg-content2 text-default-500">{emp.position}</span>}
-                        {emp.department && <span className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary/80">{emp.department}</span>}
-                      </div>
                     </div>
+                    {/* Status pill */}
+                    {paid ? (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wide text-success bg-success/10 border border-success/25 rounded-full pl-1.5 pr-2 py-0.5">
+                        <CheckCircle2 size={11} strokeWidth={2.5} />{t('emp_pay_status_paid')}
+                      </span>
+                    ) : (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wide text-warning bg-warning/10 border border-warning/25 rounded-full px-2 py-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />{t('emp_pay_status_unpaid')}
+                      </span>
+                    )}
                   </div>
-
-                  {/* Contact (only if present) */}
-                  {(emp.phone || emp.email) && (
-                    <div className="px-4 pb-3 flex flex-col gap-0.5">
-                      {emp.phone && <span className="text-[11px] text-default-400">☎ {emp.phone}</span>}
-                      {emp.email && <span className="text-[11px] text-default-400 truncate">✉ {emp.email}</span>}
-                    </div>
-                  )}
 
                   {/* Footer: salary + actions */}
-                  <div className="px-4 py-3 border-t border-content3 bg-content2/30 flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-content3/60">
                     <div className="leading-none">
-                      <span className="text-[15px] font-bold text-success">{fmt(emp.salary)}</span>
-                      <span className="text-[11px] text-default-500"> ฿/เดือน</span>
+                      <span className="text-[15px] font-bold text-success">฿{fmt(emp.salary)}</span>
+                      <span className="text-[10px] text-default-500"> /เดือน</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                       {paid ? (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/30">
-                          <CheckCircle2 size={13} className="text-success flex-shrink-0" strokeWidth={2} />
-                          <span className="text-[12px] text-success font-semibold whitespace-nowrap">{t('emp_pay_this_month')}</span>
+                        <div title={t('emp_pay_this_month')}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-success/10 text-success border border-success/25">
+                          <CheckCircle2 size={15} strokeWidth={2} />
                         </div>
                       ) : (
-                        <Btn size="sm" variant="primary" onClick={() => openPay(emp)} className="whitespace-nowrap"
-                          startContent={<Wallet size={13} strokeWidth={2} />}>{t('emp_btn_pay_salary')}</Btn>
+                        <button onClick={() => openPay(emp)} title={t('emp_btn_pay_salary')} aria-label={t('emp_btn_pay_salary')}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg btn-3d-primary hover-grow">
+                          <Wallet size={15} strokeWidth={2} />
+                        </button>
                       )}
-                      <Btn size="sm" variant="ghost" onClick={() => setHistEmp(emp)} title={t('emp_btn_pay_history')} aria-label={t('emp_btn_pay_history')}><History size={14} strokeWidth={2} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)} title={t('btn_edit')} aria-label={t('btn_edit')}><Pencil size={14} strokeWidth={2} /></Btn>
-                      <Btn size="sm" variant="danger" onClick={() => doDelete(emp.id)} title={t('btn_delete')} aria-label={t('btn_delete')}><Trash2 size={14} strokeWidth={2} /></Btn>
+                      <IconBtn onClick={() => setHistEmp(emp)} title={t('emp_btn_pay_history')}><History size={14} strokeWidth={2} /></IconBtn>
+                      <IconBtn onClick={() => openEdit(emp)} title={t('btn_edit')}><Pencil size={14} strokeWidth={2} /></IconBtn>
+                      <IconBtn danger onClick={() => doDelete(emp.id)} title={t('btn_delete')}><Trash2 size={14} strokeWidth={2} /></IconBtn>
                     </div>
                   </div>
-                </CardBody>
-              </Card>
+                </div>
+              </div>
             )
           })}
         </div>

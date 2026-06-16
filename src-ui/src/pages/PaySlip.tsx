@@ -217,11 +217,11 @@ export default function PaySlipPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <TextField className="flex-1 min-w-0" placeholder="🔍  ค้นหาพนักงาน / แผนก / งวด..."
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+        <TextField className="w-full sm:max-w-[280px]" placeholder="🔍  ค้นหาพนักงาน / แผนก / งวด..."
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value || undefined) }} />
         <Btn variant="primary" size="sm" onClick={openCreate}
-          className="flex-shrink-0 whitespace-nowrap"
+          className="w-full sm:w-auto whitespace-nowrap"
           startContent={<Plus size={15} strokeWidth={2.5} />}>{t('ps_btn_create')}</Btn>
       </div>
 
