@@ -20,7 +20,7 @@ export default function PreviewModal({ open, onClose, title, html, onDownload, d
       </>}>
       <div className="bg-default-100 rounded-lg p-2 -m-1">
         <iframe title="document-preview" srcDoc={html} sandbox="allow-same-origin"
-          className="w-full h-[68vh] bg-white rounded-md border border-content3" />
+          className="w-full h-[80vh] bg-white rounded-md border border-content3" />
       </div>
     </Modal>
   )

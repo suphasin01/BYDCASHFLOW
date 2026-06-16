@@ -365,38 +365,51 @@ export default function WithholdingTax() {
 
                 {/* ── Section 4: Income types ── */}
                 <SectionLabel label={t('wht_sec_income')} />
-                <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px' }}>
-                  {[t('wht_lbl_income_type'), t('wht_lbl_pay_date'), t('wht_lbl_amount'), t('wht_lbl_tax_withheld'), ''].map((h, i) => (
-                    <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-2">
-                  {fItems.map((item, idx) => {
-                    const def = INCOME_TYPE_KEYS.find(d => d.value === item.income_type)
-                    return (
-                      <div key={idx}>
-                        <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 28px' }}>
-                          <select value={item.income_type} onChange={e => updateItem(idx, 'income_type', e.target.value)}
-                            className={`${SELECT_CLASS} text-[11px] py-1.5`}>
-                            {INCOME_TYPE_KEYS.map(opt => (
-                              <option key={opt.value} value={opt.value}>{t(opt.key)}</option>
-                            ))}
-                          </select>
-                          <TextField type="date" value={item.pay_date || ''}
-                            onChange={e => updateItem(idx, 'pay_date', e.target.value)} />
-                          <TextField type="number" min={0} value={item.amount ? String(item.amount) : ''}
-                            onChange={e => updateItem(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} />
-                          <TextField type="number" min={0} value={item.tax_withheld ? String(item.tax_withheld) : ''}
-                            onChange={e => updateItem(idx, 'tax_withheld', e.target.value === '' ? 0 : Number(e.target.value))} />
-                          <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setFItems(prev => prev.filter((_, j) => j !== idx))}>✕</Btn>
+                <div className="border border-content3 rounded-xl overflow-hidden">
+                  {/* Header */}
+                  <div className="grid gap-0 bg-content2/60 border-b border-content3" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 44px' }}>
+                    {[t('wht_lbl_income_type'), t('wht_lbl_pay_date'), t('wht_lbl_amount'), t('wht_lbl_tax_withheld'), ''].map((h, i) => (
+                      <span key={i} className="text-[10px] font-semibold text-default-500 uppercase tracking-wide px-3 py-2">{h}</span>
+                    ))}
+                  </div>
+                  {/* Rows */}
+                  <div className="flex flex-col divide-y divide-content3">
+                    {fItems.map((item, idx) => {
+                      const def = INCOME_TYPE_KEYS.find(d => d.value === item.income_type)
+                      return (
+                        <div key={idx} className="grid gap-0 items-center" style={{ gridTemplateColumns: '2.5fr 1fr 1fr 1fr 44px' }}>
+                          <div className="border-r border-content3 px-2 py-2">
+                            <select value={item.income_type} onChange={e => updateItem(idx, 'income_type', e.target.value)}
+                              className="w-full bg-transparent text-[13px] text-foreground outline-none cursor-pointer [color-scheme:dark]">
+                              {INCOME_TYPE_KEYS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{t(opt.key)}</option>
+                              ))}
+                            </select>
+                            {def?.hasDesc && (
+                              <input className="mt-1.5 w-full bg-content2 border border-content3 rounded px-2 py-1 text-[12px] text-foreground outline-none focus:border-primary"
+                                placeholder={t('wht_lbl_income_desc')}
+                                value={item.income_type_desc || ''} onChange={e => updateItem(idx, 'income_type_desc', e.target.value)} />
+                            )}
+                          </div>
+                          <div className="border-r border-content3 px-2 py-2">
+                            <input type="date" value={item.pay_date || ''} onChange={e => updateItem(idx, 'pay_date', e.target.value)}
+                              className="w-full bg-transparent text-[13px] text-foreground outline-none [color-scheme:dark]" />
+                          </div>
+                          <div className="border-r border-content3 px-2 py-2">
+                            <input type="number" min={0} value={item.amount ? String(item.amount) : ''} onChange={e => updateItem(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))}
+                              className="w-full bg-transparent text-[13px] text-foreground outline-none text-right" />
+                          </div>
+                          <div className="border-r border-content3 px-2 py-2">
+                            <input type="number" min={0} value={item.tax_withheld ? String(item.tax_withheld) : ''} onChange={e => updateItem(idx, 'tax_withheld', e.target.value === '' ? 0 : Number(e.target.value))}
+                              className="w-full bg-transparent text-[13px] text-foreground outline-none text-right" />
+                          </div>
+                          <div className="flex items-center justify-center py-2">
+                            <Btn size="sm" variant="danger" className="px-0 w-7 h-7 text-[11px]" onClick={() => setFItems(prev => prev.filter((_, j) => j !== idx))}>✕</Btn>
+                          </div>
                         </div>
-                        {def?.hasDesc && (
-                          <TextField className="mt-1 w-[60%]" placeholder={t('wht_lbl_income_desc')}
-                            value={item.income_type_desc || ''} onChange={e => updateItem(idx, 'income_type_desc', e.target.value)} />
-                        )}
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
                 <div>
                   <Btn size="sm" variant="ghost" onClick={() => setFItems(prev => [...prev, emptyItem()])}>{t('wht_btn_add_income')}</Btn>
