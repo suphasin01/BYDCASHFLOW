@@ -148,6 +148,7 @@ export default function Employees() {
           total_deductions: 0, net_income: pAmount,
           cum_income: 0, cum_tax: 0, cum_social_sec: 0, cum_provident: 0,
           notes: pNotes || null,
+          receipt_image: pImage || null,
         })
       } catch {} // don't block if pay slip creation fails
       toast(t('toast_emp_paid'))

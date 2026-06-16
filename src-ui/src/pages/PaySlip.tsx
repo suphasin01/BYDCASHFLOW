@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Card, CardBody, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
-import { FileText, Plus, Eye } from 'lucide-react'
+import { FileText, Plus, Eye, Paperclip } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast } from '../App'
@@ -38,6 +38,8 @@ export default function PaySlipPage() {
   const [form, setForm] = useState<FormState>({ ...ZERO_FORM })
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [billPreview, setBillPreview] = useState<string | null>(null)
+  const [attachingId, setAttachingId] = useState<number | null>(null)
+  const billInputRef = useRef<HTMLInputElement>(null)
 
   const setF = (field: keyof FormState, value: string | number) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -162,6 +164,23 @@ export default function PaySlipPage() {
     catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }
 
+  const handleBillAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || attachingId === null) return
+    if (file.size > 5 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 5MB', 'err'); return }
+    const reader = new FileReader()
+    reader.onload = async ev => {
+      try {
+        await updatePaySlip(attachingId, { receipt_image: ev.target?.result as string })
+        toast('แนบบิลแล้ว')
+        load()
+      } catch {}
+      setAttachingId(null)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   const openPreview = async (slip: PaySlip) => {
     try {
       const company = await getActiveCompanyApi().catch(() => null)
@@ -240,10 +259,15 @@ export default function PaySlipPage() {
                     <TableCell><span className="text-success font-bold">฿{fmt(s.net_income)}</span></TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
-                        {s.receipt_image && (
+                        {s.receipt_image ? (
                           <Btn size="sm" variant="ghost" onClick={() => setBillPreview(s.receipt_image!)}
-                            className="text-success border border-success/30" title="ดูหลักฐานการจ่าย">
-                            บิล
+                            className="text-success border border-success/30 font-semibold" title="ดูหลักฐานการจ่าย">
+                            📄 บิล
+                          </Btn>
+                        ) : (
+                          <Btn size="sm" variant="ghost" onClick={() => { setAttachingId(s.id); billInputRef.current?.click() }}
+                            className="text-default-400 border border-dashed border-content3" title="แนบรูปหลักฐาน">
+                            <Paperclip size={13} className="mr-1" />บิล
                           </Btn>
                         )}
                         <Btn size="sm" variant="ghost" onClick={() => openPreview(s)} title={t('btn_preview')}><Eye size={14} /></Btn>
@@ -259,6 +283,21 @@ export default function PaySlipPage() {
           )}
         </CardBody>
       </Card>
+
+      {/* Hidden file input for attaching bill */}
+      <input type="file" ref={billInputRef} accept="image/*" className="hidden" onChange={handleBillAttach} />
+
+      {/* Bill/receipt image full-screen preview */}
+      {billPreview && (
+        <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center"
+          onClick={() => setBillPreview(null)}>
+          <button className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 text-xl transition-colors cursor-pointer"
+            onClick={() => setBillPreview(null)}>✕</button>
+          <img src={billPreview} alt="หลักฐานการจ่าย"
+            className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl object-contain"
+            onClick={e => e.stopPropagation()} />
+        </div>
+      )}
 
       {/* Preview modal */}
       <Modal open={!!previewHtml} onClose={() => setPreviewHtml(null)} size="xl"
@@ -377,17 +416,6 @@ export default function PaySlipPage() {
         </div>
       </Modal>
 
-      {/* Bill/Receipt image preview overlay */}
-      {billPreview && (
-        <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center"
-          onClick={() => setBillPreview(null)}>
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 rounded-full w-10 h-10 flex items-center justify-center text-xl"
-            onClick={() => setBillPreview(null)}>✕</button>
-          <img src={billPreview} alt="หลักฐานการจ่ายเงินเดือน"
-            className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl object-contain"
-            onClick={e => e.stopPropagation()} />
-        </div>
-      )}
     </div>
   )
 }
