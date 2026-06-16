@@ -171,9 +171,7 @@ export default function Settings() {
         {/* Data Backup */}
         <SectionCard>
           <SectionTitle>{t('settings_data_title')}</SectionTitle>
-          <p className="text-[11px] text-default-400 mb-4 leading-relaxed">
-            ส่งออก / นำเข้าข้อมูลทั้งหมด เพื่อย้ายข้อมูลระหว่างเครื่อง
-          </p>
+          <p className="text-[11px] text-default-400 mb-4 leading-relaxed">{t('settings_data_desc')}</p>
           <div className="flex flex-col gap-3">
             {/* Import drop zone */}
             <div
@@ -192,7 +190,7 @@ export default function Settings() {
               <span className="text-[13px] font-semibold text-primary">
                 {importing ? '...' : t('btn_import_data')}
               </span>
-              <span className="text-[11px] text-default-400">ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</span>
+              <span className="text-[11px] text-default-400">{t('settings_data_drop')}</span>
             </div>
             {/* Export action */}
             <Btn variant="success" className="w-full justify-center" onClick={handleExport} disabled={exporting} isLoading={exporting}
