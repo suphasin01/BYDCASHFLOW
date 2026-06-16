@@ -68,7 +68,7 @@ function bahtText(amount: number): string {
 // pt → mm (CSS uses mm so it maps 1:1 onto the A4 print page)
 const MM = 25.4 / 72
 const PAGE_W = 595, PAGE_H = 842
-const FONT = "'AngsanaUPC','Angsana New','TH Sarabun New','Sarabun','Loma',sans-serif"
+const FONT = "'AngsanaUPC','Angsana New','Thonburi','TH Sarabun New','Sarabun','Loma',sans-serif"
 
 type Align = 'left' | 'center' | 'right'
 type Opts = { size?: number; align?: Align; bold?: boolean; pad?: number }
@@ -242,7 +242,7 @@ html,body{background:#e9e9e9}
 .noprint button{padding:7px 20px;background:#1565c0;color:#fff;border:none;border-radius:5px;font-size:13px;cursor:pointer}
 .page{position:relative;width:${(PAGE_W * MM).toFixed(2)}mm;height:${(PAGE_H * MM).toFixed(2)}mm;margin:6px auto;background:#fff;overflow:hidden}
 .page img.bg{position:absolute;inset:0;width:100%;height:100%;display:block}
-.page>div{color:#000}
+.page>div{color:#000;-webkit-text-stroke:0.25px currentColor}
 </style></head><body>
 <div class="noprint"><button onclick="window.print()">&#128424; พิมพ์ / บันทึก PDF</button></div>
 <div class="page"><img class="bg" src="${WHT_FORM_BG}" alt="">${overlay}</div>
