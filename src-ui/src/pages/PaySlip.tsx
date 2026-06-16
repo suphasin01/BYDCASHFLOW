@@ -37,6 +37,7 @@ export default function PaySlipPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [form, setForm] = useState<FormState>({ ...ZERO_FORM })
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [billPreview, setBillPreview] = useState<string | null>(null)
 
   const setF = (field: keyof FormState, value: string | number) =>
     setForm(prev => ({ ...prev, [field]: value }))
@@ -239,6 +240,12 @@ export default function PaySlipPage() {
                     <TableCell><span className="text-success font-bold">฿{fmt(s.net_income)}</span></TableCell>
                     <TableCell>
                       <div className="flex justify-end gap-2">
+                        {s.receipt_image && (
+                          <Btn size="sm" variant="ghost" onClick={() => setBillPreview(s.receipt_image!)}
+                            className="text-success border border-success/30" title="ดูหลักฐานการจ่าย">
+                            บิล
+                          </Btn>
+                        )}
                         <Btn size="sm" variant="ghost" onClick={() => openPreview(s)} title={t('btn_preview')}><Eye size={14} /></Btn>
                         <Btn size="sm" variant="ghost" onClick={() => openEdit(s)}>{t('btn_edit')}</Btn>
                         <Btn size="sm" variant="ghost" onClick={() => printPDF(s)}>PDF</Btn>
@@ -369,6 +376,18 @@ export default function PaySlipPage() {
           <TextAreaField label={t('lbl_notes')} value={form.notes} onChange={e => setF('notes', e.target.value)} />
         </div>
       </Modal>
+
+      {/* Bill/Receipt image preview overlay */}
+      {billPreview && (
+        <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center"
+          onClick={() => setBillPreview(null)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white bg-white/10 rounded-full w-10 h-10 flex items-center justify-center text-xl"
+            onClick={() => setBillPreview(null)}>✕</button>
+          <img src={billPreview} alt="หลักฐานการจ่ายเงินเดือน"
+            className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl object-contain"
+            onClick={e => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   )
 }
