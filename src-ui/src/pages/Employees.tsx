@@ -6,7 +6,7 @@ import { useToast, useActiveCompany } from '../App'
 import {
   getEmployees, createEmployee, updateEmployee, deleteEmployee,
   getEmployeePayments, createEmployeePayment, deleteEmployeePayment,
-  createPaySlip,
+  createPaySlip, createEvidence,
 } from '../api'
 import type { Employee, EmployeePayment } from '../types'
 import Btn from '../ui/Btn'
@@ -151,6 +151,20 @@ export default function Employees() {
           receipt_image: pImage || null,
         })
       } catch {} // don't block if pay slip creation fails
+      // Auto-create Evidence record if image was attached
+      if (pImage) {
+        try {
+          await createEvidence({
+            title: `จ่ายเงินเดือน - ${payEmp.name}${pPeriod ? ` (${pPeriod})` : ''}`,
+            category: 'bank_slip',
+            amount: pAmount,
+            doc_date: pDate,
+            contact_name: payEmp.name,
+            image_url: pImage,
+            notes: pNotes || null,
+          })
+        } catch {}
+      }
       toast(t('toast_emp_paid'))
       setPayEmp(null); load()
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }

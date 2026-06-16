@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Card, CardBody, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
-import { CreditCard, ArrowDownLeft, ArrowUpRight, History, AlertCircle } from 'lucide-react'
+import { CreditCard, ArrowDownLeft, ArrowUpRight, History, AlertCircle, Camera, X } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
-import { getPaymentDocuments, getPayments, createPayment, deletePayment } from '../api'
+import { getPaymentDocuments, getPayments, createPayment, deletePayment, createEvidence } from '../api'
 import type { PayableDoc, Payment } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
@@ -41,6 +41,8 @@ export default function Payments() {
   const [fMethod, setFMethod] = useState<Method>('transfer')
   const [fRef, setFRef] = useState('')
   const [fNotes, setFNotes] = useState('')
+  const [fImage, setFImage] = useState<string | null>(null)
+  const payImageRef = useRef<HTMLInputElement>(null)
 
   // History modal
   const [histDoc, setHistDoc] = useState<PayableDoc | null>(null)
@@ -85,16 +87,41 @@ export default function Payments() {
   }, [docs])
 
   // ── Actions ─────────────────────────────────────────────────────────────────
+  const handlePayImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { toast('ไฟล์ใหญ่เกิน 5MB', 'err'); return }
+    const reader = new FileReader()
+    reader.onload = ev => setFImage(ev.target?.result as string)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   const openPay = (d: PayableDoc) => {
     setPayDoc(d)
     setFAmount(outstanding(d))
-    setFDate(today()); setFMethod('transfer'); setFRef(''); setFNotes('')
+    setFDate(today()); setFMethod('transfer'); setFRef(''); setFNotes(''); setFImage(null)
   }
 
   const savePayment = async () => {
     if (!payDoc) return
     try {
       await createPayment({ document_id: payDoc.id, amount: fAmount, date: fDate, method: fMethod, reference: fRef || null, notes: fNotes || null })
+      // Auto-create Evidence if image attached
+      if (fImage) {
+        try {
+          await createEvidence({
+            title: `ชำระเงิน - ${payDoc.number || ''} · ${payDoc.contact_name || payDoc.contact_display || ''}`.trim().replace(/·\s*$/, ''),
+            category: 'bank_slip',
+            amount: fAmount,
+            doc_date: fDate,
+            contact_name: payDoc.contact_name || payDoc.contact_display || '',
+            reference: fRef || null,
+            image_url: fImage,
+            notes: fNotes || null,
+          })
+        } catch {}
+      }
       toast(t('toast_payment_saved'))
       setPayDoc(null); load()
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
@@ -298,6 +325,27 @@ export default function Payments() {
               <TextField label={t('lbl_reference')} placeholder={t('lbl_ref_ph')} value={fRef} onChange={e => setFRef(e.target.value)} />
             </div>
             <TextAreaField label={t('lbl_notes')} value={fNotes} onChange={e => setFNotes(e.target.value)} />
+
+            {/* Receipt image */}
+            <div>
+              <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">แนบสลิป / หลักฐาน</div>
+              <input type="file" ref={payImageRef} accept="image/*" className="hidden" onChange={handlePayImage} />
+              {fImage ? (
+                <div className="relative rounded-xl overflow-hidden border border-content3 bg-content2">
+                  <img src={fImage} alt="slip" className="w-full max-h-48 object-contain" />
+                  <button onClick={() => setFImage(null)}
+                    className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded-full bg-danger/80 text-white cursor-pointer hover:bg-danger transition-colors">
+                    <X size={13} strokeWidth={2.5} />
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => payImageRef.current?.click()}
+                  className="w-full border-2 border-dashed border-content3 rounded-xl py-4 flex flex-col items-center gap-2 text-default-400 hover:border-primary hover:text-primary transition-colors cursor-pointer">
+                  <Camera size={18} strokeWidth={1.6} />
+                  <span className="text-[12px]">แนบรูปสลิปโอนเงิน</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </Modal>
