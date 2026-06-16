@@ -243,8 +243,15 @@ export default function Employees() {
                       <span className="text-[11px] text-default-500"> ฿/เดือน</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Btn size="sm" variant="primary" onClick={() => openPay(emp)} className="whitespace-nowrap"
-                        startContent={<Wallet size={13} strokeWidth={2} />}>{t('emp_btn_pay_salary')}</Btn>
+                      {paid ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/30">
+                          <CheckCircle2 size={13} className="text-success flex-shrink-0" strokeWidth={2} />
+                          <span className="text-[12px] text-success font-semibold whitespace-nowrap">{t('emp_pay_this_month')}</span>
+                        </div>
+                      ) : (
+                        <Btn size="sm" variant="primary" onClick={() => openPay(emp)} className="whitespace-nowrap"
+                          startContent={<Wallet size={13} strokeWidth={2} />}>{t('emp_btn_pay_salary')}</Btn>
+                      )}
                       <Btn size="sm" variant="ghost" onClick={() => setHistEmp(emp)} title={t('emp_btn_pay_history')} aria-label={t('emp_btn_pay_history')}><History size={14} strokeWidth={2} /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)} title={t('btn_edit')} aria-label={t('btn_edit')}><Pencil size={14} strokeWidth={2} /></Btn>
                       <Btn size="sm" variant="danger" onClick={() => doDelete(emp.id)} title={t('btn_delete')} aria-label={t('btn_delete')}><Trash2 size={14} strokeWidth={2} /></Btn>
