@@ -212,6 +212,19 @@ db.exec(`
     notes        TEXT,
     created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
   );
+
+  CREATE TABLE IF NOT EXISTS evidence (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    title        TEXT NOT NULL,
+    category     TEXT NOT NULL DEFAULT 'other',
+    amount       REAL,
+    doc_date     TEXT,
+    contact_name TEXT,
+    reference    TEXT,
+    image_url    TEXT,
+    notes        TEXT,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+  );
 `);
 
 // Migration: add company column to contacts if it doesn't exist
@@ -220,6 +233,8 @@ try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payer_tin TEXT'); } catch 
 try { db.exec('ALTER TABLE withholding_tax ADD COLUMN payee_tin TEXT'); } catch {}
 try { db.exec('ALTER TABLE employees ADD COLUMN photo_url TEXT'); } catch {}
 try { db.exec('ALTER TABLE employee_payments ADD COLUMN receipt_image TEXT'); } catch {}
+try { db.exec('CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, category TEXT NOT NULL DEFAULT \'other\', amount REAL, doc_date TEXT, contact_name TEXT, reference TEXT, image_url TEXT, notes TEXT, created_at TEXT NOT NULL DEFAULT (datetime(\'now\',\'localtime\')))'); } catch {}
+try { db.exec('ALTER TABLE pay_slips ADD COLUMN receipt_image TEXT'); } catch {}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -610,7 +625,7 @@ export const employeeRepo = {
 
 // ── Pay Slips ─────────────────────────────────────────────────────────────────────
 
-const PS_FIELDS = ['employee_name','contact_id','department','period','pay_date','salary','cost_of_living','position_allow','meal_allow','overtime','shift_allow','travel_allow','subsidy','welfare','bonus','total_income','tax_withheld','social_security','late_deduct','absent_deduct','loan_deduct','advance_deduct','other_deduct','total_deductions','net_income','cum_income','cum_tax','cum_social_sec','cum_provident','notes'];
+const PS_FIELDS = ['employee_name','contact_id','department','period','pay_date','salary','cost_of_living','position_allow','meal_allow','overtime','shift_allow','travel_allow','subsidy','welfare','bonus','total_income','tax_withheld','social_security','late_deduct','absent_deduct','loan_deduct','advance_deduct','other_deduct','total_deductions','net_income','cum_income','cum_tax','cum_social_sec','cum_provident','notes','receipt_image'];
 
 export const paySlipRepo = {
   list: (q?: string) => q
@@ -619,8 +634,8 @@ export const paySlipRepo = {
   get: (id: number) => get('SELECT * FROM pay_slips WHERE id = ?', id),
   create: (data: Record<string, unknown>) => {
     const r = run(
-      `INSERT INTO pay_slips (employee_name,contact_id,department,period,pay_date,salary,cost_of_living,position_allow,meal_allow,overtime,shift_allow,travel_allow,subsidy,welfare,bonus,total_income,tax_withheld,social_security,late_deduct,absent_deduct,loan_deduct,advance_deduct,other_deduct,total_deductions,net_income,cum_income,cum_tax,cum_social_sec,cum_provident,notes)
-       VALUES (:employee_name,:contact_id,:department,:period,:pay_date,:salary,:cost_of_living,:position_allow,:meal_allow,:overtime,:shift_allow,:travel_allow,:subsidy,:welfare,:bonus,:total_income,:tax_withheld,:social_security,:late_deduct,:absent_deduct,:loan_deduct,:advance_deduct,:other_deduct,:total_deductions,:net_income,:cum_income,:cum_tax,:cum_social_sec,:cum_provident,:notes)`,
+      `INSERT INTO pay_slips (employee_name,contact_id,department,period,pay_date,salary,cost_of_living,position_allow,meal_allow,overtime,shift_allow,travel_allow,subsidy,welfare,bonus,total_income,tax_withheld,social_security,late_deduct,absent_deduct,loan_deduct,advance_deduct,other_deduct,total_deductions,net_income,cum_income,cum_tax,cum_social_sec,cum_provident,notes,receipt_image)
+       VALUES (:employee_name,:contact_id,:department,:period,:pay_date,:salary,:cost_of_living,:position_allow,:meal_allow,:overtime,:shift_allow,:travel_allow,:subsidy,:welfare,:bonus,:total_income,:tax_withheld,:social_security,:late_deduct,:absent_deduct,:loan_deduct,:advance_deduct,:other_deduct,:total_deductions,:net_income,:cum_income,:cum_tax,:cum_social_sec,:cum_provident,:notes,:receipt_image)`,
       {
         ':employee_name': data.employee_name ?? '', ':contact_id': data.contact_id ?? null,
         ':department': data.department ?? null, ':period': data.period ?? null,
@@ -638,6 +653,7 @@ export const paySlipRepo = {
         ':cum_income': data.cum_income ?? 0, ':cum_tax': data.cum_tax ?? 0,
         ':cum_social_sec': data.cum_social_sec ?? 0, ':cum_provident': data.cum_provident ?? 0,
         ':notes': data.notes ?? null,
+        ':receipt_image': data.receipt_image ?? null,
       }
     );
     return get('SELECT * FROM pay_slips WHERE id = ?', r.lastInsertRowid);
@@ -679,6 +695,42 @@ export const employeePaymentRepo = {
     db.prepare('DELETE FROM employee_payments WHERE employee_id = ? AND period = ?').run(employee_id, period),
 };
 
+// ── Evidence ──────────────────────────────────────────────────────────────────
+
+const EVIDENCE_FIELDS = ['title','category','amount','doc_date','contact_name','reference','image_url','notes'];
+
+export const evidenceRepo = {
+  list: (q?: string, category?: string) => {
+    if (q && category) return all('SELECT * FROM evidence WHERE (title LIKE ? OR contact_name LIKE ? OR reference LIKE ?) AND category = ? ORDER BY doc_date DESC, created_at DESC', `%${q}%`, `%${q}%`, `%${q}%`, category);
+    if (q) return all('SELECT * FROM evidence WHERE title LIKE ? OR contact_name LIKE ? OR reference LIKE ? ORDER BY doc_date DESC, created_at DESC', `%${q}%`, `%${q}%`, `%${q}%`);
+    if (category) return all('SELECT * FROM evidence WHERE category = ? ORDER BY doc_date DESC, created_at DESC', category);
+    return all('SELECT * FROM evidence ORDER BY doc_date DESC, created_at DESC');
+  },
+  create: (data: Record<string, unknown>) => {
+    const r = run(
+      `INSERT INTO evidence (title,category,amount,doc_date,contact_name,reference,image_url,notes)
+       VALUES (:title,:category,:amount,:doc_date,:contact_name,:reference,:image_url,:notes)`,
+      {
+        ':title': data.title ?? '', ':category': data.category ?? 'other',
+        ':amount': data.amount ?? null, ':doc_date': data.doc_date ?? null,
+        ':contact_name': data.contact_name ?? null, ':reference': data.reference ?? null,
+        ':image_url': data.image_url ?? null, ':notes': data.notes ?? null,
+      }
+    );
+    return get('SELECT * FROM evidence WHERE id = ?', r.lastInsertRowid);
+  },
+  update: (id: number, data: Record<string, unknown>) => {
+    const fields = Object.keys(data).filter(k => EVIDENCE_FIELDS.includes(k)).map(k => `${k} = :${k}`).join(', ');
+    if (fields) {
+      const params: Record<string, unknown> = { ':id': id };
+      Object.keys(data).filter(k => EVIDENCE_FIELDS.includes(k)).forEach(k => { params[`:${k}`] = data[k]; });
+      db.prepare(`UPDATE evidence SET ${fields} WHERE id = :id`).run(np(params));
+    }
+    return get('SELECT * FROM evidence WHERE id = ?', id);
+  },
+  delete: (id: number) => db.prepare('DELETE FROM evidence WHERE id = ?').run(id),
+};
+
 // ── Export / Import ──────────────────────────────────────────────────────────────
 
 export function exportAll(): Record<string, unknown> {
@@ -697,6 +749,7 @@ export function exportAll(): Record<string, unknown> {
     employees: all('SELECT * FROM employees ORDER BY id'),
     pay_slips: all('SELECT * FROM pay_slips ORDER BY id'),
     employee_payments: all('SELECT * FROM employee_payments ORDER BY id'),
+    evidence: all('SELECT * FROM evidence ORDER BY id'),
   };
 }
 
@@ -704,6 +757,7 @@ export function importAll(data: Record<string, unknown[]>): void {
   db.exec('PRAGMA foreign_keys = OFF');
 
   const doImport = db.transaction(() => {
+    db.exec('DELETE FROM evidence');
     db.exec('DELETE FROM employee_payments');
     db.exec('DELETE FROM pay_slips');
     db.exec('DELETE FROM withholding_tax_items');
@@ -738,8 +792,9 @@ export function importAll(data: Record<string, unknown[]>): void {
     insert('employees', (data.employees || []) as Record<string, unknown>[]);
     insert('pay_slips', (data.pay_slips || []) as Record<string, unknown>[]);
     insert('employee_payments', (data.employee_payments || []) as Record<string, unknown>[]);
+    insert('evidence', (data.evidence || []) as Record<string, unknown>[]);
 
-    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments', 'withholding_tax', 'withholding_tax_items', 'employees', 'pay_slips', 'employee_payments']) {
+    for (const table of ['companies', 'contacts', 'products', 'documents', 'document_items', 'payments', 'withholding_tax', 'withholding_tax_items', 'employees', 'pay_slips', 'employee_payments', 'evidence']) {
       const r = db.prepare(`SELECT COALESCE(MAX(id), 0) as m FROM ${table}`).get() as { m: number };
       if (r.m > 0) db.prepare('INSERT OR REPLACE INTO sqlite_sequence (name, seq) VALUES (?, ?)').run(table, r.m);
     }

@@ -1,4 +1,4 @@
-import type { Contact, Product, Document, Payment, PayableDoc, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax, PaySlip, Employee, EmployeePayment } from './types'
+import type { Contact, Product, Document, Payment, PayableDoc, Company, Settings, ReportSummary, MonthlyData, TopContact, WithholdingTax, PaySlip, Employee, EmployeePayment, Evidence } from './types'
 
 const BASE = 'http://localhost:3737/api'
 
@@ -101,3 +101,15 @@ export const getEmployeePayments = (employeeId?: number) =>
   GET<{ data: EmployeePayment[] }>('/employee-payments' + (employeeId ? '?employee_id=' + employeeId : ''))
 export const createEmployeePayment = (data: Partial<EmployeePayment>) => POST<EmployeePayment>('/employee-payments', data)
 export const deleteEmployeePayment = (id: number) => DEL<void>('/employee-payments/' + id)
+
+// ── Evidence ──────────────────────────────────────────────────────────────────
+export const getEvidence = (q?: string, category?: string) => {
+  const params = new URLSearchParams()
+  if (q) params.set('q', q)
+  if (category) params.set('category', category)
+  const qs = params.toString()
+  return GET<{ data: Evidence[] }>('/evidence' + (qs ? '?' + qs : ''))
+}
+export const createEvidence = (data: Partial<Evidence>) => POST<Evidence>('/evidence', data)
+export const updateEvidence = (id: number, data: Partial<Evidence>) => PUT<Evidence>('/evidence/' + id, data)
+export const deleteEvidence = (id: number) => DEL<void>('/evidence/' + id)

@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import path from 'path';
-import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, withholdingTaxRepo, employeeRepo, paySlipRepo, employeePaymentRepo, exportAll, importAll } from './db';
+import { contactRepo, productRepo, documentRepo, paymentRepo, businessRepo, companyRepo, reportRepo, withholdingTaxRepo, employeeRepo, paySlipRepo, employeePaymentRepo, evidenceRepo, exportAll, importAll } from './db';
 
 const app = express();
 const PORT = process.env.PORT ?? 3737;
@@ -366,6 +366,30 @@ app.post('/api/employee-payments', (req, res) => {
 app.delete('/api/employee-payments/:id', (req, res) => {
   employeePaymentRepo.delete(Number(req.params.id));
   res.json({ success: true });
+});
+
+// ── Evidence ──────────────────────────────────────────────────────────────────
+
+app.get('/api/evidence', (req, res) => {
+  try {
+    const { q, category } = req.query as Record<string, string>;
+    res.json({ data: evidenceRepo.list(q, category) });
+  } catch (e: unknown) { res.status(500).json({ error: String(e) }); }
+});
+
+app.post('/api/evidence', (req, res) => {
+  try { res.status(201).json(evidenceRepo.create(req.body)); }
+  catch (e: unknown) { res.status(500).json({ error: String(e) }); }
+});
+
+app.put('/api/evidence/:id', (req, res) => {
+  try { res.json(evidenceRepo.update(Number(req.params.id), req.body)); }
+  catch (e: unknown) { res.status(500).json({ error: String(e) }); }
+});
+
+app.delete('/api/evidence/:id', (req, res) => {
+  try { evidenceRepo.delete(Number(req.params.id)); res.json({ success: true }); }
+  catch (e: unknown) { res.status(500).json({ error: String(e) }); }
 });
 
 // ── SPA fallback ──────────────────────────────────────────────────────────────

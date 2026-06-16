@@ -170,6 +170,7 @@ export interface PaySlip {
   cum_social_sec: number
   cum_provident: number
   notes?: string | null
+  receipt_image?: string | null
   created_at?: string
 }
 
@@ -203,6 +204,19 @@ export interface EmployeePayment {
   notes?: string | null
   receipt_image?: string | null
   employee_name?: string | null
+  created_at?: string
+}
+
+export interface Evidence {
+  id: number
+  title: string
+  category: 'receipt' | 'bank_slip' | 'contract' | 'expense' | 'other'
+  amount?: number | null
+  doc_date?: string | null
+  contact_name?: string | null
+  reference?: string | null
+  image_url?: string | null
+  notes?: string | null
   created_at?: string
 }
 
