@@ -381,14 +381,15 @@ function setupAutoUpdater() {
     }, 1000);
   });
 
-  setTimeout(async () => {
-    const handled = await checkWindowsSameVersionUpdate();
-    if (!handled) autoUpdater.checkForUpdates().catch(() => {});
+  // On startup: only use electron-updater (version-based). The same-version
+  // CI build check runs manually via the "Check for Updates" button so it
+  // doesn't create an infinite update loop when CI keeps publishing new builds.
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
   }, 3000);
 
-  setInterval(async () => {
-    const handled = await checkWindowsSameVersionUpdate();
-    if (!handled) autoUpdater.checkForUpdates().catch(() => {});
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
   }, 4 * 60 * 60 * 1000);
 }
 
