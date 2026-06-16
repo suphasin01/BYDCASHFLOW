@@ -14,7 +14,7 @@ import IconBtn from '../ui/IconBtn'
 import { TextField, TextAreaField } from '../ui/Field'
 import { fmtDate, today } from '../utils'
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
 const CATEGORIES = [
   { key: 'receipt',   label: 'บิล/ใบเสร็จ',   color: 'success',  Icon: Receipt },

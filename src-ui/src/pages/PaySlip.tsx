@@ -13,7 +13,7 @@ import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 
 const ZERO_FORM = {
   employee_name: '', contact_id: '', department: '', period: '', pay_date: today(),
@@ -338,7 +338,7 @@ export default function PaySlipPage() {
                 ))}
               </select>
               <input
-                className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors"
+                className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors"
                 placeholder="หรือพิมพ์ชื่อโดยตรง..."
                 value={form.employee_name}
                 onChange={e => setF('employee_name', e.target.value)}

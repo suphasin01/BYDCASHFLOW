@@ -25,7 +25,7 @@ const STATUS_COLOR: Record<string, ChipColor> = {
   draft: 'default', sent: 'primary', approved: 'success', paid: 'success', cancelled: 'danger',
 }
 
-const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
+const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
 
 // ─── WHT constants ────────────────────────────────────────────────────────────
@@ -830,7 +830,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                     <option value="">— เลือกพนักงาน —</option>
                     {employees.map(em => <option key={em.id} value={em.name}>{em.name}{em.department ? ` (${em.department})` : ''}{em.employee_no ? ` #${em.employee_no}` : ''}</option>)}
                   </select>
-                  <input className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors"
+                  <input className="mt-1.5 w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-[13px] text-foreground outline-none focus:border-primary transition-colors"
                     placeholder="หรือพิมพ์ชื่อโดยตรง..." value={psForm.employee_name} onChange={e => setPs('employee_name', e.target.value)} />
                 </div>
                 <div className="flex flex-col gap-2">
