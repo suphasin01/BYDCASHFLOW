@@ -77,7 +77,7 @@ type Opts = { size?: number; align?: Align; bold?: boolean; pad?: number }
 function field(key: string, value: string, o: Opts = {}): string {
   const b: FieldBox | undefined = F[key]
   if (!b || value === '' || value == null) return ''
-  const size = o.size ?? 11
+  const size = o.size ?? Math.min(b.h * 0.88, 12.5)
   const align = o.align ?? 'left'
   const pad = o.pad ?? 1.2
   const just = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start'
@@ -97,7 +97,7 @@ function combField(key: string, value: string): string {
   if (!b || !b.comb || !value) return ''
   const cells = b.comb
   const cw = b.w / cells
-  const size = 11
+  const size = Math.min(b.h * 0.88, 12.5)
   let out = ''
   for (let i = 0; i < cells && i < value.length; i++) {
     const ch = value[i]
@@ -194,9 +194,9 @@ export function buildWHTForm(wht: WithholdingTax): string {
   for (const [key, dk, pk, tk] of ROWS) {
     const it = items[key]
     if (!it) continue
-    parts.push(field(dk, fmtDateBE(it.pay_date), { align: 'center' }))
-    parts.push(field(pk, fmtN(it.amount), { align: 'right', pad: 4 }))
-    parts.push(field(tk, fmtN(it.tax_withheld), { align: 'right', pad: 4 }))
+    parts.push(field(dk, fmtDateBE(it.pay_date), { align: 'center', size: 11.5 }))
+    parts.push(field(pk, fmtN(it.amount), { align: 'right', pad: 4, size: 12.5 }))
+    parts.push(field(tk, fmtN(it.tax_withheld), { align: 'right', pad: 4, size: 12.5 }))
   }
   // rate for 40(4)(ข)(1.4), and free-text descriptions for (2.5) and อื่นๆ
   parts.push(field('rate1', items['40_4b_1_4']?.income_type_desc || '', { align: 'center' }))
@@ -204,8 +204,8 @@ export function buildWHTForm(wht: WithholdingTax): string {
   parts.push(field('spec3', items['other']?.income_type_desc || ''))
 
   // ── totals row + amount in words ──
-  parts.push(field('pay1_14', fmtN(wht.total_amount), { align: 'right', pad: 4, bold: true }))
-  parts.push(field('tax1_14', fmtN(wht.total_tax), { align: 'right', pad: 4, bold: true }))
+  parts.push(field('pay1_14', fmtN(wht.total_amount), { align: 'right', pad: 4, size: 13, bold: true }))
+  parts.push(field('tax1_14', fmtN(wht.total_tax), { align: 'right', pad: 4, size: 13, bold: true }))
   parts.push(field('total', bahtText(Number(wht.total_tax) || 0), { align: 'center' }))
 
   // ── provident / social-security funds ──
