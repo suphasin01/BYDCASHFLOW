@@ -84,9 +84,8 @@ function field(key: string, value: string, o: Opts = {}): string {
   const align = o.align ?? 'left'
   const pad = o.pad ?? 1.2
   const just = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start'
-  const topOff = 1.5 // pt — nudge text up within each field box
   return (
-    `<div style="position:absolute;left:${(b.l * MM).toFixed(2)}mm;top:${((b.t - topOff) * MM).toFixed(2)}mm;` +
+    `<div style="position:absolute;left:${(b.l * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
     `width:${(b.w * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
     `display:flex;align-items:center;justify-content:${just};` +
     `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;` +
@@ -95,13 +94,15 @@ function field(key: string, value: string, o: Opts = {}): string {
   )
 }
 
-// Exact digit-box centers (pt, offset from the field's left edge l), measured
-// from the official form. The boxes are NOT evenly spaced: they form groups with
-// narrow connector gaps. 13-digit national ID = groups [1,4,5,2,1]; 10-digit TIN
-// = groups [1,4,4,1]. The old "N equal cells" model drifted progressively right.
-const COMB_CENTERS: Record<number, number[]> = {
-  13: [2.9, 21.9, 35.6, 49.3, 62.9, 75.8, 87.9, 100.0, 112.0, 124.1, 141.8, 154.1, 173.0],
-  10: [3.8, 21.8, 33.8, 45.8, 57.8, 75.8, 87.8, 99.8, 111.8, 130.0],
+// Per-field digit-box centers (pt, offset from field.l), measured from the
+// form background PNG by detecting vertical dividers in interior rows.
+// The boxes are NOT evenly spaced — groups [1,4,5,2,1] for 13-digit NID,
+// [1,4,4,1] for 10-digit TIN. Equal-width cells drift progressively right.
+const COMB_CENTERS: Record<string, number[]> = {
+  id1:    [4.5, 21.2, 33.1, 45.4, 57.4, 76.0, 87.8, 99.4, 111.4, 123.9, 142.0, 154.2, 175.6],
+  id1_2:  [4.7, 21.2, 33.1, 45.4, 57.5, 76.0, 87.8, 99.4, 111.4, 123.9, 141.9, 154.1, 174.9],
+  tin1:   [5.0, 22.2, 34.3, 46.3, 58.2, 76.4, 88.4, 100.4, 112.2, 131.3],
+  tin1_2: [4.5, 21.5, 33.6, 45.6, 57.4, 75.4, 87.4, 99.4, 111.3, 130.9],
 }
 
 // Comb field: place each digit at its exact box center (positions in pt → mm)
@@ -109,16 +110,15 @@ function combField(key: string, value: string): string {
   const b: FieldBox | undefined = F[key]
   if (!b || !value) return ''
   const d = String(value).replace(/\D/g, '')
-  const centers = COMB_CENTERS[d.length]
-  if (!centers) return ''
+  const centers = COMB_CENTERS[key]
+  if (!centers || d.length !== centers.length) return ''
   const size = Math.min(b.h * 0.8, 11)
-  const cw = 12 // nominal centering box; the digit is centered on each marked x
-  const topOff = 1.5 // pt — nudge digits up within each box
+  const cw = 12
   let out = ''
-  for (let i = 0; i < d.length && i < centers.length; i++) {
+  for (let i = 0; i < d.length; i++) {
     const cx = b.l + centers[i]
     out +=
-      `<div style="position:absolute;left:${((cx - cw / 2) * MM).toFixed(2)}mm;top:${((b.t - topOff) * MM).toFixed(2)}mm;` +
+      `<div style="position:absolute;left:${((cx - cw / 2) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
       `width:${(cw * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
       `display:flex;align-items:center;justify-content:center;` +
       `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;line-height:1">${esc(d[i])}</div>`
