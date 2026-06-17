@@ -68,7 +68,7 @@ function bahtText(amount: number): string {
 // pt → mm (CSS uses mm so it maps 1:1 onto the A4 print page)
 const MM = 25.4 / 72
 const PAGE_W = 595, PAGE_H = 842
-const FONT = "'Thonburi','Leelawadee UI','Tahoma','TH Sarabun New','Sarabun','Loma',sans-serif"
+const FONT = "'Sarabun','Thonburi','Leelawadee UI','Tahoma',sans-serif"
 
 type Align = 'left' | 'center' | 'right'
 type Opts = { size?: number; align?: Align; bold?: boolean; pad?: number }
@@ -257,6 +257,8 @@ export function buildWHTForm(wht: WithholdingTax): string {
 
   return `<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
 <title>หนังสือรับรองการหักภาษี ณ ที่จ่าย${wht.cert_no ? ' ' + esc(wht.cert_no) : ''}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 @page{size:A4 portrait;margin:0}
 *{margin:0;padding:0;box-sizing:border-box}
