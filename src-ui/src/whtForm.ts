@@ -68,9 +68,6 @@ function bahtText(amount: number): string {
 // pt → mm (CSS uses mm so it maps 1:1 onto the A4 print page)
 const MM = 25.4 / 72
 const PAGE_W = 595, PAGE_H = 842
-// Windows previously rendered with AngsanaUPC (thin + small); Mac falls back to
-// Thonburi which looks larger/darker. To make Windows match Mac we drop AngsanaUPC
-// and lead with sans-serif Thai fonts: Thonburi (Mac) → Leelawadee UI/Tahoma (Windows).
 const FONT = "'Thonburi','Leelawadee UI','Tahoma','TH Sarabun New','Sarabun','Loma',sans-serif"
 
 type Align = 'left' | 'center' | 'right'
@@ -94,48 +91,38 @@ function field(key: string, value: string, o: Opts = {}): string {
   )
 }
 
-// Per-field digit-box centers (pt, offset from field.l), measured from the
-// form background PNG by detecting vertical dividers in interior rows.
-// The boxes are NOT evenly spaced — groups [1,4,5,2,1] for 13-digit NID,
-// [1,4,4,1] for 10-digit TIN. Equal-width cells drift progressively right.
-const COMB_CENTERS: Record<string, number[]> = {
-  id1:    [4.5, 21.2, 33.1, 45.4, 57.4, 76.0, 87.8, 99.4, 111.4, 123.9, 142.0, 154.2, 175.6],
-  id1_2:  [4.7, 21.2, 33.1, 45.4, 57.5, 76.0, 87.8, 99.4, 111.4, 123.9, 141.9, 154.1, 174.9],
-  tin1:   [5.0, 22.2, 34.3, 46.3, 58.2, 76.4, 88.4, 100.4, 112.2, 131.3],
-  tin1_2: [4.5, 21.5, 33.6, 45.6, 57.4, 75.4, 87.4, 99.4, 111.3, 130.9],
-}
-
-// Comb field: place each digit at its exact box center (positions in pt → mm)
+// Comb field: spread each character across `cells` equal columns (for boxed IDs)
 function combField(key: string, value: string): string {
   const b: FieldBox | undefined = F[key]
-  if (!b || !value) return ''
-  const d = String(value).replace(/\D/g, '')
-  const centers = COMB_CENTERS[key]
-  if (!centers || d.length !== centers.length) return ''
+  if (!b || !b.comb || !value) return ''
+  const cells = b.comb
+  const cw = b.w / cells
   const size = Math.min(b.h * 0.8, 11)
-  const cw = 12
   let out = ''
-  for (let i = 0; i < d.length; i++) {
-    const cx = b.l + centers[i]
+  for (let i = 0; i < cells && i < value.length; i++) {
+    const ch = value[i]
+    if (ch === ' ') continue
     out +=
-      `<div style="position:absolute;left:${((cx - cw / 2) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
+      `<div style="position:absolute;left:${((b.l + i * cw) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
       `width:${(cw * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
       `display:flex;align-items:center;justify-content:center;` +
-      `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;line-height:1">${esc(d[i])}</div>`
+      `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;line-height:1">${esc(ch)}</div>`
   }
   return out
 }
 
-// Validate a 13-digit national ID → raw digits (or '' if not exactly 13)
+// Format a 13-digit id into the 17-cell comb string "D DDDD DDDDD DD D"
 const grp13 = (id: string | null | undefined): string => {
   const d = String(id ?? '').replace(/\D/g, '')
-  return d.length === 13 ? d : ''
+  if (d.length !== 13) return ''
+  return `${d[0]} ${d.slice(1, 5)} ${d.slice(5, 10)} ${d.slice(10, 12)} ${d[12]}`
 }
 
-// Validate a 10-digit TIN → raw digits (or '' if not exactly 10)
+// Format a 10-digit TIN into the 13-cell comb (10 digits, no separators → fills cells 0–9)
 const grp10 = (id: string | null | undefined): string => {
   const d = String(id ?? '').replace(/\D/g, '')
-  return d.length === 10 ? d : ''
+  if (d.length !== 10) return ''
+  return d
 }
 
 // Checkbox mark centered in a button field
@@ -207,9 +194,9 @@ export function buildWHTForm(wht: WithholdingTax): string {
   for (const [key, dk, pk, tk] of ROWS) {
     const it = items[key]
     if (!it) continue
-    parts.push(field(dk, fmtDateBE(it.pay_date), { align: 'center' }))
-    parts.push(field(pk, fmtN(it.amount), { align: 'right', pad: 3 }))
-    parts.push(field(tk, fmtN(it.tax_withheld), { align: 'right', pad: 3 }))
+    parts.push(field(dk, fmtDateBE(it.pay_date), { align: 'center', size: 11 }))
+    parts.push(field(pk, fmtN(it.amount), { align: 'right', pad: 4, size: 12.5 }))
+    parts.push(field(tk, fmtN(it.tax_withheld), { align: 'right', pad: 4, size: 12.5 }))
   }
   // rate for 40(4)(ข)(1.4), and free-text descriptions for (2.5) and อื่นๆ
   parts.push(field('rate1', items['40_4b_1_4']?.income_type_desc || '', { align: 'center' }))
@@ -217,8 +204,8 @@ export function buildWHTForm(wht: WithholdingTax): string {
   parts.push(field('spec3', items['other']?.income_type_desc || ''))
 
   // ── totals row + amount in words ──
-  parts.push(field('pay1_14', fmtN(wht.total_amount), { align: 'right', pad: 3, bold: true }))
-  parts.push(field('tax1_14', fmtN(wht.total_tax), { align: 'right', pad: 3, bold: true }))
+  parts.push(field('pay1_14', fmtN(wht.total_amount), { align: 'right', pad: 4, size: 13, bold: true }))
+  parts.push(field('tax1_14', fmtN(wht.total_tax), { align: 'right', pad: 4, size: 13, bold: true }))
   parts.push(field('total', bahtText(Number(wht.total_tax) || 0), { align: 'center' }))
 
   // ── provident / social-security funds ──
@@ -255,7 +242,7 @@ html,body{background:#e9e9e9}
 .noprint button{padding:7px 20px;background:#1565c0;color:#fff;border:none;border-radius:5px;font-size:13px;cursor:pointer}
 .page{position:relative;width:${(PAGE_W * MM).toFixed(2)}mm;height:${(PAGE_H * MM).toFixed(2)}mm;margin:6px auto;background:#fff;overflow:hidden}
 .page img.bg{position:absolute;inset:0;width:100%;height:100%;display:block}
-.page>div{color:#000;-webkit-text-stroke:0.25px currentColor}
+.page>div{color:#000}
 </style></head><body>
 <div class="noprint"><button onclick="window.print()">&#128424; พิมพ์ / บันทึก PDF</button></div>
 <div class="page"><img class="bg" src="${WHT_FORM_BG}" alt="">${overlay}</div>
