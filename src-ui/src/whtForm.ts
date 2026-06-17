@@ -118,11 +118,11 @@ const grp13 = (id: string | null | undefined): string => {
   return `${d[0]} ${d.slice(1, 5)} ${d.slice(5, 10)} ${d.slice(10, 12)} ${d[12]}`
 }
 
-// Format a 10-digit TIN into the 13-cell comb (10 digits, no separators → fills cells 0–9)
+// Format a 10-digit TIN into the 13-cell comb string "D DDDD DDDD D" (1-4-4-1 grouping)
 const grp10 = (id: string | null | undefined): string => {
   const d = String(id ?? '').replace(/\D/g, '')
   if (d.length !== 10) return ''
-  return d
+  return `${d[0]} ${d.slice(1, 5)} ${d.slice(5, 9)} ${d[9]}`
 }
 
 // Checkbox mark centered in a button field
