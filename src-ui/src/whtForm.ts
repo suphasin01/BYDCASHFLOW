@@ -94,38 +94,46 @@ function field(key: string, value: string, o: Opts = {}): string {
   )
 }
 
-// Comb field: spread each character across `cells` equal columns (for boxed IDs)
+// Exact digit-box centers (pt, offset from the field's left edge l), measured
+// from the official form. The boxes are NOT evenly spaced: they form groups with
+// narrow connector gaps. 13-digit national ID = groups [1,4,5,2,1]; 10-digit TIN
+// = groups [1,4,4,1]. The old "N equal cells" model drifted progressively right.
+const COMB_CENTERS: Record<number, number[]> = {
+  13: [2.9, 21.9, 35.6, 49.3, 62.9, 75.8, 87.9, 100.0, 112.0, 124.1, 141.8, 154.1, 173.0],
+  10: [3.8, 21.8, 33.8, 45.8, 57.8, 75.8, 87.8, 99.8, 111.8, 130.0],
+}
+
+// Comb field: place each digit at its exact box center (positions in pt → mm)
 function combField(key: string, value: string): string {
   const b: FieldBox | undefined = F[key]
-  if (!b || !b.comb || !value) return ''
-  const cells = b.comb
-  const cw = b.w / cells
+  if (!b || !value) return ''
+  const d = String(value).replace(/\D/g, '')
+  const centers = COMB_CENTERS[d.length]
+  if (!centers) return ''
   const size = Math.min(b.h * 0.8, 11)
+  const cw = 12 // nominal centering box; the digit is centered on each marked x
   let out = ''
-  for (let i = 0; i < cells && i < value.length; i++) {
-    const ch = value[i]
-    if (ch === ' ') continue
+  for (let i = 0; i < d.length && i < centers.length; i++) {
+    const cx = b.l + centers[i]
     out +=
-      `<div style="position:absolute;left:${((b.l + i * cw) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
+      `<div style="position:absolute;left:${((cx - cw / 2) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
       `width:${(cw * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
       `display:flex;align-items:center;justify-content:center;` +
-      `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;line-height:1">${esc(ch)}</div>`
+      `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;line-height:1">${esc(d[i])}</div>`
   }
   return out
 }
 
-// Format a 13-digit id into the 17-cell comb string "D DDDD DDDDD DD D"
+// Validate a 13-digit national ID → raw digits (or '' if not exactly 13)
 const grp13 = (id: string | null | undefined): string => {
   const d = String(id ?? '').replace(/\D/g, '')
-  if (d.length !== 13) return ''
-  return `${d[0]} ${d.slice(1, 5)} ${d.slice(5, 10)} ${d.slice(10, 12)} ${d[12]}`
+  return d.length === 13 ? d : ''
 }
 
-// Format a 10-digit TIN into the 13-cell comb (10 digits, no separators → fills cells 0–9)
+// Validate a 10-digit TIN → raw digits (or '' if not exactly 10)
 const grp10 = (id: string | null | undefined): string => {
   const d = String(id ?? '').replace(/\D/g, '')
-  if (d.length !== 10) return ''
-  return d
+  return d.length === 10 ? d : ''
 }
 
 // Checkbox mark centered in a button field
