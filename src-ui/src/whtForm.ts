@@ -100,7 +100,7 @@ function amountField(key: string, value: string, size: number, bold = false): st
   const intPart = dotIdx >= 0 ? value.slice(0, dotIdx) : value
   const decPart = dotIdx >= 0 ? value.slice(dotIdx + 1) : '00'
   const bahtW = b.w - SATANG_W
-  const autoSize = value.length > 15 ? 8 : size
+  const autoSize = intPart.length >= 8 ? 8 : size
   const fontStyle = `font-family:${FONT};font-size:${(autoSize * MM).toFixed(2)}mm;${bold ? 'font-weight:700;' : ''}line-height:1;white-space:nowrap;overflow:hidden`
   const bahtDiv =
     `<div style="position:absolute;left:${(b.l * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
