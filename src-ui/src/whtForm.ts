@@ -84,8 +84,9 @@ function field(key: string, value: string, o: Opts = {}): string {
   const align = o.align ?? 'left'
   const pad = o.pad ?? 1.2
   const just = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start'
+  const topOff = 1.5 // pt — nudge text up within each field box
   return (
-    `<div style="position:absolute;left:${(b.l * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
+    `<div style="position:absolute;left:${(b.l * MM).toFixed(2)}mm;top:${((b.t - topOff) * MM).toFixed(2)}mm;` +
     `width:${(b.w * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
     `display:flex;align-items:center;justify-content:${just};` +
     `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;` +
@@ -112,11 +113,12 @@ function combField(key: string, value: string): string {
   if (!centers) return ''
   const size = Math.min(b.h * 0.8, 11)
   const cw = 12 // nominal centering box; the digit is centered on each marked x
+  const topOff = 1.5 // pt — nudge digits up within each box
   let out = ''
   for (let i = 0; i < d.length && i < centers.length; i++) {
     const cx = b.l + centers[i]
     out +=
-      `<div style="position:absolute;left:${((cx - cw / 2) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
+      `<div style="position:absolute;left:${((cx - cw / 2) * MM).toFixed(2)}mm;top:${((b.t - topOff) * MM).toFixed(2)}mm;` +
       `width:${(cw * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
       `display:flex;align-items:center;justify-content:center;` +
       `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;line-height:1">${esc(d[i])}</div>`
