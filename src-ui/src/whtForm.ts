@@ -91,6 +91,29 @@ function field(key: string, value: string, o: Opts = {}): string {
   )
 }
 
+// Amount field: split at decimal so บาท is right-aligned and สตางค์ is centred in its column
+const SATANG_W = 15  // pt — width of the สตางค์ column in the official form
+function amountField(key: string, value: string, size: number, bold = false): string {
+  const b: FieldBox | undefined = F[key]
+  if (!b || !value) return ''
+  const dotIdx = value.lastIndexOf('.')
+  const intPart = dotIdx >= 0 ? value.slice(0, dotIdx) : value
+  const decPart = dotIdx >= 0 ? value.slice(dotIdx + 1) : '00'
+  const bahtW = b.w - SATANG_W
+  const fontStyle = `font-family:${FONT};font-size:${(size * MM).toFixed(2)}mm;${bold ? 'font-weight:700;' : ''}line-height:1;white-space:nowrap`
+  const bahtDiv =
+    `<div style="position:absolute;left:${(b.l * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
+    `width:${(bahtW * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
+    `display:flex;align-items:center;justify-content:flex-end;` +
+    `${fontStyle};padding:0 2px;box-sizing:border-box">${esc(intPart)}</div>`
+  const satDiv =
+    `<div style="position:absolute;left:${((b.l + bahtW) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
+    `width:${(SATANG_W * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
+    `display:flex;align-items:center;justify-content:center;` +
+    `${fontStyle}">${esc(decPart)}</div>`
+  return bahtDiv + satDiv
+}
+
 // Comb field: spread each character across `cells` equal columns (for boxed IDs)
 function combField(key: string, value: string): string {
   const b: FieldBox | undefined = F[key]
@@ -195,8 +218,8 @@ export function buildWHTForm(wht: WithholdingTax): string {
     const it = items[key]
     if (!it) continue
     parts.push(field(dk, fmtDateBE(it.pay_date), { align: 'center', size: 11 }))
-    parts.push(field(pk, fmtN(it.amount), { align: 'right', pad: 4, size: 12.5 }))
-    parts.push(field(tk, fmtN(it.tax_withheld), { align: 'right', pad: 4, size: 12.5 }))
+    parts.push(amountField(pk, fmtN(it.amount), 12.5))
+    parts.push(amountField(tk, fmtN(it.tax_withheld), 12.5))
   }
   // rate for 40(4)(ข)(1.4), and free-text descriptions for (2.5) and อื่นๆ
   parts.push(field('rate1', items['40_4b_1_4']?.income_type_desc || '', { align: 'center' }))
@@ -204,8 +227,8 @@ export function buildWHTForm(wht: WithholdingTax): string {
   parts.push(field('spec3', items['other']?.income_type_desc || ''))
 
   // ── totals row + amount in words ──
-  parts.push(field('pay1_14', fmtN(wht.total_amount), { align: 'right', pad: 4, size: 13, bold: true }))
-  parts.push(field('tax1_14', fmtN(wht.total_tax), { align: 'right', pad: 4, size: 13, bold: true }))
+  parts.push(amountField('pay1_14', fmtN(wht.total_amount), 13, true))
+  parts.push(amountField('tax1_14', fmtN(wht.total_tax), 13, true))
   parts.push(field('total', bahtText(Number(wht.total_tax) || 0), { align: 'center' }))
 
   // ── provident / social-security funds ──
