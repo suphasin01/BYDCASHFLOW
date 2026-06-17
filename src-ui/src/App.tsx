@@ -189,7 +189,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang
-    document.body.className = lang === 'zh' ? 'lang-zh' : ''
+    document.body.className = lang === 'zh' ? 'lang-zh' : lang === 'th' ? 'lang-th' : ''
   }, [lang])
 
   const openCompanySwitcher = async () => {

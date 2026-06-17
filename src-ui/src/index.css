@@ -45,6 +45,10 @@ body.lang-zh {
   font-family: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
 }
 
+body.lang-th {
+  font-family: 'Thonburi', 'Leelawadee UI', 'Tahoma', 'TH Sarabun New', 'Sarabun', system-ui, sans-serif;
+}
+
 select option {
   background: #1a2235;
   color: #f0f4ff;
