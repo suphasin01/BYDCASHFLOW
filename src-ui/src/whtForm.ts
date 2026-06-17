@@ -101,12 +101,13 @@ function amountField(key: string, value: string, size: number, bold = false): st
   const decPart = dotIdx >= 0 ? value.slice(dotIdx + 1) : '00'
   const bahtW = b.w - SATANG_W
   const autoSize = intPart.length >= 8 ? 8 : size
-  const fontStyle = `font-family:${FONT};font-size:${(autoSize * MM).toFixed(2)}mm;${bold ? 'font-weight:700;' : ''}line-height:1;white-space:nowrap;overflow:hidden`
+  const w = bold ? 700 : 600
+  const fontStyle = `font-family:${FONT};font-size:${(autoSize * MM).toFixed(2)}mm;font-weight:${w};line-height:1;white-space:nowrap;overflow:hidden`
   const bahtDiv =
     `<div style="position:absolute;left:${(b.l * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
     `width:${(bahtW * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
     `display:flex;align-items:center;justify-content:flex-end;` +
-    `${fontStyle};padding:0 2px;box-sizing:border-box">${esc(intPart)}</div>`
+    `${fontStyle};padding-right:0;box-sizing:border-box">${esc(intPart + '.')}</div>`
   const satDiv =
     `<div style="position:absolute;left:${((b.l + bahtW) * MM).toFixed(2)}mm;top:${(b.t * MM).toFixed(2)}mm;` +
     `width:${(SATANG_W * MM).toFixed(2)}mm;height:${(b.h * MM).toFixed(2)}mm;` +
@@ -219,8 +220,8 @@ export function buildWHTForm(wht: WithholdingTax): string {
     const it = items[key]
     if (!it) continue
     parts.push(field(dk, fmtDateBE(it.pay_date), { align: 'center', size: 11 }))
-    parts.push(amountField(pk, fmtN(it.amount), 12.5))
-    parts.push(amountField(tk, fmtN(it.tax_withheld), 12.5))
+    parts.push(amountField(pk, fmtN(it.amount), 13))
+    parts.push(amountField(tk, fmtN(it.tax_withheld), 13))
   }
   // rate for 40(4)(ข)(1.4), and free-text descriptions for (2.5) and อื่นๆ
   parts.push(field('rate1', items['40_4b_1_4']?.income_type_desc || '', { align: 'center' }))
@@ -228,8 +229,8 @@ export function buildWHTForm(wht: WithholdingTax): string {
   parts.push(field('spec3', items['other']?.income_type_desc || ''))
 
   // ── totals row + amount in words ──
-  parts.push(amountField('pay1_14', fmtN(wht.total_amount), 13, true))
-  parts.push(amountField('tax1_14', fmtN(wht.total_tax), 13, true))
+  parts.push(amountField('pay1_14', fmtN(wht.total_amount), 14, true))
+  parts.push(amountField('tax1_14', fmtN(wht.total_tax), 14, true))
   parts.push(field('total', bahtText(Number(wht.total_tax) || 0), { align: 'center' }))
 
   // ── provident / social-security funds ──
