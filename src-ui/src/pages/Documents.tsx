@@ -496,7 +496,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
         ...item,
         id: undefined,
         qty: item.remaining_qty || 0,
-        unit: item.size || item.unit || '',
+        unit: item.unit || '',
+        size: item.size || '',
         amount: (item.remaining_qty || 0) * Number(item.price || 0),
         product_query: ps.find(product => product.id === item.product_id)?.name || item.description,
       })))
@@ -1047,7 +1048,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                           {products.map(p => <option key={p.id} value={p.name}>{p.code ? `${p.code} · ` : ''}{p.name} · ฿{fmt(p.price)}</option>)}
                         </datalist>
                       </div>
-                      <TextField placeholder="S/M/L/XL" value={item.unit || ''} onChange={e => updateItem(i,'unit',e.target.value)} />
+                      <TextField placeholder="S/M/L/XL" value={item.size || ''} onChange={e => updateItem(i,'size',e.target.value)} />
                       <TextField placeholder="รายละเอียดสินค้า" value={item.description} onChange={e => updateItem(i,'description',e.target.value)} />
                       <TextField type="number" min={0} value={item.qty ? String(item.qty) : ''} onChange={e => updateItem(i,'qty',Number(e.target.value)||0)} />
                       <TextField type="number" min={0} value={item.price ? String(item.price) : ''} onChange={e => updateItem(i,'price',Number(e.target.value)||0)} />
@@ -1373,7 +1374,7 @@ function buildDeliveryNoteHtml(
   fmtD: (d: string | undefined | null) => string,
 ): string {
   const rows = (doc.items || []).map((item, i) => `<tr>
-    <td class="center">${i + 1}</td><td class="center">${item.unit || '-'}</td>
+    <td class="center">${i + 1}</td><td class="center">${item.size || '-'}</td>
     <td>${item.description || '-'}</td><td class="center">${item.qty || 0}</td>
     <td class="right">${fmtN(item.price)}</td><td class="right">${fmtN(item.amount)}</td>
   </tr>`).join('')
