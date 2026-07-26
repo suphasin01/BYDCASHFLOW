@@ -20,6 +20,7 @@ export interface Product {
   unit?: string | null
   vat_type: 'excluded' | 'included' | 'none'
   category?: string | null
+  product_usage?: 'order' | 'delivery' | 'both'
   description?: string | null
   image_url?: string | null
   created_at?: string

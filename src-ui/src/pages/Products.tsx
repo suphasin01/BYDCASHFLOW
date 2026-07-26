@@ -22,6 +22,7 @@ export default function Products() {
   const { toast } = useToast()
   const [products, setProducts] = useState<Product[]>([])
   const [search, setSearch] = useState('')
+  const [usageFilter, setUsageFilter] = useState<'all' | 'order' | 'delivery' | 'both'>('all')
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
@@ -33,6 +34,7 @@ export default function Products() {
   const [fUnit, setFUnit] = useState('')
   const [fVat, setFVat] = useState<'excluded' | 'included' | 'none'>('excluded')
   const [fCategory, setFCategory] = useState('')
+  const [fUsage, setFUsage] = useState<'order' | 'delivery' | 'both'>('both')
   const [fDescription, setFDescription] = useState('')
   const [fImage, setFImage] = useState<string | null>(null)
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -47,19 +49,19 @@ export default function Products() {
 
   const openCreate = () => {
     setEditing(null)
-    setFCode(''); setFName(''); setFPrice(0); setFUnit(''); setFVat('excluded'); setFCategory(''); setFDescription(''); setFImage(null)
+    setFCode(''); setFName(''); setFPrice(0); setFUnit(''); setFVat('excluded'); setFCategory(''); setFUsage('both'); setFDescription(''); setFImage(null)
     setModal(true)
   }
 
   const openEdit = (p: Product) => {
     setEditing(p)
-    setFCode(p.code || ''); setFName(p.name); setFPrice(p.price); setFUnit(p.unit || ''); setFVat(p.vat_type); setFCategory(p.category || ''); setFDescription(p.description || ''); setFImage(p.image_url || null)
+    setFCode(p.code || ''); setFName(p.name); setFPrice(p.price); setFUnit(p.unit || ''); setFVat(p.vat_type); setFCategory(p.category || ''); setFUsage(p.product_usage || 'both'); setFDescription(p.description || ''); setFImage(p.image_url || null)
     setModal(true)
   }
 
   const save = async () => {
     try {
-      const payload = { code: fCode || null, name: fName, price: fPrice, unit: fUnit || null, vat_type: fVat, category: fCategory || null, description: fDescription || null, image_url: fImage }
+      const payload = { code: fCode || null, name: fName, price: fPrice, unit: fUnit || null, vat_type: fVat, category: fCategory || null, product_usage: fUsage, description: fDescription || null, image_url: fImage }
       if (editing) { await updateProduct(editing.id, payload); toast(t('toast_product_edited')) }
       else { await createProduct(payload); toast(t('toast_product_added')) }
       setModal(false); load()
@@ -90,11 +92,19 @@ export default function Products() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-        <TextField
-          className="w-full sm:max-w-[280px]"
-          placeholder={t('search_product')}
-          value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
-        />
+        <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <TextField
+            className="w-full sm:max-w-[280px]"
+            placeholder={t('search_product')}
+            value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
+          />
+          <select value={usageFilter} onChange={e => setUsageFilter(e.target.value as typeof usageFilter)} className={SELECT_CLASS + ' sm:max-w-[190px]'}>
+            <option value="all">{t('product_usage_all')}</option>
+            <option value="order">{t('product_usage_order')}</option>
+            <option value="delivery">{t('product_usage_delivery')}</option>
+            <option value="both">{t('product_usage_both')}</option>
+          </select>
+        </div>
         <Btn variant="success" onClick={openCreate} className="w-full sm:w-auto">{t('btn_add_product')}</Btn>
       </div>
 
@@ -113,6 +123,7 @@ export default function Products() {
                 <TableColumn>{t('col_unit')}</TableColumn>
                 <TableColumn>{t('col_vat')}</TableColumn>
                 <TableColumn>{t('col_category')}</TableColumn>
+                <TableColumn>{t('col_product_usage')}</TableColumn>
                 <TableColumn align="end">{t('col_actions')}</TableColumn>
               </TableHeader>
               <TableBody emptyContent={
@@ -121,7 +132,7 @@ export default function Products() {
                   <p>{t('no_products')}</p>
                 </div>
               }>
-                {products.map(p => {
+                {products.filter(p => usageFilter === 'all' || (p.product_usage || 'both') === usageFilter).map(p => {
                   const vb = vatBadge(p.vat_type)
                   return (
                     <TableRow key={p.id} className="hover:bg-content2/60 transition-colors">
@@ -141,6 +152,11 @@ export default function Products() {
                         <Chip size="sm" variant="flat" color={vb.color}>{vb.label}</Chip>
                       </TableCell>
                       <TableCell className="text-default-500">{p.category || '—'}</TableCell>
+                      <TableCell>
+                        <Chip size="sm" variant="flat" color={(p.product_usage || 'both') === 'order' ? 'warning' : (p.product_usage || 'both') === 'delivery' ? 'success' : 'primary'}>
+                          {t(`product_usage_${p.product_usage || 'both'}`)}
+                        </Chip>
+                      </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-2">
                           <Btn size="sm" variant="ghost" onClick={() => openEdit(p)}>{t('btn_edit')}</Btn>
@@ -207,6 +223,14 @@ export default function Products() {
                   </div>
                   <TextField label={t('col_category')}
                     value={fCategory} onChange={e => setFCategory(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('col_product_usage')}</label>
+                  <select value={fUsage} onChange={e => setFUsage(e.target.value as typeof fUsage)} className={SELECT_CLASS}>
+                    <option value="order">{t('product_usage_order')}</option>
+                    <option value="delivery">{t('product_usage_delivery')}</option>
+                    <option value="both">{t('product_usage_both')}</option>
+                  </select>
                 </div>
                 <TextAreaField label={t('lbl_description')}
                   value={fDescription} onChange={e => setFDescription(e.target.value)} />

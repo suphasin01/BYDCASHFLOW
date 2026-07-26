@@ -42,6 +42,7 @@ db.exec(`
     price       REAL    NOT NULL DEFAULT 0,
     vat_type    TEXT    NOT NULL DEFAULT 'excluded',
     category    TEXT,
+    product_usage TEXT  NOT NULL DEFAULT 'both',
     image_url   TEXT,
     created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
     updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
@@ -245,6 +246,7 @@ try { db.exec('ALTER TABLE employee_payments ADD COLUMN receipt_image TEXT'); } 
 try { db.exec('CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, category TEXT NOT NULL DEFAULT \'other\', amount REAL, doc_date TEXT, contact_name TEXT, reference TEXT, image_url TEXT, notes TEXT, created_at TEXT NOT NULL DEFAULT (datetime(\'now\',\'localtime\')))'); } catch {}
 try { db.exec('ALTER TABLE pay_slips ADD COLUMN receipt_image TEXT'); } catch {}
 try { db.exec('ALTER TABLE products ADD COLUMN image_url TEXT'); } catch {}
+try { db.exec("ALTER TABLE products ADD COLUMN product_usage TEXT NOT NULL DEFAULT 'both'"); } catch {}
 try { db.exec('ALTER TABLE documents ADD COLUMN meta TEXT'); } catch {}
 for (const col of ['color TEXT','size TEXT','fabric_width TEXT','chest TEXT','length TEXT','cut_qty REAL NOT NULL DEFAULT 0','received_qty REAL NOT NULL DEFAULT 0']) {
   try { db.exec(`ALTER TABLE document_items ADD COLUMN ${col}`); } catch {}
@@ -333,15 +335,16 @@ export const productRepo = {
   list: () => all('SELECT * FROM products ORDER BY name'),
   get: (id: number) => get('SELECT * FROM products WHERE id = ?', id),
   create: (data: Record<string, unknown>) => {
-    const r = run(`INSERT INTO products (code,name,description,unit,price,vat_type,category,image_url) VALUES (:code,:name,:description,:unit,:price,:vat_type,:category,:image_url)`, {
+    const r = run(`INSERT INTO products (code,name,description,unit,price,vat_type,category,product_usage,image_url) VALUES (:code,:name,:description,:unit,:price,:vat_type,:category,:product_usage,:image_url)`, {
       ':code': data.code ?? null, ':name': data.name ?? '', ':description': data.description ?? null,
       ':unit': data.unit ?? null, ':price': data.price ?? 0, ':vat_type': data.vat_type ?? 'excluded', ':category': data.category ?? null,
+      ':product_usage': data.product_usage ?? 'both',
       ':image_url': data.image_url ?? null,
     });
     return get('SELECT * FROM products WHERE id = ?', r.lastInsertRowid);
   },
   update: (id: number, data: Record<string, unknown>) => {
-    const allowed = ['code','name','description','unit','price','vat_type','category','image_url'];
+    const allowed = ['code','name','description','unit','price','vat_type','category','product_usage','image_url'];
     const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');
     if (fields) {
       const params: Record<string, unknown> = { ':id': id };

@@ -186,6 +186,14 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const discountAmt = fType === 'delivery_tax_invoice' ? (fDiscountMode === 'percent' ? subtotal * fDiscount / 100 : fDiscount) : 0
   const vatAmt = fType === 'delivery_tax_invoice' ? (fVatMode === 'percent' ? (subtotal - discountAmt) * fVat / 100 : fVat) : 0
   const total = subtotal - discountAmt + vatAmt
+  const availableProducts = products.filter(product => {
+    const usage = product.product_usage || 'both'
+    return fType === 'work_order' ? usage === 'order' || usage === 'both' : usage === 'delivery' || usage === 'both'
+  })
+  const selectableProducts = products.filter(product =>
+    availableProducts.some(available => available.id === product.id) ||
+    items.some(item => item.product_id === product.id)
+  )
 
   const wfTotalAmount = wfItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
   const wfTotalTax = wfItems.reduce((s, i) => s + (Number(i.tax_withheld) || 0), 0)
@@ -221,6 +229,24 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
         item.amount = (field === 'qty' ? Number(value) : item.qty) * (field === 'price' ? Number(value) : item.price)
       }
       next[i] = item
+      return next
+    })
+  }
+
+  const fillItemFromProduct = (i: number, product: Product, productQuery?: string) => {
+    setItems(prev => {
+      const next = [...prev]
+      const current = next[i]
+      next[i] = {
+        ...current,
+        product_id: product.id,
+        product_query: productQuery ?? product.name,
+        description: product.description || product.name,
+        unit: product.unit || '',
+        price: product.price,
+        product_image: product.image_url || null,
+        amount: (current.qty || 1) * product.price,
+      }
       return next
     })
   }
@@ -975,9 +1001,9 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   {items.map((item, i) => (
                     <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: '120px 60px 60px 60px 60px 60px 70px 70px 70px 32px' }}>
                       <select className={SELECT_CLASS + ' text-[11px] px-1'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
-                        const p = products.find(pr => String(pr.id) === e.target.value)
-                        if (p) setItems(prev => { const next=[...prev]; next[i]={...next[i],product_id:p.id,description:p.name,unit:p.unit || '',price:p.price,amount:(next[i].qty || 1)*p.price}; return next })
-                      }}><option value="">เลือก</option>{products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                        const p = availableProducts.find(pr => String(pr.id) === e.target.value)
+                        if (p) fillItemFromProduct(i, p)
+                      }}><option value="">เลือก</option>{selectableProducts.map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}</option>)}</select>
                       {(['color','size','fabric_width','chest','length'] as (keyof DocumentItem)[]).map(field =>
                         <TextField key={field} value={String(item[field] || '')} onChange={e => updateItem(i,field,e.target.value)} />)}
                       <TextField type="number" min={0} value={item.qty ? String(item.qty) : ''} onChange={e => updateItem(i,'qty',Number(e.target.value)||0)} />
@@ -1031,21 +1057,20 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                           onChange={e => {
                             const query = e.target.value
                             const normalized = query.trim().toLocaleLowerCase('th')
-                            const p = products.find(pr =>
+                            const p = availableProducts.find(pr =>
                               pr.name.toLocaleLowerCase('th') === normalized ||
                               (pr.code || '').toLocaleLowerCase('th') === normalized
                             )
-                            setItems(prev => {
+                            if (p) fillItemFromProduct(i, p, query)
+                            else setItems(prev => {
                               const next = [...prev]
-                              next[i] = p
-                                ? { ...next[i], product_query: query, product_id: p.id, description: p.name, price: p.price, amount: (next[i].qty || 1) * p.price }
-                                : { ...next[i], product_query: query, product_id: null }
+                              next[i] = { ...next[i], product_query: query, product_id: null, product_image: null }
                               return next
                             })
                           }}
                         />
                         <datalist id={`delivery-products-${i}`}>
-                          {products.map(p => <option key={p.id} value={p.name}>{p.code ? `${p.code} · ` : ''}{p.name} · ฿{fmt(p.price)}</option>)}
+                          {selectableProducts.map(p => <option key={p.id} value={p.name}>{p.code ? `${p.code} · ` : ''}{p.name} · {p.category || 'ไม่ระบุหมวด'} · ฿{fmt(p.price)}</option>)}
                         </datalist>
                       </div>
                       <TextField placeholder="S/M/L/XL" value={item.size || ''} onChange={e => updateItem(i,'size',e.target.value)} />
@@ -1070,12 +1095,12 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                     <select className={SELECT_CLASS + ' text-[12px]'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
                       const pid = e.target.value
                       if (pid) {
-                        const p = products.find(pr => String(pr.id) === pid)
-                        setItems(prev => { const next = [...prev]; const it = { ...next[i] }; if (p) { it.product_id = Number(pid); it.description = p.name; if (p.unit) it.unit = p.unit; it.price = p.price; it.amount = (it.qty || 1) * p.price }; next[i] = it; return next })
+                        const p = availableProducts.find(pr => String(pr.id) === pid)
+                        if (p) fillItemFromProduct(i, p)
                       }
                     }}>
                       <option value="">{t('lbl_select')}</option>
-                      {products.map(p => <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
+                      {selectableProducts.map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                     </select>
                     <TextField placeholder={t('lbl_item_ph')} value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
                     <TextField type="number" min={0} value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
