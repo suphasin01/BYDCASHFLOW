@@ -20,6 +20,7 @@ type PayStatus = 'unpaid' | 'partial' | 'paid'
 type Method = 'cash' | 'transfer' | 'cheque' | 'credit_card'
 
 const TYPE_KEY: Record<string, string> = {
+  delivery_tax_invoice: 'type_delivery_tax_invoice',
   invoice: 'type_invoice', billing_note: 'type_billing_note', cash_invoice: 'type_cash_invoice',
   receipt: 'type_receipt', purchase_order: 'type_purchase_order', expense: 'type_expense',
 }

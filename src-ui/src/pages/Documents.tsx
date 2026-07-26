@@ -28,6 +28,23 @@ const STATUS_COLOR: Record<string, ChipColor> = {
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
 
+const emptyDocumentItem = (): DocumentItem => ({ description: '', qty: 1, unit: '', price: 0, amount: 0 })
+
+function copyDocumentItems(source: DocumentItem[] | undefined, products: Product[]): DocumentItem[] {
+  if (!source?.length) return [emptyDocumentItem()]
+  return source.map(item => ({
+    ...item,
+    id: undefined,
+    product_query: products.find(product => product.id === item.product_id)?.name || item.description || '',
+  }))
+}
+
+function readWorkMeta(meta: Document['meta']): WorkOrderMeta {
+  if (!meta) return {}
+  if (typeof meta !== 'string') return meta
+  try { return JSON.parse(meta) as WorkOrderMeta } catch { return {} }
+}
+
 // ─── WHT constants ────────────────────────────────────────────────────────────
 const WHT_INCOME_TYPES = [
   { value: '40_1', key: 'wht_income_40_1', hasDesc: false },
@@ -394,11 +411,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFType(doc.type); setFNumber(doc.number || ''); setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
     setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || '')
     setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
-    try { setWorkMeta(typeof doc.meta === 'string' ? JSON.parse(doc.meta) : (doc.meta || {})) } catch { setWorkMeta({}) }
-    setItems(doc.items?.length ? doc.items.map(item => ({
-      ...item,
-      product_query: ps.find(p => p.id === item.product_id)?.name || item.description || '',
-    })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
+    setWorkMeta(readWorkMeta(doc.meta))
+    setItems(copyDocumentItems(doc.items, ps))
     setModal('edit')
   }
 
@@ -461,7 +475,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFDate(today()); setFDue(viewDoc.due_date?.slice(0, 10) || '')
     setFDiscount(viewDoc.discount || 0); setFDiscountMode('amount')
     setFVat(viewDoc.vat || 0); setFVatMode('amount'); setFNotes(viewDoc.notes || '')
-    setItems(viewDoc.items?.length ? viewDoc.items.map(it => ({ description: it.description, qty: it.qty, unit: it.unit || '', price: it.price, amount: it.amount, product_id: it.product_id })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
+    setWorkMeta(readWorkMeta(viewDoc.meta))
+    setItems(copyDocumentItems(viewDoc.items, ps))
     setModal('create')
   }
 
@@ -473,7 +488,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFDate(today()); setFDue(doc.due_date?.slice(0, 10) || '')
     setFDiscount(doc.discount || 0); setFDiscountMode('amount')
     setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
-    setItems(doc.items?.length ? doc.items.map(it => ({ description: it.description, qty: it.qty, unit: it.unit || '', price: it.price, amount: it.amount, product_id: it.product_id })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
+    setWorkMeta(readWorkMeta(doc.meta))
+    setItems(copyDocumentItems(doc.items, ps))
     setModal('create')
   }
 
@@ -1213,7 +1229,7 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
 <div class="page">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #6366f1">
     <div style="display:flex;align-items:center;gap:16px">${logoHtml}<div>
-      <div style="font-size:18px;font-weight:700;color:#111827">${company?.name || 'FruitBiz'}</div>
+      <div style="font-size:18px;font-weight:700;color:#111827">${company?.name || 'BYD CASHFLOW'}</div>
       ${company?.branch ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${company.branch}</div>` : ''}
       ${company?.tax_id ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${t('pdf_tax_prefix')}${company.tax_id}</div>` : ''}
       ${company?.address ? `<div style="font-size:12px;color:#6b7280;margin-top:2px;max-width:240px">${company.address}</div>` : ''}

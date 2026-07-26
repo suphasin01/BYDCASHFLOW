@@ -44,8 +44,8 @@
   },
   "build": {
     "appId": "com.localbiz.app",
-    "productName": "FruitBiz",
-    "copyright": "Copyright © 2026 FruitBiz",
+    "productName": "BYD CASHFLOW",
+    "copyright": "Copyright © 2026 BYD CASHFLOW",
     "asar": true,
     "directories": {
       "output": "release",
@@ -103,7 +103,7 @@
       "allowElevation": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "FruitBiz",
+      "shortcutName": "BYD CASHFLOW",
       "deleteAppDataOnUninstall": false,
       "runAfterFinish": true,
       "menuCategory": false,
@@ -111,7 +111,7 @@
       "uninstallerIcon": "assets/icon.ico"
     },
     "dmg": {
-      "title": "FruitBiz",
+      "title": "BYD CASHFLOW",
       "contents": [
         {
           "x": 130,

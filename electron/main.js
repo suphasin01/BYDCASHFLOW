@@ -78,7 +78,7 @@ ipcMain.handle('export-data', async () => {
   const { filePath, canceled } = await dialog.showSaveDialog(mainWindow, {
     title: 'ส่งออกข้อมูล / Export Data',
     defaultPath: `fruitbiz_backup_${new Date().toISOString().slice(0, 10)}.json`,
-    filters: [{ name: 'FruitBiz Backup', extensions: ['json'] }],
+    filters: [{ name: 'BYD CASHFLOW Backup', extensions: ['json'] }],
   });
   if (canceled || !filePath) return { success: false, canceled: true };
   try {
@@ -93,7 +93,7 @@ ipcMain.handle('export-data', async () => {
 ipcMain.handle('import-data', async () => {
   const { filePaths, canceled } = await dialog.showOpenDialog(mainWindow, {
     title: 'นำเข้าข้อมูล / Import Data',
-    filters: [{ name: 'FruitBiz Backup', extensions: ['json'] }],
+    filters: [{ name: 'BYD CASHFLOW Backup', extensions: ['json'] }],
     properties: ['openFile'],
   });
   if (canceled || !filePaths?.[0]) return { success: false, canceled: true };
@@ -141,7 +141,7 @@ function createWindow() {
     height: 840,
     minWidth: 960,
     minHeight: 640,
-    title: 'FruitBiz',
+    title: 'BYD CASHFLOW',
     backgroundColor: '#0a0f1e',
     webPreferences: {
       nodeIntegration: false,

@@ -143,6 +143,9 @@ export default function Dashboard({ onNavigate }: Props) {
   const MONTHS = tArr('months')
 
   const DOC_TYPES: Record<string, string> = {
+    delivery_tax_invoice: t('type_delivery_tax_invoice'),
+    delivery_note: t('type_delivery_note'),
+    work_order: t('type_work_order'),
     quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
     billing_note: t('type_billing_note'), cash_invoice: t('type_cash_invoice'),
     purchase_order: t('type_purchase_order'), expense: t('type_expense'),
@@ -169,7 +172,7 @@ export default function Dashboard({ onNavigate }: Props) {
         return { month: MONTHS[i] || m, revenue: found?.revenue || 0, expense: found?.expense || 0 }
       })
       setMonthly(mData)
-      setRecent(rec.data || [])
+      setRecent((rec.data || []).filter(doc => ['delivery_tax_invoice', 'delivery_note', 'work_order'].includes(doc.type)))
       setTopContacts(top.data || [])
       setLastUpdated(new Date())
     } catch {}

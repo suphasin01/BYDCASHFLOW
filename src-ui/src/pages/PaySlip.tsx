@@ -441,7 +441,7 @@ export function buildPaySlipHtml(slip: PaySlip, company: { name?: string | null;
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #6366f1">
     <div>
       <div style="font-size:18px;font-weight:700;color:#6366f1">ใบเสร็จรับเงินเดือน (PAY SLIP)</div>
-      <div style="font-size:13px;color:#374151;margin-top:3px">${company?.name || 'FruitBiz'}</div>
+      <div style="font-size:13px;color:#374151;margin-top:3px">${company?.name || 'BYD CASHFLOW'}</div>
       ${company?.address ? `<div style="font-size:11px;color:#6b7280">${company.address}</div>` : ''}
       ${company?.phone ? `<div style="font-size:11px;color:#6b7280">โทร. ${company.phone}</div>` : ''}
     </div>
