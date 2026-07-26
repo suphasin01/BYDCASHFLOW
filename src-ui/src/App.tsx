@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, createContext, useContext } from 'react'
-import { Avatar, Progress } from '@heroui/react'
+import { Avatar } from '@heroui/react'
 import {
   LayoutDashboard, FileText, CreditCard, Users, Package,
   TrendingUp, Receipt, Building2, Settings as SettingsIcon, LogOut,
-  RefreshCw, Sun, Moon, Download, Sparkles, ImageIcon, Menu, type LucideIcon,
+  Sun, Moon, ImageIcon, Menu, type LucideIcon,
 } from 'lucide-react'
 import { I18nContext, useI18nState, type Lang } from './i18n'
 import ErrorBoundary from './ErrorBoundary'
@@ -78,11 +78,6 @@ export default function App() {
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
-  const [updateBanner, setUpdateBanner] = useState<{ type: 'downloading' | 'ready' | 'mac-available' | 'mac-choose'; version: string; releaseUrl?: string; arm64Url?: string; x64Url?: string } | null>(null)
-  const [downloadProgress, setDownloadProgress] = useState<number | null>(null)
-  const [updateCountdown, setUpdateCountdown] = useState<number | null>(null)
-  const [checkingUpdate, setCheckingUpdate] = useState(false)
-  const [installing, setInstalling] = useState(false)
   const [appVersion, setAppVersion] = useState('')
   const [showSplash, setShowSplash] = useState(true)
 
@@ -108,68 +103,9 @@ export default function App() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000)
   }, [])
 
-  useEffect(() => {
-    const api = (window as unknown as { electronAPI?: {
-      onUpdateStatus: (cb: (d: { type: 'downloading' | 'ready' | 'error' | 'mac-available' | 'mac-choose'; version?: string; message?: string; releaseUrl?: string; arm64Url?: string; x64Url?: string }) => void) => void
-      onUpdateNotAvailable: (cb: () => void) => void
-      onUpdateProgress: (cb: (d: { percent: number }) => void) => void
-      onUpdateCountdown: (cb: (d: { seconds: number; version: string }) => void) => void
-    } }).electronAPI
-    api?.onUpdateStatus(data => {
-      setCheckingUpdate(false)
-      if (data.type === 'error') {
-        setInstalling(false); setUpdateCountdown(null)
-        toast(t('toast_update_failed') + (data.message ? ': ' + data.message : ''), 'err')
-        return
-      }
-      if (data.type === 'mac-available') {
-        setUpdateBanner({ type: 'mac-available', version: data.version || '', releaseUrl: data.releaseUrl })
-        return
-      }
-      if (data.type === 'mac-choose') {
-        setUpdateBanner({ type: 'mac-choose', version: data.version || '', arm64Url: data.arm64Url, x64Url: data.x64Url, releaseUrl: data.releaseUrl })
-        return
-      }
-      setUpdateBanner({ type: data.type, version: data.version || '' })
-      if (data.type === 'ready') { setDownloadProgress(null); setUpdateCountdown(10) }
-    })
-    api?.onUpdateNotAvailable(() => { setCheckingUpdate(false); toast(t('toast_up_to_date')) })
-    api?.onUpdateProgress(data => setDownloadProgress(data.percent))
-    api?.onUpdateCountdown(data => setUpdateCountdown(data.seconds))
-  }, [t, toast])
-
-  const checkForUpdates = () => {
-    if (checkingUpdate) return
-    setCheckingUpdate(true)
-    const api = (window as unknown as { electronAPI?: { checkForUpdates: () => void } }).electronAPI
-    api?.checkForUpdates()
-    setTimeout(() => setCheckingUpdate(false), 15000)
-  }
-
-  const installUpdate = () => {
-    if (installing) return
-    setInstalling(true)
-    const api = (window as unknown as { electronAPI?: { installUpdate: () => void } }).electronAPI
-    api?.installUpdate()
-    // If the app hasn't quit/relaunched within a few seconds, the install
-    // silently failed (e.g. unsigned build) — let the user retry.
-    setTimeout(() => setInstalling(false), 8000)
-  }
-
   const quitApp = () => {
     const api = (window as unknown as { electronAPI?: { quitApp: () => void } }).electronAPI
     api?.quitApp()
-  }
-
-  const openReleasesPage = () => {
-    const api = (window as unknown as { electronAPI?: { openReleasesPage: () => void } }).electronAPI
-    api?.openReleasesPage()
-  }
-
-  const startMacDownload = (url: string) => {
-    if (!updateBanner) return
-    const api = (window as unknown as { electronAPI?: { startMacDownload: (url: string, version: string) => void } }).electronAPI
-    api?.startMacDownload(url, updateBanner.version)
   }
 
   const reloadCompany = useCallback(async () => {
@@ -376,12 +312,6 @@ export default function App() {
                   {MONTH_SCOPED.includes(page) && <PeriodPicker />}
                   {/* Notifications */}
                   <NotificationBell onNavigate={navigate} />
-                  {/* Check for Updates */}
-                  <button disabled={checkingUpdate}
-                    onClick={checkForUpdates} title={t('btn_check_update')}
-                    className="hidden sm:flex w-9 h-9 items-center justify-center rounded-lg bg-content2 border border-content3 text-default-500 hover:bg-content3 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
-                    <RefreshCw size={15} strokeWidth={1.8} className={checkingUpdate ? 'animate-spin' : ''} />
-                  </button>
                   {/* Dark/Light toggle */}
                   <button
                     onClick={() => setDarkMode(d => !d)}
@@ -443,108 +373,6 @@ export default function App() {
                 {allCompanies.length === 0 && <p className="text-center text-default-500 py-5">{t('no_companies_sw')}</p>}
               </div>
             </Modal>
-
-            {/* Update Banner */}
-            {updateBanner && (
-              <div className="fixed bottom-6 left-4 right-4 md:left-[260px] md:right-auto z-[998] md:min-w-[320px] max-w-[420px] modal-panel rounded-2xl overflow-hidden bg-content1 border border-content3"
-                style={{ boxShadow: '0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08)' }}>
-                {/* Accent bar */}
-                <div className={`h-0.5 w-full ${
-                  updateBanner.type === 'ready' ? 'bg-gradient-to-r from-success/60 via-success to-success/60' :
-                  (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'bg-gradient-to-r from-warning/60 via-warning to-warning/60' :
-                  'bg-gradient-to-r from-primary/60 via-primary to-primary/60'
-                }`} />
-                <div className="px-4 py-3.5 flex items-start gap-3">
-                  {/* Icon */}
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    updateBanner.type === 'ready' ? 'bg-success/15 text-success' :
-                    (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'bg-warning/15 text-warning' :
-                    'bg-primary/15 text-primary'
-                  }`}>
-                    {updateBanner.type === 'ready' ? <Download size={17} strokeWidth={2} /> :
-                     (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? <Sparkles size={17} strokeWidth={2} /> :
-                     <RefreshCw size={17} strokeWidth={2} className="animate-spin" />}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-semibold text-foreground leading-tight">
-                      {updateBanner.type === 'ready'
-                        ? (updateCountdown !== null && updateCountdown > 0
-                            ? `ติดตั้งอัตโนมัติใน ${updateCountdown} วินาที`
-                            : installing ? 'กำลังติดตั้งอัพเดท...' : 'อัพเดทพร้อมแล้ว')
-                        : (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'มีเวอร์ชันใหม่'
-                        : 'กำลังดาวน์โหลดอัพเดท'}
-                    </div>
-                    <div className="text-[11px] text-default-400 mt-0.5 flex items-center gap-1.5">
-                      <span className={`inline-block w-1.5 h-1.5 rounded-full ${
-                        updateBanner.type === 'ready' ? 'bg-success' :
-                        (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? 'bg-warning' : 'bg-primary'
-                      }`} />
-                      <span>
-                        {updateBanner.type === 'ready' ? `v${updateBanner.version} — รีสตาร์ทเพื่อติดตั้ง` :
-                         (updateBanner.type === 'mac-available' || updateBanner.type === 'mac-choose') ? `v${updateBanner.version} พร้อมให้ดาวน์โหลด` :
-                         `v${updateBanner.version}${downloadProgress !== null ? ` · ${downloadProgress}%` : ''}`}
-                      </span>
-                    </div>
-                    {updateBanner.type === 'downloading' && downloadProgress !== null && (
-                      <Progress aria-label="download" size="sm" color="primary" value={downloadProgress} className="mt-2" />
-                    )}
-                    {/* Action buttons */}
-                    {updateBanner.type === 'ready' && (
-                      <div className="flex items-center gap-2 mt-2.5">
-                        <Btn size="sm" variant="success" onClick={installUpdate} isLoading={installing} className="whitespace-nowrap">
-                          {installing ? 'กำลังติดตั้ง...' : 'ติดตั้งเดี๋ยวนี้'}
-                        </Btn>
-                        {updateCountdown !== null && updateCountdown > 0 && (
-                          <button className="text-[11px] text-default-400 hover:text-default-600 transition-colors cursor-pointer" onClick={() => {
-                            setUpdateCountdown(null)
-                            const api = (window as unknown as { electronAPI?: { cancelAutoUpdate: () => void } }).electronAPI
-                            api?.cancelAutoUpdate()
-                          }}>
-                            เลื่อนออกไปก่อน
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {updateBanner.type === 'mac-available' && (
-                      <div className="mt-2.5">
-                        <Btn size="sm" variant="primary" onClick={openReleasesPage} className="whitespace-nowrap"
-                          startContent={<Download size={13} strokeWidth={2} />}>
-                          ดาวน์โหลด
-                        </Btn>
-                      </div>
-                    )}
-                    {updateBanner.type === 'mac-choose' && (
-                      <div className="mt-2.5 flex flex-col gap-1.5">
-                        <div className="text-[11px] text-default-400 mb-0.5">เลือกรุ่นที่ต้องการดาวน์โหลด:</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {updateBanner.arm64Url && (
-                            <Btn size="sm" variant="primary" onClick={() => startMacDownload(updateBanner.arm64Url!)}
-                              startContent={<Download size={13} strokeWidth={2} />} className="whitespace-nowrap">
-                              Mac Apple Silicon (arm64)
-                            </Btn>
-                          )}
-                          {updateBanner.x64Url && (
-                            <Btn size="sm" variant="ghost" onClick={() => startMacDownload(updateBanner.x64Url!)}
-                              startContent={<Download size={13} strokeWidth={2} />} className="whitespace-nowrap">
-                              Mac Intel (x64)
-                            </Btn>
-                          )}
-                          <Btn size="sm" variant="ghost" onClick={openReleasesPage} className="whitespace-nowrap text-default-400">
-                            Windows
-                          </Btn>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Close */}
-                  <button onClick={() => setUpdateBanner(null)}
-                    className="w-6 h-6 flex items-center justify-center rounded-lg text-default-400 hover:text-foreground hover:bg-content3 transition-colors cursor-pointer flex-shrink-0 text-[13px] mt-0.5">✕</button>
-                </div>
-              </div>
-            )}
 
             {/* Toasts */}
             <div className="fixed bottom-6 right-6 z-[999] flex flex-col gap-2 pointer-events-none">
