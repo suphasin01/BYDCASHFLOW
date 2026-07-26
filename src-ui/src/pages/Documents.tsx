@@ -395,7 +395,10 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || '')
     setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
     try { setWorkMeta(typeof doc.meta === 'string' ? JSON.parse(doc.meta) : (doc.meta || {})) } catch { setWorkMeta({}) }
-    setItems(doc.items?.length ? doc.items : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
+    setItems(doc.items?.length ? doc.items.map(item => ({
+      ...item,
+      product_query: ps.find(p => p.id === item.product_id)?.name || item.description || '',
+    })) : [{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     setModal('edit')
   }
 
@@ -963,10 +966,32 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                 <div className="flex flex-col gap-1.5">
                   {items.map((item, i) => (
                     <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '130px 70px 1fr 70px 105px 95px 32px' }}>
-                      <select className={SELECT_CLASS + ' text-[12px]'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
-                        const p = products.find(pr => String(pr.id) === e.target.value)
-                        if (p) setItems(prev => { const next=[...prev]; next[i]={...next[i],product_id:p.id,description:p.name,price:p.price,amount:(next[i].qty || 1)*p.price}; return next })
-                      }}><option value="">เลือก</option>{products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                      <div>
+                        <input
+                          list={`delivery-products-${i}`}
+                          className={SELECT_CLASS + ' text-[12px]'}
+                          placeholder="พิมพ์ชื่อหรือรหัส"
+                          value={item.product_query ?? products.find(p => p.id === item.product_id)?.name ?? ''}
+                          onChange={e => {
+                            const query = e.target.value
+                            const normalized = query.trim().toLocaleLowerCase('th')
+                            const p = products.find(pr =>
+                              pr.name.toLocaleLowerCase('th') === normalized ||
+                              (pr.code || '').toLocaleLowerCase('th') === normalized
+                            )
+                            setItems(prev => {
+                              const next = [...prev]
+                              next[i] = p
+                                ? { ...next[i], product_query: query, product_id: p.id, description: p.name, price: p.price, amount: (next[i].qty || 1) * p.price }
+                                : { ...next[i], product_query: query, product_id: null }
+                              return next
+                            })
+                          }}
+                        />
+                        <datalist id={`delivery-products-${i}`}>
+                          {products.map(p => <option key={p.id} value={p.name}>{p.code ? `${p.code} · ` : ''}{p.name} · ฿{fmt(p.price)}</option>)}
+                        </datalist>
+                      </div>
                       <TextField placeholder="S/M/L/XL" value={item.unit || ''} onChange={e => updateItem(i,'unit',e.target.value)} />
                       <TextField placeholder="รายละเอียดสินค้า" value={item.description} onChange={e => updateItem(i,'description',e.target.value)} />
                       <TextField type="number" min={0} value={item.qty ? String(item.qty) : ''} onChange={e => updateItem(i,'qty',Number(e.target.value)||0)} />

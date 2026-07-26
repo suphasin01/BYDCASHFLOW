@@ -35,6 +35,7 @@ export interface DocumentItem {
   discount?: number
   amount: number
   product_image?: string | null
+  product_query?: string
   color?: string
   size?: string
   fabric_width?: string
