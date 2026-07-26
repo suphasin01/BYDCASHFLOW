@@ -1309,7 +1309,7 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
         ? `<img src="${item.product_image}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:7px;border:1px solid #e5e7eb;display:inline-block" />`
         : `<div style="width:48px;height:48px;border-radius:7px;border:1px dashed #d1d5db;background:#f9fafb;display:inline-flex;align-items:center;justify-content:center;color:#9ca3af;font-size:9px">${t('pdf_no_image')}</div>`}
       </td>
-      <td style="padding:10px 8px;font-size:13px;color:#111827;font-weight:500">${item.description || '-'}${item.item_note ? `<div style="font-size:11px;color:#6b7280;font-weight:400;margin-top:2px">${t('lbl_notes')}: ${item.item_note}</div>` : ''}</td>
+      <td style="padding:10px 8px;font-size:13px;color:#111827;font-weight:500">${item.description || '-'}${item.item_note ? `<div style="font-size:11px;color:#6b7280;font-weight:400;margin-top:2px">${item.item_note}</div>` : ''}</td>
       <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:center">${item.qty}</td>
       <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:center">${item.unit || '-'}</td>
       <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:right">${fmtN(item.price)}</td>
