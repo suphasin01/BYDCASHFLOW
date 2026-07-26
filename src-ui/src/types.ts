@@ -60,6 +60,7 @@ export interface WorkOrderMeta {
   label_code?: string
   label_method?: string
   label_position?: string
+  label_image?: string
   printer?: string
   bleach_house?: string
   qc?: string

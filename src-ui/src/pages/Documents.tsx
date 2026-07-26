@@ -225,6 +225,16 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     })
   }
 
+  const selectLabelImage = (file?: File) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) { toast('กรุณาเลือกไฟล์รูปภาพ', 'err'); return }
+    if (file.size > 5 * 1024 * 1024) { toast('รูปต้องมีขนาดไม่เกิน 5 MB', 'err'); return }
+    const reader = new FileReader()
+    reader.onload = () => setWorkMeta(meta => ({ ...meta, label_image: String(reader.result || '') }))
+    reader.onerror = () => toast('อ่านไฟล์รูปไม่สำเร็จ', 'err')
+    reader.readAsDataURL(file)
+  }
+
   // ── WHT helpers ─────────────────────────────────────────────────────────────
   const resetWHTForm = () => {
     setWfEditId(null)
@@ -990,6 +1000,21 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                     <TextField key={field} label={label} value={workMeta[field] || ''} onChange={e => setWorkMeta(m => ({ ...m, [field]: e.target.value }))} />
                   )}
                 </div>
+                <div className="border border-content3 bg-content2 rounded-md p-3">
+                  <label className={LABEL_CLASS}>รูปแบบป้าย</label>
+                  <div className="flex flex-col sm:flex-row gap-3 items-start">
+                    <label className="inline-flex items-center justify-center px-3 py-2 rounded-md bg-success text-white text-[12px] font-semibold cursor-pointer">
+                      เลือกรูปแบบป้าย
+                      <input type="file" accept="image/*" className="hidden" onChange={e => selectLabelImage(e.target.files?.[0])} />
+                    </label>
+                    {workMeta.label_image ? (
+                      <div className="flex items-start gap-2">
+                        <img src={workMeta.label_image} alt="รูปแบบป้าย" className="w-40 h-28 object-contain bg-white border border-content3" />
+                        <Btn size="sm" variant="danger" onClick={() => setWorkMeta(meta => ({ ...meta, label_image: undefined }))}>ลบรูป</Btn>
+                      </div>
+                    ) : <span className="text-[11px] text-default-400 pt-2">รองรับ JPG, PNG และรูปจากโทรศัพท์ ขนาดไม่เกิน 5 MB</span>}
+                  </div>
+                </div>
               </> : fType === 'delivery_note' ? <>
                 <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 70px 1fr 70px 105px 95px 32px' }}>
                   {['สินค้า','Size','รายการ','จำนวน','ราคา','จำนวนเงิน',''].map((h, i) => (
@@ -1393,6 +1418,13 @@ function buildWorkOrderHtml(
     <tr><td class="bold">ตัดคอหนา(ซม.)</td><td colspan="3">${meta.neck_width || ''}</td><td class="bold">ผ้า</td><td>${meta.fabric || ''}</td></tr></table>
     <table><thead><tr style="background:#111827;color:#fff"><th>NO.</th><th>สี</th><th>ไซส์</th><th>หน้าผ้า</th><th>รอบอก</th><th>ยาว</th><th>จำนวน(สั่ง)</th><th>จำนวน(ตัด)</th><th>จำนวน(ได้)</th></tr></thead>
     <tbody>${rows}${blanks}<tr><td colspan="6" class="right bold">รวม</td><td class="center bold">${(doc.items || []).reduce((s,i)=>s+(Number(i.qty)||0),0)}</td><td colspan="2"></td></tr></tbody></table>
+    <div style="display:grid;grid-template-columns:1fr 1fr;align-items:stretch">
+    <div style="border:1px solid #000;border-right:0;min-height:250px;padding:8px;text-align:center">
+      <div class="bold" style="font-size:18px;margin-bottom:8px">แบบป้าย</div>
+      ${meta.label_image
+        ? `<img src="${meta.label_image}" alt="แบบป้าย" style="width:100%;height:205px;object-fit:contain;display:block" />`
+        : `<div style="height:205px;display:flex;align-items:center;justify-content:center;color:#777">ไม่มีรูปแบบป้าย</div>`}
+    </div>
     <table><tr style="background:#d6fae8"><th colspan="4">ใบสั่งงานเย็บ</th><th>โรงเย็บ</th><td colspan="4">${meta.sewer || ''}</td></tr>
     <tr><th>คอเสื้อ</th><td colspan="3">${meta.collar || ''}</td><th>ไหล่</th><td colspan="4">${meta.shoulder || ''}</td></tr>
     <tr><th>ชายเสื้อ/แขน</th><td colspan="3">${meta.hem || ''}</td><th>รหัสป้าย</th><td colspan="4">${meta.label_code || ''}</td></tr>
@@ -1401,6 +1433,7 @@ function buildWorkOrderHtml(
     <tr><th>โรงพิมพ์</th><td colspan="3">${meta.printer || ''}</td><th>ตรวจ QC</th><td colspan="4">${meta.qc || ''}</td></tr>
     <tr><th>พับแพ็ค</th><td colspan="3">${meta.packing || ''}</td><th>หมายเหตุ</th><td colspan="4">${doc.notes || ''}</td></tr>
     <tr><th>จัดส่ง</th><td colspan="3">${meta.delivery || ''}</td><th>ผู้ส่ง</th><td colspan="4">${meta.sender || ''}</td></tr></table>
+    </div>
     <div style="margin-top:8px;text-align:right"><b>มูลค่างาน:</b> ${fmtN(doc.total)}</div>
   `, true)
 }
