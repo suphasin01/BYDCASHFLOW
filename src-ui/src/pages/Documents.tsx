@@ -905,7 +905,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <TextField type="date" label={t('lbl_date')} value={fDate} onChange={e => setFDate(e.target.value)} />
-                <TextField type="date" label={t('lbl_due_date')} value={fDue} onChange={e => setFDue(e.target.value)} />
+                <TextField type="date" label={fType === 'work_order' ? 'กำหนดส่ง' : t('lbl_due_date')} value={fDue} onChange={e => setFDue(e.target.value)} />
               </div>
               <Divider className="my-1" />
               {fType === 'work_order' && <>
