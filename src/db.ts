@@ -249,6 +249,10 @@ try { db.exec('ALTER TABLE documents ADD COLUMN meta TEXT'); } catch {}
 for (const col of ['color TEXT','size TEXT','fabric_width TEXT','chest TEXT','length TEXT','cut_qty REAL NOT NULL DEFAULT 0','received_qty REAL NOT NULL DEFAULT 0']) {
   try { db.exec(`ALTER TABLE document_items ADD COLUMN ${col}`); } catch {}
 }
+try {
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_invoice_per_delivery
+    ON documents(ref_doc_id) WHERE type='delivery_tax_invoice' AND status!='cancelled' AND ref_doc_id IS NOT NULL`);
+} catch {}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -352,6 +356,65 @@ export const productRepo = {
 
 // ── Documents ─────────────────────────────────────────────────────────────────────
 
+const workflowItemKey = (item: Record<string, unknown>) => {
+  const size = String(item.size || item.unit || '').trim().toLowerCase();
+  return item.product_id
+    ? `product:${item.product_id}|size:${size}`
+    : `text:${String(item.description || '').trim().toLowerCase()}|size:${size}`;
+};
+
+function validateDocumentWorkflow(data: Record<string, unknown>, items: Record<string, unknown>[], updatingId?: number) {
+  const refId = Number(data.ref_doc_id || 0);
+  if (!refId) return;
+  const source = get<Record<string, unknown>>('SELECT * FROM documents WHERE id = ?', refId);
+  if (!source) throw new Error('ไม่พบเอกสารต้นทาง');
+
+  if (data.type === 'delivery_note') {
+    if (source.type !== 'work_order') throw new Error('ใบส่งของต้องเชื่อมจากใบสั่งงานเท่านั้น');
+    if (updatingId) {
+      const billed = get<{ id: number }>(
+        `SELECT id FROM documents WHERE type='delivery_tax_invoice' AND ref_doc_id=? AND status!='cancelled'`,
+        updatingId
+      );
+      if (billed) throw new Error('แก้ไขใบส่งของไม่ได้ เนื่องจากนำไปวางบิลแล้ว');
+    }
+    const sourceItems = all<Record<string, unknown>>('SELECT * FROM document_items WHERE document_id = ?', refId);
+    const delivered = all<Record<string, unknown>>(
+      `SELECT di.* FROM document_items di JOIN documents d ON d.id = di.document_id
+       WHERE d.type = 'delivery_note' AND d.ref_doc_id = ? AND d.status != 'cancelled' AND d.id != ?`,
+      refId, updatingId ?? -1
+    );
+    for (const item of items) {
+      const key = workflowItemKey(item);
+      const ordered = sourceItems.filter(row => workflowItemKey(row) === key).reduce((sum, row) => sum + Number(row.qty || 0), 0);
+      const alreadyDelivered = delivered.filter(row => workflowItemKey(row) === key).reduce((sum, row) => sum + Number(row.qty || 0), 0);
+      const requested = Number(item.qty || 0);
+      if (!ordered) throw new Error(`รายการ "${String(item.description || '')}" ไม่อยู่ในใบสั่งงานต้นทาง`);
+      if (requested <= 0 || requested > ordered - alreadyDelivered) {
+        throw new Error(`จำนวนส่งของ "${String(item.description || '')}" เกินยอดคงเหลือ ${Math.max(0, ordered - alreadyDelivered)}`);
+      }
+    }
+  } else if (data.type === 'delivery_tax_invoice') {
+    if (source.type !== 'delivery_note') throw new Error('ใบส่งสินค้า/ใบกำกับภาษีต้องเชื่อมจากใบส่งของเท่านั้น');
+    const duplicate = get<{ id: number }>(
+      `SELECT id FROM documents WHERE type = 'delivery_tax_invoice' AND ref_doc_id = ? AND status != 'cancelled' AND id != ?`,
+      refId, updatingId ?? -1
+    );
+    if (duplicate) throw new Error('ใบส่งของนี้ถูกนำไปวางบิลแล้ว');
+    const sourceItems = all<Record<string, unknown>>('SELECT * FROM document_items WHERE document_id = ?', refId);
+    for (const item of items) {
+      const key = workflowItemKey(item);
+      const deliveredQty = sourceItems.filter(row => workflowItemKey(row) === key).reduce((sum, row) => sum + Number(row.qty || 0), 0);
+      const billedQty = Number(item.qty || 0);
+      if (!deliveredQty || billedQty <= 0 || billedQty > deliveredQty) {
+        throw new Error(`จำนวนวางบิลของ "${String(item.description || '')}" เกินจำนวนส่ง ${deliveredQty}`);
+      }
+    }
+  } else {
+    throw new Error('ประเภทเอกสารไม่รองรับการเชื่อมต่อ');
+  }
+}
+
 export const documentRepo = {
   list: (filters: { type?: string; status?: string; contact_id?: number; limit?: number; offset?: number; q?: string; month?: string } = {}) => {
     let sql = 'SELECT d.*, c.name as contact_display FROM documents d LEFT JOIN contacts c ON d.contact_id = c.id WHERE 1=1';
@@ -377,9 +440,33 @@ export const documentRepo = {
       id
     );
     const payments = all('SELECT * FROM payments WHERE document_id = ? ORDER BY date', id);
-    return { ...doc, items, payments };
+    const linked_documents = all<Record<string, unknown>>('SELECT id,type,number,date,status,total FROM documents WHERE ref_doc_id = ? ORDER BY created_at', id);
+    const source_document = doc.ref_doc_id
+      ? get<Record<string, unknown>>('SELECT id,type,number,date,status,total FROM documents WHERE id = ?', doc.ref_doc_id)
+      : null;
+    let workflow_status: string | null = null;
+    if (doc.type === 'work_order') {
+      const ordered = (items as Record<string, unknown>[]).reduce((sum, item) => sum + Number(item.qty || 0), 0);
+      const delivered = get<{ qty: number }>(
+        `SELECT COALESCE(SUM(di.qty),0) qty FROM document_items di JOIN documents d ON d.id=di.document_id
+         WHERE d.type='delivery_note' AND d.ref_doc_id=? AND d.status!='cancelled'`, id
+      )?.qty || 0;
+      workflow_status = delivered <= 0 ? 'not_delivered' : delivered < ordered ? 'partially_delivered' : 'delivered';
+      for (const item of items as Record<string, unknown>[]) {
+        const deliveredForItem = all<Record<string, unknown>>(
+          `SELECT di.* FROM document_items di JOIN documents d ON d.id=di.document_id
+           WHERE d.type='delivery_note' AND d.ref_doc_id=? AND d.status!='cancelled'`, id
+        ).filter(row => workflowItemKey(row) === workflowItemKey(item))
+          .reduce((sum, row) => sum + Number(row.qty || 0), 0);
+        item.remaining_qty = Math.max(0, Number(item.qty || 0) - deliveredForItem);
+      }
+    } else if (doc.type === 'delivery_note') {
+      workflow_status = linked_documents.some(linked => linked.type === 'delivery_tax_invoice' && linked.status !== 'cancelled') ? 'billed' : 'not_billed';
+    }
+    return { ...doc, items, payments, linked_documents, source_document, workflow_status };
   },
   create: (data: Record<string, unknown>, items: Record<string, unknown>[] = []) => {
+    validateDocumentWorkflow(data, items);
     if (!data.number) data.number = generateDocNumber(data.type as string);
     const r = run(`INSERT INTO documents (type,number,contact_id,contact_name,date,due_date,status,subtotal,discount,vat,total,notes,meta,ref_doc_id) VALUES (:type,:number,:contact_id,:contact_name,:date,:due_date,:status,:subtotal,:discount,:vat,:total,:notes,:meta,:ref_doc_id)`, {
       ':type': data.type, ':number': data.number, ':contact_id': data.contact_id ?? null,
@@ -401,7 +488,11 @@ export const documentRepo = {
     return documentRepo.get(docId);
   },
   update: (id: number, data: Record<string, unknown>, items?: Record<string, unknown>[]) => {
-    const allowed = ['number','contact_id','contact_name','date','due_date','status','subtotal','discount','vat','total','notes','meta'];
+    const current = get<Record<string, unknown>>('SELECT * FROM documents WHERE id = ?', id);
+    if (!current) throw new Error('ไม่พบเอกสาร');
+    const merged = { ...current, ...data };
+    if (items !== undefined) validateDocumentWorkflow(merged, items, id);
+    const allowed = ['number','contact_id','contact_name','date','due_date','status','subtotal','discount','vat','total','notes','meta','ref_doc_id'];
     const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');
     if (fields) {
       const params: Record<string, unknown> = { ':id': id };
@@ -422,7 +513,11 @@ export const documentRepo = {
     }
     return documentRepo.get(id);
   },
-  delete: (id: number) => db.prepare('DELETE FROM documents WHERE id = ?').run(id),
+  delete: (id: number) => {
+    const linked = get<{ id: number }>('SELECT id FROM documents WHERE ref_doc_id = ? LIMIT 1', id);
+    if (linked) throw new Error('ลบเอกสารนี้ไม่ได้ เนื่องจากมีเอกสารถัดไปเชื่อมอยู่');
+    return db.prepare('DELETE FROM documents WHERE id = ?').run(id);
+  },
   updateStatus: (id: number, status: string) => {
     db.prepare(`UPDATE documents SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`).run(status, id);
     return documentRepo.get(id);

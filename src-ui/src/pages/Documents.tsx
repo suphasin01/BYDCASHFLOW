@@ -148,6 +148,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const [fVat, setFVat] = useState(0)
   const [fVatMode, setFVatMode] = useState<'amount' | 'percent'>('percent')
   const [fNotes, setFNotes] = useState('')
+  const [fRefDocId, setFRefDocId] = useState<number | null>(null)
   const [items, setItems] = useState<DocumentItem[]>([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
   const [workMeta, setWorkMeta] = useState<WorkOrderMeta>({})
   const [statusChange, setStatusChange] = useState('')
@@ -398,6 +399,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFType('delivery_tax_invoice'); setFNumber(''); setFContactId(''); setFContactName('')
     setFDate(today()); setFDue(''); setFDiscount(0); setFDiscountMode('amount')
     setFVat(7); setFVatMode('percent'); setFNotes('')
+    setFRefDocId(null)
     setWorkMeta({})
     setItems([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     resetWHTForm(); resetPSForm()
@@ -411,6 +413,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFType(doc.type); setFNumber(doc.number || ''); setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
     setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || '')
     setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
+    setFRefDocId(doc.ref_doc_id || null)
     setWorkMeta(readWorkMeta(doc.meta))
     setItems(copyDocumentItems(doc.items, ps))
     setModal('edit')
@@ -433,7 +436,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
         contact_id: fContactId ? Number(fContactId) : null,
         contact_name: fContactName || null, date: fDate, due_date: fDue || null,
         subtotal, discount: discountAmt, vat: vatAmt, total, notes: fNotes || null,
-        meta: fType === 'work_order' ? JSON.stringify(workMeta) : null, items: validItems,
+        meta: fType === 'work_order' ? JSON.stringify(workMeta) : null,
+        ref_doc_id: fRefDocId, items: validItems,
       }
       if (modal === 'edit' && editDoc) { await updateDocument(editDoc.id, payload); toast(t('toast_doc_edited')) }
       else { await createDocument(payload); toast(t('toast_doc_saved')) }
@@ -471,12 +475,24 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     const [{ data: cs }, { data: ps }] = await Promise.all([getContacts(), getProducts()])
     setContacts(cs); setProducts(ps); setEditDoc(null)
     setFType(convertType); setFNumber('')
+    setFRefDocId(viewDoc.id)
     setFContactId(viewDoc.contact_id ? String(viewDoc.contact_id) : ''); setFContactName(viewDoc.contact_name || '')
     setFDate(today()); setFDue(viewDoc.due_date?.slice(0, 10) || '')
     setFDiscount(viewDoc.discount || 0); setFDiscountMode('amount')
     setFVat(viewDoc.vat || 0); setFVatMode('amount'); setFNotes(viewDoc.notes || '')
     setWorkMeta(readWorkMeta(viewDoc.meta))
-    setItems(copyDocumentItems(viewDoc.items, ps))
+    if (viewDoc.type === 'work_order' && convertType === 'delivery_note') {
+      setItems((viewDoc.items || []).filter(item => (item.remaining_qty || 0) > 0).map(item => ({
+        ...item,
+        id: undefined,
+        qty: item.remaining_qty || 0,
+        unit: item.size || item.unit || '',
+        amount: (item.remaining_qty || 0) * Number(item.price || 0),
+        product_query: ps.find(product => product.id === item.product_id)?.name || item.description,
+      })))
+    } else {
+      setItems(copyDocumentItems(viewDoc.items, ps))
+    }
     setModal('create')
   }
 
@@ -484,6 +500,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     const [doc, { data: cs }, { data: ps }] = await Promise.all([getDocument(docId), getContacts(), getProducts()])
     setContacts(cs); setProducts(ps); setEditDoc(null)
     setFType(doc.type); setFNumber('')
+    setFRefDocId(null)
     setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
     setFDate(today()); setFDue(doc.due_date?.slice(0, 10) || '')
     setFDiscount(doc.discount || 0); setFDiscountMode('amount')
@@ -706,7 +723,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
             <label className={LABEL_CLASS}>{t('lbl_doc_type')}</label>
             <select
               value={fType}
-              disabled={modal === 'edit'}
+              disabled={modal === 'edit' || fRefDocId !== null}
               className={SELECT_CLASS}
               onChange={e => {
                 const v = e.target.value
@@ -1138,6 +1155,28 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               {paidAmount > 0 && <div className="flex justify-between text-[12px] mt-1.5"><span className="text-default-500">{t('paid_amount')}</span><span className="text-success">฿{fmt(paidAmount)}</span></div>}
             </div>
             {viewDoc.notes && <div className="px-3 py-2.5 bg-content2 rounded-lg text-[12px] text-default-500">💬 {viewDoc.notes}</div>}
+            {(viewDoc.source_document || viewDoc.workflow_status) && (
+              <div className="bg-content2 border border-content3 rounded-lg px-4 py-3 text-[12px]">
+                {viewDoc.source_document && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-default-500">เชื่อมจาก</span>
+                    <span className="font-semibold">{DOC_TYPES[viewDoc.source_document.type] || viewDoc.source_document.type} {viewDoc.source_document.number || ''}</span>
+                  </div>
+                )}
+                {viewDoc.workflow_status && (
+                  <div className="flex justify-between gap-3 mt-1">
+                    <span className="text-default-500">สถานะงาน</span>
+                    <span className="font-semibold text-success">{({
+                      not_delivered: 'ยังไม่ส่ง',
+                      partially_delivered: 'ส่งบางส่วน',
+                      delivered: 'ส่งครบแล้ว',
+                      not_billed: 'ยังไม่วางบิล',
+                      billed: 'วางบิลแล้ว',
+                    } as Record<string, string>)[viewDoc.workflow_status]}</span>
+                  </div>
+                )}
+              </div>
+            )}
             {(viewDoc.payments || []).length > 0 && (
               <div>
                 <Divider className="mb-3" />
@@ -1158,17 +1197,19 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               </select>
               <Btn size="sm" variant="primary" onClick={() => doChangeStatus(viewDoc.id)}>{t('btn_update')}</Btn>
             </div>
-            <Divider className="my-1" />
-            <div className="flex items-center gap-2">
-              <label className="text-[13px] font-medium whitespace-nowrap">{t('btn_convert_label')}</label>
-              <select value={convertType} onChange={e => setConvertType(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
-                <option value="">{t('lbl_select')}</option>
-                {Object.entries(DOC_TYPES).filter(([k]) => k !== viewDoc?.type && !['withholding_tax', 'pay_slips'].includes(k)).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-              <Btn size="sm" variant="ghost" onClick={doConvert} disabled={!convertType}>{t('btn_convert')}</Btn>
-            </div>
+            {((viewDoc.type === 'work_order' && viewDoc.workflow_status !== 'delivered') ||
+              (viewDoc.type === 'delivery_note' && viewDoc.workflow_status !== 'billed')) && <>
+              <Divider className="my-1" />
+              <div className="flex items-center gap-2">
+                <label className="text-[13px] font-medium whitespace-nowrap">สร้างเอกสารถัดไป</label>
+                <select value={convertType} onChange={e => setConvertType(e.target.value)} className={`${SELECT_CLASS} flex-1`}>
+                  <option value="">{t('lbl_select')}</option>
+                  {viewDoc.type === 'work_order' && <option value="delivery_note">{DOC_TYPES.delivery_note}</option>}
+                  {viewDoc.type === 'delivery_note' && <option value="delivery_tax_invoice">{DOC_TYPES.delivery_tax_invoice}</option>}
+                </select>
+                <Btn size="sm" variant="primary" onClick={doConvert} disabled={!convertType}>สร้าง</Btn>
+              </div>
+            </>}
           </div>
         )}
       </Modal>

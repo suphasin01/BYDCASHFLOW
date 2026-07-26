@@ -153,8 +153,10 @@ app.patch('/api/documents/:id/status', (req, res) => {
 });
 
 app.delete('/api/documents/:id', (req, res) => {
-  documentRepo.delete(Number(req.params.id));
-  res.json({ success: true });
+  try {
+    documentRepo.delete(Number(req.params.id));
+    res.json({ success: true });
+  } catch (e: unknown) { res.status(400).json({ error: String(e) }); }
 });
 
 // ── Payments ──────────────────────────────────────────────────────────────────

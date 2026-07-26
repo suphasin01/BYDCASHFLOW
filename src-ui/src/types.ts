@@ -43,6 +43,7 @@ export interface DocumentItem {
   length?: string
   cut_qty?: number
   received_qty?: number
+  remaining_qty?: number
 }
 
 export interface WorkOrderMeta {
@@ -102,6 +103,10 @@ export interface Document {
   status: 'draft' | 'sent' | 'approved' | 'paid' | 'cancelled'
   notes?: string | null
   meta?: string | WorkOrderMeta | null
+  ref_doc_id?: number | null
+  source_document?: Pick<Document, 'id' | 'type' | 'number' | 'date' | 'status' | 'total'> | null
+  linked_documents?: Array<Pick<Document, 'id' | 'type' | 'number' | 'date' | 'status' | 'total'>>
+  workflow_status?: 'not_delivered' | 'partially_delivered' | 'delivered' | 'not_billed' | 'billed' | null
   items?: DocumentItem[]
   payments?: Payment[]
   created_at?: string
