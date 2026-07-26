@@ -12,7 +12,7 @@ import {
   getWithholdingTaxList, getWithholdingTax, createWithholdingTax, updateWithholdingTax, deleteWithholdingTax,
   getPaySlips, createPaySlip, updatePaySlip, deletePaySlip,
 } from '../api'
-import type { Document, DocumentItem, Contact, Company, Product, WithholdingTax, WithholdingTaxItem, PaySlip, Employee, WorkOrderMeta } from '../types'
+import type { Document, DocumentItem, Contact, Company, Product, WithholdingTax, WithholdingTaxItem, PaySlip, Employee, WorkOrderMeta, TaxInvoiceMeta } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import { buildWHTForm } from '../whtForm'
 import { buildPaySlipHtml } from './PaySlip'
@@ -41,8 +41,14 @@ function copyDocumentItems(source: DocumentItem[] | undefined, products: Product
 
 function readWorkMeta(meta: Document['meta']): WorkOrderMeta {
   if (!meta) return {}
-  if (typeof meta !== 'string') return meta
+  if (typeof meta !== 'string') return meta as WorkOrderMeta
   try { return JSON.parse(meta) as WorkOrderMeta } catch { return {} }
+}
+
+function readTaxInvoiceMeta(meta: Document['meta']): TaxInvoiceMeta {
+  if (!meta) return {}
+  if (typeof meta !== 'string') return meta as TaxInvoiceMeta
+  try { return JSON.parse(meta) as TaxInvoiceMeta } catch { return {} }
 }
 
 // ─── WHT constants ────────────────────────────────────────────────────────────
@@ -151,6 +157,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const [fRefDocId, setFRefDocId] = useState<number | null>(null)
   const [items, setItems] = useState<DocumentItem[]>([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
   const [workMeta, setWorkMeta] = useState<WorkOrderMeta>({})
+  const [taxInvoiceMeta, setTaxInvoiceMeta] = useState<TaxInvoiceMeta>({})
   const [statusChange, setStatusChange] = useState('')
   const [convertType, setConvertType] = useState('')
 
@@ -437,6 +444,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFVat(7); setFVatMode('percent'); setFNotes('')
     setFRefDocId(null)
     setWorkMeta({})
+    setTaxInvoiceMeta({})
     setItems([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
     resetWHTForm(); resetPSForm()
     setModal('create')
@@ -451,6 +459,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
     setFRefDocId(doc.ref_doc_id || null)
     setWorkMeta(readWorkMeta(doc.meta))
+    setTaxInvoiceMeta(readTaxInvoiceMeta(doc.meta))
     setItems(copyDocumentItems(doc.items, ps))
     setModal('edit')
   }
@@ -472,7 +481,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
         contact_id: fContactId ? Number(fContactId) : null,
         contact_name: fContactName || null, date: fDate, due_date: fDue || null,
         subtotal, discount: discountAmt, vat: vatAmt, total, notes: fNotes || null,
-        meta: fType === 'work_order' ? JSON.stringify(workMeta) : null,
+        meta: fType === 'work_order' ? JSON.stringify(workMeta) : fType === 'delivery_tax_invoice' ? JSON.stringify(taxInvoiceMeta) : null,
         ref_doc_id: fRefDocId, items: validItems,
       }
       if (modal === 'edit' && editDoc) { await updateDocument(editDoc.id, payload); toast(t('toast_doc_edited')) }
@@ -517,6 +526,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFDiscount(viewDoc.discount || 0); setFDiscountMode('amount')
     setFVat(viewDoc.vat || 0); setFVatMode('amount'); setFNotes(viewDoc.notes || '')
     setWorkMeta(readWorkMeta(viewDoc.meta))
+    setTaxInvoiceMeta(convertType === 'delivery_tax_invoice' ? readTaxInvoiceMeta(viewDoc.meta) : {})
     if (viewDoc.type === 'work_order' && convertType === 'delivery_note') {
       setItems((viewDoc.items || []).filter(item => (item.remaining_qty || 0) > 0).map(item => ({
         ...item,
@@ -543,6 +553,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFDiscount(doc.discount || 0); setFDiscountMode('amount')
     setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
     setWorkMeta(readWorkMeta(doc.meta))
+    setTaxInvoiceMeta(readTaxInvoiceMeta(doc.meta))
     setItems(copyDocumentItems(doc.items, ps))
     setModal('create')
   }
@@ -1134,6 +1145,25 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   </div>
                 </div>
               </div>
+              <div className="border border-content3 rounded-lg p-4">
+                <div className="text-[12px] font-semibold text-default-600 mb-3">ข้อมูลการชำระเงินในแบบพิมพ์</div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className={LABEL_CLASS}>ชำระโดย</label>
+                    <select className={SELECT_CLASS} value={taxInvoiceMeta.payment_method || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, payment_method: e.target.value as TaxInvoiceMeta['payment_method'] }))}>
+                      <option value="">— ยังไม่ระบุ —</option>
+                      <option value="cash">เงินสด</option>
+                      <option value="cheque">เช็ค</option>
+                      <option value="transfer">เงินโอน</option>
+                    </select>
+                  </div>
+                  <TextField label="ธนาคาร / BANK" value={taxInvoiceMeta.payment_bank || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, payment_bank: e.target.value }))} />
+                  <TextField label="สาขา / BRANCH" value={taxInvoiceMeta.payment_branch || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, payment_branch: e.target.value }))} />
+                  <TextField label="เลขที่ / NO." value={taxInvoiceMeta.payment_number || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, payment_number: e.target.value }))} />
+                  <TextField type="date" label="วันที่ / DATE" value={taxInvoiceMeta.payment_date || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, payment_date: e.target.value }))} />
+                  <TextField type="number" min={0} label="จำนวนเงิน / AMOUNT" value={taxInvoiceMeta.payment_amount || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, payment_amount: e.target.value }))} />
+                </div>
+              </div>
               <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5">
                 {[
                   { label: t('lbl_subtotal'), value: `฿${fmt(subtotal)}`, color: '' },
@@ -1395,6 +1425,8 @@ function buildTaxInvoiceHtml(
   fmtD: (d: string | undefined | null) => string,
 ): string {
   const lineItems = doc.items || []
+  const invoiceMeta = readTaxInvoiceMeta(doc.meta)
+  const paymentMark = (method: TaxInvoiceMeta['payment_method']) => invoiceMeta.payment_method === method ? '✓' : ' '
   const fmtQty = (value: number | undefined | null) => Number.isInteger(Number(value)) ? String(Number(value || 0)) : fmtN(value)
   const rows = lineItems.map((item, index) => `<tr>
     <td class="center">${index + 1}</td>
@@ -1419,12 +1451,12 @@ function buildTaxInvoiceHtml(
   .customer{padding:2.4mm;min-height:36mm;border-right:1px solid #4f8f8f;font-size:12px}.customer-row{display:grid;grid-template-columns:38mm 1fr;margin-bottom:1.2mm}
   table{border-collapse:collapse;width:100%}td,th{border:1px solid #4f8f8f;padding:.9mm 1mm;vertical-align:top;font-size:10.5px}th{font-weight:700}.meta td{height:5.2mm;line-height:1.15;font-size:11px}.meta td:first-child{width:49%;color:#315f5f;background:#edf7f5;font-weight:600}
   .center{text-align:center}.right{text-align:right}.desc{font-size:13px;font-weight:600;line-height:1.25}.item-note{font-size:11.5px;font-weight:400;color:#444;margin-top:.5mm}
-  .items th{background:#edf7f5;color:#315f5f;text-align:center;font-size:11.5px;line-height:1.05;vertical-align:middle;padding:1.2mm .6mm;height:9mm}.items tbody td{font-size:11.2px;vertical-align:middle}.items tbody td.right{font-size:10.5px}.items tbody tr{height:8mm}.items tbody tr.blank{height:6.6mm}.items th:nth-child(1){width:7%}.items th:nth-child(2){width:39%}
+  .items th{background:#edf7f5;color:#315f5f;text-align:center;font-size:11.5px;line-height:1.05;vertical-align:middle;padding:1.2mm .6mm;height:9mm}.items tbody td{font-size:11.2px;vertical-align:middle}.items tbody td.right{font-size:10.5px}.items tbody tr{height:8mm}.items tbody tr.blank{height:12mm}.items th:nth-child(1){width:7%}.items th:nth-child(2){width:39%}
   .items th:nth-child(3),.items th:nth-child(4){width:8%}.items th:nth-child(5){width:13%}.items th:nth-child(6){width:11%}.items th:nth-child(7){width:14%}
   .summary{display:grid;grid-template-columns:61% 39%}.left-summary{display:flex;flex-direction:column}.notes-box{border:1px solid #4f8f8f;border-top:0;padding:2.5mm;min-height:23mm;flex:1;font-size:12px}.amount-words{border:1px solid #4f8f8f;border-top:0;min-height:10mm;padding:2mm;text-align:center;font-weight:700;font-size:14px;color:#315f5f;background:#edf7f5;display:flex;align-items:center;justify-content:center}
   .totals{table-layout:fixed}.totals td{font-size:11px;line-height:1.15;vertical-align:middle}.totals td:first-child{width:62%;font-weight:700;color:#315f5f;background:#edf7f5}.totals td:last-child{width:38%;text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.grand td{font-size:12px;font-weight:700;color:#315f5f;background:#edf7f5}.grand td:last-child{color:#111}
-  .signatures{display:grid;grid-template-columns:2fr repeat(3,1fr);border-left:1px solid #4f8f8f}.sign{height:54mm;border-right:1px solid #4f8f8f;border-bottom:1px solid #4f8f8f;padding:1.8mm;text-align:center;font-size:10px;display:flex;flex-direction:column;justify-content:space-between}
-  .payment{text-align:left;font-size:11px;line-height:1.15}.payment-methods{display:grid;grid-template-columns:1.15fr 1fr 1fr 1.25fr;align-items:center;column-gap:1mm;white-space:nowrap;font-size:10.5px;margin-bottom:2.4mm}.payment-methods .thai{font-size:11.5px;font-weight:700;color:#315f5f}.payment-methods .en{font-size:10px;font-weight:700;color:#315f5f}.payment-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:3mm;row-gap:1.3mm}.payment-field{min-width:0}.payment-field.full{grid-column:1/-1}.payment-label{font-size:10.5px;line-height:1.05;color:#315f5f}.fill-line{height:3.2mm;border-bottom:1px solid #4f8f8f}.line{border-top:1px solid #4f8f8f;padding-top:1mm}
+  .signatures{display:grid;grid-template-columns:2fr repeat(3,1fr);border-left:1px solid #4f8f8f}.sign{height:62mm;border-right:1px solid #4f8f8f;border-bottom:1px solid #4f8f8f;padding:1.8mm;text-align:center;font-size:10px;display:flex;flex-direction:column;justify-content:space-between}
+  .payment{text-align:left;font-size:11px;line-height:1.15}.payment-methods{display:grid;grid-template-columns:1.15fr 1fr 1fr 1.25fr;align-items:center;column-gap:1mm;white-space:nowrap;font-size:10.5px;margin-bottom:2.4mm}.payment-methods .thai{font-size:11.5px;font-weight:700;color:#315f5f}.payment-methods .en{font-size:10px;font-weight:700;color:#315f5f}.payment-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:3mm;row-gap:1.3mm}.payment-field{min-width:0}.payment-field.full{grid-column:1/-1}.payment-label{font-size:10.5px;line-height:1.05;color:#315f5f}.fill-line{min-height:5mm;border-bottom:1px solid #4f8f8f;padding-top:1mm;font-size:11px;color:#111}.line{width:88%;margin-left:auto;margin-right:auto;border-top:1px solid #4f8f8f;padding-top:1mm}
   @media print{.page{padding:0}}
   </style></head><body><div class="page">
     <div class="header"><div class="company">${logo}<div>
@@ -1446,7 +1478,7 @@ function buildTaxInvoiceHtml(
       <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น Grand Total</td><td>${fmtN(doc.total)}</td></tr></tbody></table>
     </div>
     <div class="signatures">
-      <div class="sign"><div class="payment"><div class="payment-methods"><span class="thai">ชำระโดย</span><span class="thai">( ) เงินสด</span><span class="thai">( ) เช็ค</span><span class="thai">( ) เงินโอน</span><span class="en">PAY BY</span><span class="en">CASH</span><span class="en">CHEQUE</span><span class="en">TRANSFER</span></div><div class="payment-grid"><div class="payment-field"><div class="payment-label">ธนาคาร<br>BANK</div><div class="fill-line"></div></div><div class="payment-field"><div class="payment-label">สาขา<br>BRANCH</div><div class="fill-line"></div></div><div class="payment-field"><div class="payment-label">เลขที่<br>NO.</div><div class="fill-line"></div></div><div class="payment-field"><div class="payment-label">วันที่<br>DATE</div><div class="fill-line"></div></div><div class="payment-field full"><div class="payment-label">จำนวนเงิน<br>AMOUNT</div><div class="fill-line"></div></div></div></div><div class="line">ผู้รับเงิน / COLLECTOR<br>วันที่ DATE ____/____/____</div></div>
+      <div class="sign payment-sign"><div class="payment"><div class="payment-methods"><span class="thai">ชำระโดย</span><span class="thai">(${paymentMark('cash')}) เงินสด</span><span class="thai">(${paymentMark('cheque')}) เช็ค</span><span class="thai">(${paymentMark('transfer')}) เงินโอน</span><span class="en">PAY BY</span><span class="en">CASH</span><span class="en">CHEQUE</span><span class="en">TRANSFER</span></div><div class="payment-grid"><div class="payment-field"><div class="payment-label">ธนาคาร<br>BANK</div><div class="fill-line">${invoiceMeta.payment_bank || ''}</div></div><div class="payment-field"><div class="payment-label">สาขา<br>BRANCH</div><div class="fill-line">${invoiceMeta.payment_branch || ''}</div></div><div class="payment-field"><div class="payment-label">เลขที่<br>NO.</div><div class="fill-line">${invoiceMeta.payment_number || ''}</div></div><div class="payment-field"><div class="payment-label">วันที่<br>DATE</div><div class="fill-line">${invoiceMeta.payment_date ? fmtD(invoiceMeta.payment_date) : ''}</div></div><div class="payment-field full"><div class="payment-label">จำนวนเงิน<br>AMOUNT</div><div class="fill-line">${invoiceMeta.payment_amount ? fmtN(Number(invoiceMeta.payment_amount)) : ''}</div></div></div></div><div class="line">ผู้รับเงิน / COLLECTOR<br>วันที่ DATE ____/____/____</div></div>
       <div class="sign"><div></div><div class="line">ผู้รับสินค้า / RECEIVED BY<br>วันที่ DATE ____/____/____</div></div><div class="sign"><div></div><div class="line">ผู้ส่งสินค้า / DELIVERY BY<br>วันที่ DATE ____/____/____</div></div>
       <div class="sign"><div></div><div class="line">ผู้มีอำนาจลงนาม / AUTHORIZED SIGNATURE<br>วันที่ DATE ____/____/____</div></div>
     </div>

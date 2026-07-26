@@ -75,6 +75,15 @@ export interface WorkOrderMeta {
   sender?: string
 }
 
+export interface TaxInvoiceMeta {
+  payment_method?: 'cash' | 'cheque' | 'transfer' | ''
+  payment_bank?: string
+  payment_branch?: string
+  payment_number?: string
+  payment_date?: string
+  payment_amount?: string
+}
+
 export interface Payment {
   id: number
   document_id: number
@@ -109,7 +118,7 @@ export interface Document {
   total: number
   status: 'draft' | 'sent' | 'approved' | 'paid' | 'cancelled'
   notes?: string | null
-  meta?: string | WorkOrderMeta | null
+  meta?: string | WorkOrderMeta | TaxInvoiceMeta | null
   ref_doc_id?: number | null
   source_document?: Pick<Document, 'id' | 'type' | 'number' | 'date' | 'status' | 'total'> | null
   linked_documents?: Array<Pick<Document, 'id' | 'type' | 'number' | 'date' | 'status' | 'total'>>
