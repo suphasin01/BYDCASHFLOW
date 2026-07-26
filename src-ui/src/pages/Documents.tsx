@@ -1134,7 +1134,7 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
       ${company?.email ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">${company.email}</div>` : ''}
     </div></div>
     <div style="text-align:right">
-      <div style="font-size:26px;font-weight:700;color:#6366f1;margin-bottom:6px">${docTitle}</div>
+      <div style="font-size:26px;font-weight:700;color:#111827;margin-bottom:6px">${docTitle}</div>
       <div style="background:#f8f9ff;border:1px solid #e0e7ff;border-radius:8px;padding:12px 16px;min-width:200px">
         <div style="font-size:13px;color:#6b7280;margin-bottom:4px">${t('pdf_doc_no')}</div>
         <div style="font-size:17px;font-weight:700;color:#111827">${doc.number || '-'}</div>
