@@ -1413,18 +1413,18 @@ function buildTaxInvoiceHtml(
   *{box-sizing:border-box}body{margin:0;background:#fff;color:#111;font-family:Tahoma,"Sarabun",sans-serif;font-size:10.8px;line-height:1.25}
   @page{size:A4 portrait;margin:7mm}.page{width:100%;max-width:196mm;min-height:283mm;margin:auto;padding:2mm}
   .logo{max-width:28mm;max-height:20mm;object-fit:contain;margin-right:3mm}.header{display:flex;justify-content:space-between;align-items:flex-start;min-height:27mm;margin-bottom:2mm}
-  .company{display:flex;max-width:126mm;font-size:10.2px;line-height:1.35}.company-name{font-size:17px;font-weight:700;margin-bottom:.6mm}
+  .company{display:flex;max-width:126mm;font-size:12px;line-height:1.35}.company-name{font-size:19px;font-weight:700;margin-bottom:.6mm}
   .title-box{text-align:center;color:#315f5f;width:58mm;flex:0 0 58mm}.title{border:2px solid #4f8f8f;border-radius:8px;padding:1.5mm 2mm;font-size:15px;line-height:1.2;font-weight:700}.copy{font-size:10.7px;line-height:1.35;font-weight:700;margin-top:1mm}
   .info-grid{display:grid;grid-template-columns:58% 42%;border:1px solid #4f8f8f;border-radius:9px 9px 0 0;overflow:hidden}
-  .customer{padding:2.4mm;min-height:36mm;border-right:1px solid #4f8f8f;font-size:10.2px}.customer-row{display:grid;grid-template-columns:31mm 1fr;margin-bottom:1.2mm}
-  table{border-collapse:collapse;width:100%}td,th{border:1px solid #4f8f8f;padding:.9mm 1mm;vertical-align:top;font-size:9.8px}th{font-weight:700}.meta td{height:5.2mm;line-height:1.15;font-size:9.5px}.meta td:first-child{width:47%;color:#315f5f}
-  .center{text-align:center}.right{text-align:right}.desc{font-size:10.2px;font-weight:600}.item-note{font-size:9.2px;font-weight:400;color:#444;margin-top:.5mm}
-  .items th{background:#edf7f5;text-align:center;font-size:9.2px;line-height:1.1;vertical-align:middle}.items tbody tr{height:6.6mm}.items th:nth-child(1){width:7%}.items th:nth-child(2){width:39%}
+  .customer{padding:2.4mm;min-height:36mm;border-right:1px solid #4f8f8f;font-size:12px}.customer-row{display:grid;grid-template-columns:38mm 1fr;margin-bottom:1.2mm}
+  table{border-collapse:collapse;width:100%}td,th{border:1px solid #4f8f8f;padding:.9mm 1mm;vertical-align:top;font-size:10.5px}th{font-weight:700}.meta td{height:5.2mm;line-height:1.15;font-size:11px}.meta td:first-child{width:49%;color:#315f5f}
+  .center{text-align:center}.right{text-align:right}.desc{font-size:13px;font-weight:600;line-height:1.25}.item-note{font-size:11.5px;font-weight:400;color:#444;margin-top:.5mm}
+  .items th{background:#edf7f5;text-align:center;font-size:11.5px;line-height:1.05;vertical-align:middle;padding:1.2mm .6mm;height:9mm}.items tbody td{font-size:11.2px;vertical-align:middle}.items tbody td.right{font-size:10.5px}.items tbody tr{height:8mm}.items tbody tr.blank{height:6.6mm}.items th:nth-child(1){width:7%}.items th:nth-child(2){width:39%}
   .items th:nth-child(3),.items th:nth-child(4){width:8%}.items th:nth-child(5){width:13%}.items th:nth-child(6){width:11%}.items th:nth-child(7){width:14%}
-  .summary{display:grid;grid-template-columns:61% 39%}.left-summary{display:flex;flex-direction:column}.notes-box{border:1px solid #4f8f8f;border-top:0;padding:2mm;min-height:23mm;flex:1}.notes-title{font-size:11px;font-weight:700;margin-bottom:1mm}.amount-words{border:1px solid #4f8f8f;border-top:0;min-height:10mm;padding:2mm;text-align:center;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
-  .totals td{font-size:9.4px;vertical-align:middle}.totals td:first-child{font-weight:700;background:#edf7f5}.totals td:last-child{text-align:right;font-weight:600}.grand td{font-size:11.3px;font-weight:700}
-  .signatures{display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid #4f8f8f}.sign{height:40mm;border-right:1px solid #4f8f8f;border-bottom:1px solid #4f8f8f;padding:1.5mm;text-align:center;font-size:8.7px;display:flex;flex-direction:column;justify-content:space-between}
-  .payment{text-align:left;font-size:8.2px;line-height:1.35}.line{border-top:1px solid #4f8f8f;padding-top:1mm}
+  .summary{display:grid;grid-template-columns:61% 39%}.left-summary{display:flex;flex-direction:column}.notes-box{border:1px solid #4f8f8f;border-top:0;padding:2.5mm;min-height:23mm;flex:1;font-size:12px}.amount-words{border:1px solid #4f8f8f;border-top:0;min-height:10mm;padding:2mm;text-align:center;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .totals{table-layout:fixed}.totals td{font-size:11px;line-height:1.15;vertical-align:middle}.totals td:first-child{width:62%;font-weight:700;background:#edf7f5}.totals td:last-child{width:38%;text-align:right;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}.grand td{font-size:12px;font-weight:700}
+  .signatures{display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid #4f8f8f}.sign{height:44mm;border-right:1px solid #4f8f8f;border-bottom:1px solid #4f8f8f;padding:1.8mm;text-align:center;font-size:10px;display:flex;flex-direction:column;justify-content:space-between}
+  .payment{text-align:left;font-size:10px;line-height:1.4}.line{border-top:1px solid #4f8f8f;padding-top:1mm}
   @media print{.page{padding:0}}
   </style></head><body><div class="page">
     <div class="header"><div class="company">${logo}<div>
@@ -1440,7 +1440,7 @@ function buildTaxInvoiceHtml(
       <tr><td>เงื่อนไขชำระ Credit Term</td><td></td></tr><tr><td>อ้างอิง Reference</td><td>${doc.source_document?.number || ''}</td></tr><tr><td>พนักงานขาย Employee</td><td></td></tr><tr><td>เลขที่ใบสั่งซื้อ PO No.</td><td></td></tr>
     </tbody></table></div>
     <table class="items"><thead><tr><th>ลำดับ<br>Item</th><th>รายการสินค้า<br>Description</th><th>จำนวน<br>Qty</th><th>หน่วย<br>Unit</th><th>ราคาต่อหน่วย<br>Unit Price</th><th>ส่วนลด<br>Discount</th><th>จำนวนเงิน<br>Amount</th></tr></thead><tbody>${rows}${blanks}</tbody></table>
-    <div class="summary"><div class="left-summary"><div class="notes-box"><div class="notes-title">หมายเหตุ Notes</div><div>${doc.notes || ''}</div></div><div class="amount-words">(${thaiBahtText(Number(doc.total || 0))})</div></div>
+    <div class="summary"><div class="left-summary"><div class="notes-box">${doc.notes || ''}</div><div class="amount-words">(${thaiBahtText(Number(doc.total || 0))})</div></div>
       <table class="totals"><tbody><tr><td>รวมจำนวนเงิน Total Amount</td><td>${fmtN(doc.subtotal)}</td></tr><tr><td>ส่วนลด Discount</td><td>${fmtN(doc.discount)}</td></tr>
       <tr><td>จำนวนเงินก่อนภาษี Amount not include tax</td><td>${fmtN(beforeTax)}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม V.A.T. ${vatRate ? `${fmtN(vatRate)}%` : ''}</td><td>${fmtN(doc.vat)}</td></tr>
       <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น Grand Total</td><td>${fmtN(doc.total)}</td></tr></tbody></table>
