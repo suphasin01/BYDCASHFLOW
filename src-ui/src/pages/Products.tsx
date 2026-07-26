@@ -95,7 +95,7 @@ export default function Products() {
           placeholder={t('search_product')}
           value={search} onChange={e => { setSearch(e.target.value); load(e.target.value) }}
         />
-        <Btn variant="primary" onClick={openCreate} className="w-full sm:w-auto">{t('btn_add_product')}</Btn>
+        <Btn variant="success" onClick={openCreate} className="w-full sm:w-auto">{t('btn_add_product')}</Btn>
       </div>
 
       <Card className="bg-content1 border border-content3 glow-hover" shadow="none">
