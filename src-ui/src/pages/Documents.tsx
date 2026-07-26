@@ -1085,32 +1085,32 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                 <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description:'',qty:1,unit:'',price:0,amount:0 }])}>เพิ่มรายการ</Btn>
               </> : <>
               <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
-                {[t('lbl_product_col'), t('lbl_item_with_note'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
+                {[t('lbl_product_col'), t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
                   <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
                 ))}
               </div>
               <div className="flex flex-col gap-1.5">
                 {items.map((item, i) => (
-                  <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
-                    <select className={SELECT_CLASS + ' text-[12px]'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
-                      const pid = e.target.value
-                      if (pid) {
-                        const p = availableProducts.find(pr => String(pr.id) === pid)
-                        if (p) fillItemFromProduct(i, p)
-                      }
-                    }}>
-                      <option value="">{t('lbl_select')}</option>
-                      {selectableProducts.map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
-                    </select>
-                    <div className="flex flex-col gap-1">
+                  <div key={i} className="flex flex-col gap-1.5">
+                    <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
+                      <select className={SELECT_CLASS + ' text-[12px]'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
+                        const pid = e.target.value
+                        if (pid) {
+                          const p = availableProducts.find(pr => String(pr.id) === pid)
+                          if (p) fillItemFromProduct(i, p)
+                        }
+                      }}>
+                        <option value="">{t('lbl_select')}</option>
+                        {selectableProducts.map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
+                      </select>
                       <TextField placeholder={t('lbl_item_ph')} value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
-                      <TextField placeholder={t('lbl_item_note')} value={item.item_note || ''} onChange={e => updateItem(i, 'item_note', e.target.value)} />
+                      <TextField type="number" min={0} value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
+                      <TextField placeholder={t('lbl_unit_ph')} value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} />
+                      <TextField type="number" min={0} value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
+                      <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
+                      <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Btn>
                     </div>
-                    <TextField type="number" min={0} value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
-                    <TextField placeholder={t('lbl_unit_ph')} value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} />
-                    <TextField type="number" min={0} value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
-                    <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
-                    <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>✕</Btn>
+                    <TextField className="h-10" placeholder={t('lbl_item_note')} value={item.item_note || ''} onChange={e => updateItem(i, 'item_note', e.target.value)} />
                   </div>
                 ))}
               </div>
