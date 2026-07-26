@@ -1288,6 +1288,7 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
   const fmtD = (d: string | undefined | null) => d ? d.slice(0, 10) : '-'
   if (doc.type === 'delivery_note') return buildDeliveryNoteHtml(doc, company, fmtN, fmtD)
   if (doc.type === 'work_order') return buildWorkOrderHtml(doc, company, fmtN, fmtD)
+  if (doc.type === 'delivery_tax_invoice') return buildTaxInvoiceHtml(doc, company, contact, fmtN, fmtD)
   const PDF_TL: Record<string, string> = {
     delivery_tax_invoice: t('type_delivery_tax_invoice'),
     delivery_note: t('type_delivery_note'),
@@ -1386,6 +1387,99 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
     <div style="text-align:center"><div style="border-top:1px solid #d1d5db;padding-top:8px;margin-top:48px"><div style="font-size:12px;color:#6b7280">${t('pdf_recv_sig')}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${doc.contact_name || ''}</div></div></div>
   </div>
 </div></body></html>`
+}
+
+function buildTaxInvoiceHtml(
+  doc: Document, company: Company | null, contact: Contact | null,
+  fmtN: (n: number | undefined | null) => string,
+  fmtD: (d: string | undefined | null) => string,
+): string {
+  const lineItems = doc.items || []
+  const fmtQty = (value: number | undefined | null) => Number.isInteger(Number(value)) ? String(Number(value || 0)) : fmtN(value)
+  const rows = lineItems.map((item, index) => `<tr>
+    <td class="center">${index + 1}</td>
+    <td class="desc">${item.description || '-'}${item.item_note ? `<div class="item-note">${item.item_note}</div>` : ''}</td>
+    <td class="center">${fmtQty(item.qty)}</td><td class="center">${item.unit || '-'}</td>
+    <td class="right">${fmtN(item.price)}</td><td class="right">${fmtN(item.discount || 0)}</td><td class="right">${fmtN(item.amount)}</td>
+  </tr>`).join('')
+  const blanks = Array.from({ length: Math.max(0, 16 - lineItems.length) }, () =>
+    '<tr class="blank"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')
+  const beforeTax = Number(doc.subtotal || 0) - Number(doc.discount || 0)
+  const vatRate = beforeTax > 0 ? Number(doc.vat || 0) / beforeTax * 100 : 0
+  const customerName = contact?.company || doc.contact_name || contact?.name || '-'
+  const logo = company?.logo_url ? `<img class="logo" src="${company.logo_url}" alt="" />` : ''
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ใบส่งสินค้า/ใบกำกับภาษี ${doc.number || ''}</title>
+  <style>
+  *{box-sizing:border-box}body{margin:0;background:#fff;color:#111;font-family:Tahoma,"Sarabun",sans-serif;font-size:10px;line-height:1.25}
+  @page{size:A4 portrait;margin:7mm}.page{width:100%;max-width:196mm;min-height:283mm;margin:auto;padding:2mm}
+  .logo{max-width:28mm;max-height:20mm;object-fit:contain;margin-right:3mm}.header{display:flex;justify-content:space-between;align-items:flex-start;min-height:27mm;margin-bottom:2mm}
+  .company{display:flex;max-width:126mm;font-size:9.5px;line-height:1.35}.company-name{font-size:16px;font-weight:700;margin-bottom:.6mm}
+  .title-box{text-align:center;color:#315f5f;width:58mm;flex:0 0 58mm}.title{border:2px solid #4f8f8f;border-radius:8px;padding:1.5mm 2mm;font-size:14px;line-height:1.2;font-weight:700}.copy{font-size:10px;line-height:1.35;font-weight:700;margin-top:1mm}
+  .info-grid{display:grid;grid-template-columns:58% 42%;border:1px solid #4f8f8f;border-radius:9px 9px 0 0;overflow:hidden}
+  .customer{padding:2.4mm;min-height:36mm;border-right:1px solid #4f8f8f;font-size:9.5px}.customer-row{display:grid;grid-template-columns:30mm 1fr;margin-bottom:1.2mm}
+  table{border-collapse:collapse;width:100%}td,th{border:1px solid #4f8f8f;padding:.9mm 1mm;vertical-align:top;font-size:9px}th{font-weight:700}.meta td{height:5.2mm;line-height:1.15}.meta td:first-child{width:47%;color:#315f5f}
+  .center{text-align:center}.right{text-align:right}.desc{font-size:9.5px;font-weight:600}.item-note{font-size:8.5px;font-weight:400;color:#444;margin-top:.5mm}
+  .items th{background:#edf7f5;text-align:center;font-size:8.5px;line-height:1.1;vertical-align:middle}.items tbody tr{height:6.6mm}.items th:nth-child(1){width:7%}.items th:nth-child(2){width:39%}
+  .items th:nth-child(3),.items th:nth-child(4){width:8%}.items th:nth-child(5){width:13%}.items th:nth-child(6){width:11%}.items th:nth-child(7){width:14%}
+  .summary{display:grid;grid-template-columns:61% 39%}.terms{border:1px solid #4f8f8f;border-top:0;padding:2mm;min-height:31mm;display:flex;flex-direction:column;justify-content:flex-end;gap:3mm}.amount-words{text-align:center;font-weight:700;font-size:10px}
+  .totals td{font-size:8.7px;vertical-align:middle}.totals td:first-child{font-weight:700;background:#edf7f5}.totals td:last-child{text-align:right;font-weight:600}.grand td{font-size:10.5px;font-weight:700}
+  .signatures{display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid #4f8f8f}.sign{height:40mm;border-right:1px solid #4f8f8f;border-bottom:1px solid #4f8f8f;padding:1.5mm;text-align:center;font-size:8px;display:flex;flex-direction:column;justify-content:space-between}
+  .payment{text-align:left;font-size:7.5px;line-height:1.35}.line{border-top:1px solid #4f8f8f;padding-top:1mm}
+  @media print{.page{padding:0}}
+  </style></head><body><div class="page">
+    <div class="header"><div class="company">${logo}<div>
+      <div class="company-name">${company?.name || 'BYD CASHFLOW'}</div>
+      ${company?.branch ? `<div>${company.branch}</div>` : ''}${company?.tax_id ? `<div>เลขประจำตัวผู้เสียภาษี Tax ID: ${company.tax_id}</div>` : ''}
+      ${company?.address ? `<div>${company.address}</div>` : ''}<div>${company?.phone ? `โทร. ${company.phone}` : ''}${company?.email ? ` · ${company.email}` : ''}</div>
+    </div></div><div class="title-box"><div class="title">ใบส่งสินค้า/ใบกำกับภาษี<br><span style="font-size:11px">DELIVERY ORDER / TAX INVOICE</span></div><div class="copy">ต้นฉบับ / ORIGINAL<br>สำหรับลูกค้า</div></div></div>
+    <div class="info-grid"><div class="customer">
+      <div class="customer-row"><b>ลูกค้า Customer</b><span>${customerName}</span></div><div class="customer-row"><b>สาขา Branch</b><span>${contact?.branch || 'สำนักงานใหญ่'}</span></div>
+      <div class="customer-row"><b>เลขประจำตัวผู้เสียภาษี Tax ID</b><span>${contact?.tax_id || '-'}</span></div><div class="customer-row"><b>ที่อยู่ Address</b><span>${contact?.address || '-'}</span></div>
+    </div><table class="meta"><tbody>
+      <tr><td>เลขที่ No.</td><td>${doc.number || '-'}</td></tr><tr><td>วันที่ Date</td><td>${fmtD(doc.date)}</td></tr><tr><td>กำหนดชำระ Due Date</td><td>${fmtD(doc.due_date)}</td></tr>
+      <tr><td>เงื่อนไขชำระ Credit Term</td><td></td></tr><tr><td>อ้างอิง Reference</td><td>${doc.source_document?.number || ''}</td></tr><tr><td>พนักงานขาย Employee</td><td></td></tr><tr><td>เลขที่ใบสั่งซื้อ PO No.</td><td></td></tr>
+    </tbody></table></div>
+    <table class="items"><thead><tr><th>ลำดับ<br>Item</th><th>รายการสินค้า<br>Description</th><th>จำนวน<br>Qty</th><th>หน่วย<br>Unit</th><th>ราคาต่อหน่วย<br>Unit Price</th><th>ส่วนลด<br>Discount</th><th>จำนวนเงิน<br>Amount</th></tr></thead><tbody>${rows}${blanks}</tbody></table>
+    <div class="summary"><div class="terms"><div class="amount-words">(${thaiBahtText(Number(doc.total || 0))})</div><div>สินค้าตามรายการข้างต้นได้รับในสภาพเรียบร้อยและถูกต้อง / RECEIVED THE ABOVE GOODS IN GOOD ORDER AND CONDITION</div></div>
+      <table class="totals"><tbody><tr><td>รวมจำนวนเงิน Total Amount</td><td>${fmtN(doc.subtotal)}</td></tr><tr><td>ส่วนลด Discount</td><td>${fmtN(doc.discount)}</td></tr>
+      <tr><td>จำนวนเงินก่อนภาษี Amount not include tax</td><td>${fmtN(beforeTax)}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม V.A.T. ${vatRate ? `${fmtN(vatRate)}%` : ''}</td><td>${fmtN(doc.vat)}</td></tr>
+      <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น Grand Total</td><td>${fmtN(doc.total)}</td></tr></tbody></table>
+    </div>
+    <div class="signatures">
+      <div class="sign"><div class="payment">ชำระโดย PAY BY<br>□ เงินสด CASH &nbsp; □ เช็ค CHEQUE<br>□ เงินโอน TRANSFER<br><br>ธนาคาร __________ สาขา __________<br>จำนวนเงิน __________</div><div class="line">ผู้รับเงิน / COLLECTOR<br>วันที่ DATE ____/____/____</div></div>
+      <div class="sign"><div></div><div class="line">ผู้รับสินค้า / RECEIVED BY<br>วันที่ DATE ____/____/____</div></div><div class="sign"><div></div><div class="line">ผู้ส่งสินค้า / DELIVERY BY<br>วันที่ DATE ____/____/____</div></div>
+      <div class="sign"><div></div><div class="line">ผู้มีอำนาจลงนาม / AUTHORIZED SIGNATURE<br>วันที่ DATE ____/____/____</div></div>
+    </div>
+  </div></body></html>`
+}
+
+function thaiBahtText(amount: number): string {
+  const digitWords = ['ศูนย์', 'หนึ่ง', 'สอง', 'สาม', 'สี่', 'ห้า', 'หก', 'เจ็ด', 'แปด', 'เก้า']
+  const positionWords = ['', 'สิบ', 'ร้อย', 'พัน', 'หมื่น', 'แสน']
+  const readGroup = (value: number): string => {
+    if (value === 0) return ''
+    const digits = String(value)
+    return digits.split('').map((char, index) => {
+      const digit = Number(char)
+      if (digit === 0) return ''
+      const position = digits.length - index - 1
+      if (position === 1) return digit === 1 ? 'สิบ' : digit === 2 ? 'ยี่สิบ' : `${digitWords[digit]}สิบ`
+      if (position === 0 && digit === 1 && digits.length > 1) return 'เอ็ด'
+      return `${digitWords[digit]}${positionWords[position]}`
+    }).join('')
+  }
+  const readInteger = (value: number): string => {
+    if (value === 0) return digitWords[0]
+    if (value >= 1_000_000) {
+      return `${readInteger(Math.floor(value / 1_000_000))}ล้าน${value % 1_000_000 ? readGroup(value % 1_000_000) : ''}`
+    }
+    return readGroup(value)
+  }
+  const absolute = Math.abs(amount)
+  let baht = Math.floor(absolute)
+  let satang = Math.round((absolute - baht) * 100)
+  if (satang === 100) { baht += 1; satang = 0 }
+  return `${amount < 0 ? 'ลบ' : ''}${readInteger(baht)}บาท${satang ? `${readGroup(satang)}สตางค์` : 'ถ้วน'}`
 }
 
 function printShell(title: string, body: string, landscape = false): string {
