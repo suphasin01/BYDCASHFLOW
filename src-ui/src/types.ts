@@ -30,6 +30,7 @@ export interface DocumentItem {
   id?: number
   product_id?: number | null
   description: string
+  item_note?: string
   qty: number
   unit?: string
   price: number

@@ -1085,7 +1085,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                 <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description:'',qty:1,unit:'',price:0,amount:0 }])}>เพิ่มรายการ</Btn>
               </> : <>
               <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
-                {[t('lbl_product_col'), t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
+                {[t('lbl_product_col'), t('lbl_item_with_note'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
                   <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
                 ))}
               </div>
@@ -1102,7 +1102,10 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                       <option value="">{t('lbl_select')}</option>
                       {selectableProducts.map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}{p.unit ? ` (${p.unit})` : ''}</option>)}
                     </select>
-                    <TextField placeholder={t('lbl_item_ph')} value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
+                    <div className="flex flex-col gap-1">
+                      <TextField placeholder={t('lbl_item_ph')} value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
+                      <TextField placeholder={t('lbl_item_note')} value={item.item_note || ''} onChange={e => updateItem(i, 'item_note', e.target.value)} />
+                    </div>
                     <TextField type="number" min={0} value={item.qty === 0 ? '' : String(item.qty)} onChange={e => updateItem(i, 'qty', e.target.value === '' ? 0 : Number(e.target.value))} />
                     <TextField placeholder={t('lbl_unit_ph')} value={item.unit || ''} onChange={e => updateItem(i, 'unit', e.target.value)} />
                     <TextField type="number" min={0} value={item.price === 0 ? '' : String(item.price)} onChange={e => updateItem(i, 'price', e.target.value === '' ? 0 : Number(e.target.value))} />
@@ -1184,7 +1187,10 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   <TableBody emptyContent={<div className="py-5 text-default-500">{t('no_items')}</div>}>
                     {(viewDoc.items || []).map((item, i) => (
                       <TableRow key={i}>
-                        <TableCell className="font-medium">{item.description}</TableCell>
+                        <TableCell className="font-medium">
+                          <div>{item.description}</div>
+                          {item.item_note && <div className="text-[11px] font-normal text-default-500 mt-0.5">{t('lbl_notes')}: {item.item_note}</div>}
+                        </TableCell>
                         <TableCell>{item.qty}</TableCell>
                         <TableCell className="text-default-500">{item.unit || '—'}</TableCell>
                         <TableCell>฿{fmt(item.price)}</TableCell>
@@ -1303,7 +1309,7 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
         ? `<img src="${item.product_image}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:7px;border:1px solid #e5e7eb;display:inline-block" />`
         : `<div style="width:48px;height:48px;border-radius:7px;border:1px dashed #d1d5db;background:#f9fafb;display:inline-flex;align-items:center;justify-content:center;color:#9ca3af;font-size:9px">${t('pdf_no_image')}</div>`}
       </td>
-      <td style="padding:10px 8px;font-size:13px;color:#111827;font-weight:500">${item.description || '-'}</td>
+      <td style="padding:10px 8px;font-size:13px;color:#111827;font-weight:500">${item.description || '-'}${item.item_note ? `<div style="font-size:11px;color:#6b7280;font-weight:400;margin-top:2px">${t('lbl_notes')}: ${item.item_note}</div>` : ''}</td>
       <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:center">${item.qty}</td>
       <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:center">${item.unit || '-'}</td>
       <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:right">${fmtN(item.price)}</td>
