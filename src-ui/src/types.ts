@@ -35,6 +35,35 @@ export interface DocumentItem {
   discount?: number
   amount: number
   product_image?: string | null
+  color?: string
+  size?: string
+  fabric_width?: string
+  chest?: string
+  length?: string
+  cut_qty?: number
+  received_qty?: number
+}
+
+export interface WorkOrderMeta {
+  pattern_code?: string
+  reference?: string
+  style?: string
+  fabric?: string
+  neck_width?: string
+  cutter?: string
+  sewer?: string
+  collar?: string
+  shoulder?: string
+  hem?: string
+  label_code?: string
+  label_method?: string
+  label_position?: string
+  printer?: string
+  bleach_house?: string
+  qc?: string
+  packing?: string
+  delivery?: string
+  sender?: string
 }
 
 export interface Payment {
@@ -71,6 +100,7 @@ export interface Document {
   total: number
   status: 'draft' | 'sent' | 'approved' | 'paid' | 'cancelled'
   notes?: string | null
+  meta?: string | WorkOrderMeta | null
   items?: DocumentItem[]
   payments?: Payment[]
   created_at?: string

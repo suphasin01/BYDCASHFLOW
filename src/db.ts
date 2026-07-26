@@ -61,6 +61,7 @@ db.exec(`
     vat          REAL    NOT NULL DEFAULT 0,
     total        REAL    NOT NULL DEFAULT 0,
     notes        TEXT,
+    meta         TEXT,
     ref_doc_id   INTEGER REFERENCES documents(id),
     created_at   TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
     updated_at   TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
@@ -77,6 +78,13 @@ db.exec(`
     discount     REAL    NOT NULL DEFAULT 0,
     amount       REAL    NOT NULL DEFAULT 0,
     sort_order   INTEGER NOT NULL DEFAULT 0
+    ,color       TEXT
+    ,size        TEXT
+    ,fabric_width TEXT
+    ,chest       TEXT
+    ,length      TEXT
+    ,cut_qty     REAL NOT NULL DEFAULT 0
+    ,received_qty REAL NOT NULL DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS payments (
@@ -237,6 +245,10 @@ try { db.exec('ALTER TABLE employee_payments ADD COLUMN receipt_image TEXT'); } 
 try { db.exec('CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, category TEXT NOT NULL DEFAULT \'other\', amount REAL, doc_date TEXT, contact_name TEXT, reference TEXT, image_url TEXT, notes TEXT, created_at TEXT NOT NULL DEFAULT (datetime(\'now\',\'localtime\')))'); } catch {}
 try { db.exec('ALTER TABLE pay_slips ADD COLUMN receipt_image TEXT'); } catch {}
 try { db.exec('ALTER TABLE products ADD COLUMN image_url TEXT'); } catch {}
+try { db.exec('ALTER TABLE documents ADD COLUMN meta TEXT'); } catch {}
+for (const col of ['color TEXT','size TEXT','fabric_width TEXT','chest TEXT','length TEXT','cut_qty REAL NOT NULL DEFAULT 0','received_qty REAL NOT NULL DEFAULT 0']) {
+  try { db.exec(`ALTER TABLE document_items ADD COLUMN ${col}`); } catch {}
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -369,25 +381,27 @@ export const documentRepo = {
   },
   create: (data: Record<string, unknown>, items: Record<string, unknown>[] = []) => {
     if (!data.number) data.number = generateDocNumber(data.type as string);
-    const r = run(`INSERT INTO documents (type,number,contact_id,contact_name,date,due_date,status,subtotal,discount,vat,total,notes,ref_doc_id) VALUES (:type,:number,:contact_id,:contact_name,:date,:due_date,:status,:subtotal,:discount,:vat,:total,:notes,:ref_doc_id)`, {
+    const r = run(`INSERT INTO documents (type,number,contact_id,contact_name,date,due_date,status,subtotal,discount,vat,total,notes,meta,ref_doc_id) VALUES (:type,:number,:contact_id,:contact_name,:date,:due_date,:status,:subtotal,:discount,:vat,:total,:notes,:meta,:ref_doc_id)`, {
       ':type': data.type, ':number': data.number, ':contact_id': data.contact_id ?? null,
       ':contact_name': data.contact_name ?? null, ':date': data.date ?? new Date().toISOString().slice(0,10),
       ':due_date': data.due_date ?? null, ':status': data.status ?? 'draft',
       ':subtotal': data.subtotal ?? 0, ':discount': data.discount ?? 0, ':vat': data.vat ?? 0,
-      ':total': data.total ?? 0, ':notes': data.notes ?? null, ':ref_doc_id': data.ref_doc_id ?? null,
+      ':total': data.total ?? 0, ':notes': data.notes ?? null, ':meta': data.meta ?? null, ':ref_doc_id': data.ref_doc_id ?? null,
     });
     const docId = r.lastInsertRowid as number;
     items.forEach((item, idx) => {
-      run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order)`, {
+      run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:cut_qty,:received_qty)`, {
         ':document_id': docId, ':product_id': item.product_id ?? null,
         ':description': item.description ?? '', ':qty': item.qty ?? 1, ':unit': item.unit ?? null,
         ':price': item.price ?? 0, ':discount': item.discount ?? 0, ':amount': item.amount ?? 0, ':sort_order': idx,
+        ':color': item.color ?? null, ':size': item.size ?? null, ':fabric_width': item.fabric_width ?? null,
+        ':chest': item.chest ?? null, ':length': item.length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
       });
     });
     return documentRepo.get(docId);
   },
   update: (id: number, data: Record<string, unknown>, items?: Record<string, unknown>[]) => {
-    const allowed = ['number','contact_id','contact_name','date','due_date','status','subtotal','discount','vat','total','notes'];
+    const allowed = ['number','contact_id','contact_name','date','due_date','status','subtotal','discount','vat','total','notes','meta'];
     const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');
     if (fields) {
       const params: Record<string, unknown> = { ':id': id };
@@ -397,10 +411,12 @@ export const documentRepo = {
     if (items !== undefined) {
       db.prepare('DELETE FROM document_items WHERE document_id = ?').run(id);
       items.forEach((item, idx) => {
-        run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order)`, {
+        run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:cut_qty,:received_qty)`, {
           ':document_id': id, ':product_id': item.product_id ?? null,
           ':description': item.description ?? '', ':qty': item.qty ?? 1, ':unit': item.unit ?? null,
           ':price': item.price ?? 0, ':discount': item.discount ?? 0, ':amount': item.amount ?? 0, ':sort_order': idx,
+          ':color': item.color ?? null, ':size': item.size ?? null, ':fabric_width': item.fabric_width ?? null,
+          ':chest': item.chest ?? null, ':length': item.length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
         });
       });
     }
