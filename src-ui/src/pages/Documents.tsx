@@ -1163,14 +1163,14 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
     </div>
   </div>
   <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
-    <thead><tr style="background:#6366f1">
-      <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;color:#fff;width:40px">${t('pdf_item_no')}</th>
-      <th style="padding:11px 8px;text-align:center;font-size:12px;font-weight:600;color:#fff;width:66px">${t('pdf_image')}</th>
-      <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;color:#fff">${t('pdf_item_desc')}</th>
-      <th style="padding:11px 12px;text-align:center;font-size:12px;font-weight:600;color:#fff;width:70px">${t('pdf_qty')}</th>
-      <th style="padding:11px 12px;text-align:center;font-size:12px;font-weight:600;color:#fff;width:70px">${t('pdf_unit')}</th>
-      <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;color:#fff;width:110px">${t('pdf_unit_price')}</th>
-      <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;color:#fff;width:110px">${t('pdf_amount')}</th>
+    <thead><tr>
+      <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;color:#111827;width:40px;border:1px solid #9ca3af;background:#fff">${t('pdf_item_no')}</th>
+      <th style="padding:11px 8px;text-align:center;font-size:12px;font-weight:600;color:#111827;width:66px;border:1px solid #9ca3af;background:#fff">${t('pdf_image')}</th>
+      <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;color:#111827;border:1px solid #9ca3af;background:#fff">${t('pdf_item_desc')}</th>
+      <th style="padding:11px 12px;text-align:center;font-size:12px;font-weight:600;color:#111827;width:70px;border:1px solid #9ca3af;background:#fff">${t('pdf_qty')}</th>
+      <th style="padding:11px 12px;text-align:center;font-size:12px;font-weight:600;color:#111827;width:70px;border:1px solid #9ca3af;background:#fff">${t('pdf_unit')}</th>
+      <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;color:#111827;width:110px;border:1px solid #9ca3af;background:#fff">${t('pdf_unit_price')}</th>
+      <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;color:#111827;width:110px;border:1px solid #9ca3af;background:#fff">${t('pdf_amount')}</th>
     </tr></thead>
     <tbody>${itemsRows || `<tr><td colspan="7" style="padding:20px;text-align:center;color:#9ca3af;font-size:13px">${t('pdf_no_items')}</td></tr>`}</tbody>
   </table>
