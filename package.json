@@ -6,10 +6,10 @@
     "name": "Suphasin",
     "email": "support@localbiz.app"
   },
-  "homepage": "https://github.com/suphasin01/fruit",
+  "homepage": "https://github.com/suphasin01/BYDCASHFLOW",
   "repository": {
     "type": "git",
-    "url": "https://github.com/suphasin01/fruit.git"
+    "url": "https://github.com/suphasin01/BYDCASHFLOW.git"
   },
   "main": "electron/main.js",
   "scripts": {
@@ -20,11 +20,9 @@
     "mcp": "node dist/mcp.js",
     "electron": "npm run build:ui && npm run build && electron .",
     "dist": "npm run build:ui && npm run build && electron-builder",
-    "dist:win": "npm run build:ui && npm run build && electron-builder --win --publish always",
-    "dist:win-portable": "npm run build:ui && npm run build && electron-builder --win portable --publish always",
-    "dist:mac": "npm run build:ui && npm run build && electron-builder --mac --publish always",
-    "release:win": "npm run build:ui && npm run build && electron-builder --win --publish always",
-    "release:mac": "npm run build:ui && npm run build && electron-builder --mac --publish always"
+    "dist:win": "npm run build:ui && npm run build && electron-builder --win --publish never",
+    "dist:win-portable": "npm run build:ui && npm run build && electron-builder --win portable --publish never",
+    "dist:mac": "npm run build:ui && npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
@@ -63,12 +61,6 @@
     ],
     "extraMetadata": {
       "main": "electron/main.js"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "suphasin01",
-      "repo": "fruit",
-      "releaseType": "release"
     },
     "mac": {
       "target": [

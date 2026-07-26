@@ -22,7 +22,6 @@ src-ui/src/             — React frontend
   whtFormBg.ts          — Official RD blank form as base64 PNG (print background)
   whtFormFields.ts      — Exact AcroForm field positions (auto-generated)
 package.json            — electron-builder config under "build" field
-.github/workflows/release.yml — CI/CD build pipeline
 ```
 
 ## Withholding Tax (50 ทวิ) Certificate — EXACT form match
@@ -37,51 +36,20 @@ The printed certificate IS the official Revenue Department form, not a re-drawn 
   form's own font, present on Windows) with web fallbacks.
 - chk1..chk7 = ภ.ง.ด 1ก/1กพิเศษ/2/3/2ก/3ก/53; chk8..11 = payer type.
 
-## Build Pipeline (GitHub Actions)
-Triggered on: push to `main`, push of `v*` tags, `workflow_dispatch`
+## Local Builds Only
+GitHub Releases and automatic release workflows are intentionally disabled.
+Pushing to `main` must not build, publish, or upload installers.
 
-1. **build-windows** — NSIS installer, `--publish always` (creates the GitHub Release)
-2. **build-windows-portable** — Portable `.exe`, needs build-windows first
-3. **build-mac** — Two sequential DMG+zip steps, needs build-windows first
-
-### Mac DMG Build — CRITICAL RULES
-**Always build arm64 and x64 as separate sequential steps:**
-```yaml
-- run: npx electron-builder --mac --arm64 --publish always
-- run: npx electron-builder --mac --x64 --publish always
-```
-
-**Never use `--arch arm64` — wrong flag, electron-builder doesn't know it.**
-Correct flags: `--arm64`, `--x64` (boolean, no value).
-
-**Never put `arch` in package.json mac target** — if arch is specified in config,
-electron-builder ignores CLI flags and builds all listed arches in one run,
-causing hdiutil mount collision (`/Volumes/FruitBiz` already mounted).
-
-```json
-// CORRECT — no arch in config, CI flags control it
-"mac": { "target": [{ "target": "dmg" }, { "target": "zip" }] }
-
-// WRONG — causes both arches to build together → hdiutil error
-"mac": { "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }] }
-```
-
-**Must include `zip` target alongside `dmg`** — electron-updater needs the `.zip` for
-in-place Mac auto-updates. DMG alone → `latest-mac.yml` has no zip path → auto-update fails on Mac.
-
-### Windows Portable Upload — version tag
-Use package.json version, not `github.ref_name` (which is "main" for branch pushes):
-```powershell
-$version = node -e "console.log('v' + require('./package.json').version)"
-gh release upload $version $exe.FullName --clobber
-```
+- `npm run dist:win` builds the Windows installer locally with `--publish never`.
+- `npm run dist:win-portable` builds the portable Windows executable locally.
+- `npm run dist:mac` builds macOS artifacts locally with `--publish never`.
 
 ## Dependencies — Critical Versions
 - **better-sqlite3**: must be `^11.0.0` — v9.x uses C++17, conflicts with Electron v34 headers (requires C++20)
 - Mac rebuild needs: `CXXFLAGS="-std=c++20" npx @electron/rebuild -f -w better-sqlite3`
 
 ## electron-builder `files` Config
-Do NOT add `node_modules/**/*` explicitly — electron-builder auto-includes all `dependencies` from package.json. Explicit node_modules globs can accidentally exclude packages like `electron-updater`.
+Do NOT add `node_modules/**/*` explicitly — electron-builder auto-includes all `dependencies` from package.json.
 
 ```json
 "files": [
@@ -93,11 +61,9 @@ Do NOT add `node_modules/**/*` explicitly — electron-builder auto-includes all
 ]
 ```
 
-## Auto-Update (electron-updater)
-- Pulls from GitHub Releases of this repo (`suphasin01/fruit`)
-- `latest.yml` (Windows) / `latest-mac.yml` (Mac) is published automatically by electron-builder
-- Download progress is sent from main → renderer via `update-progress` IPC event
-- Preload exposes: `onUpdateStatus`, `onUpdateProgress`, `onUpdateNotAvailable`, `checkForUpdates`, `installUpdate`
+## Updates and GitHub Releases
+The installed application has no auto-update integration and does not connect to
+GitHub Releases. Do not add `electron-updater`, publish metadata, or release workflows.
 
 ## i18n (src-ui/src/i18n.ts)
 Three languages: `th` (Thai), `en` (English), `zh` (Chinese).
@@ -127,7 +93,5 @@ const navSections = [
 ]
 ```
 
-## Releasing a New Version
-1. Bump `"version"` in `package.json`
-2. Commit: `chore: release vX.X.X`
-3. Push to `main` → GitHub Actions builds and publishes automatically
+## Version Policy
+Do not bump the application version unless the user explicitly requests it.
