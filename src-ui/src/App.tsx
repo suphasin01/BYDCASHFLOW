@@ -11,7 +11,7 @@ import NotificationBell from './NotificationBell'
 import Btn from './ui/Btn'
 import Modal from './ui/Modal'
 import type { Company } from './types'
-import { getHealth, getActiveCompany, activateCompany as apiActivateCompany, getCompanies } from './api'
+import { getActiveCompany, activateCompany as apiActivateCompany, getCompanies } from './api'
 import { today } from './utils'
 import PeriodPicker from './PeriodPicker'
 import Dashboard from './pages/Dashboard'
@@ -72,13 +72,11 @@ export default function App() {
   const [page, setPage] = useState<Page>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [period, setPeriod] = useState(() => today().slice(0, 7))
-  const [apiOnline, setApiOnline] = useState(false)
   const [activeCompany, setActiveCompany] = useState<Company | null>(null)
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const [allCompanies, setAllCompanies] = useState<Company[]>([])
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') !== 'light')
-  const [appVersion, setAppVersion] = useState('')
   const [showSplash, setShowSplash] = useState(true)
 
   useEffect(() => {
@@ -86,11 +84,6 @@ export default function App() {
     document.documentElement.classList.toggle('dark', darkMode)
     localStorage.setItem('theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
-
-  useEffect(() => {
-    const api = (window as unknown as { electronAPI?: { getVersion: () => Promise<string> } }).electronAPI
-    api?.getVersion().then(v => setAppVersion(v)).catch(() => {})
-  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 2000)
@@ -112,16 +105,9 @@ export default function App() {
     try { setActiveCompany(await getActiveCompany()) } catch {}
   }, [])
 
-  const checkStatus = useCallback(async () => {
-    try { await getHealth(); setApiOnline(true) } catch { setApiOnline(false) }
-  }, [])
-
   useEffect(() => {
-    checkStatus()
     reloadCompany()
-    const interval = setInterval(checkStatus, 10000)
-    return () => clearInterval(interval)
-  }, [checkStatus, reloadCompany])
+  }, [reloadCompany])
 
   useEffect(() => {
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang
@@ -200,8 +186,8 @@ export default function App() {
           {showSplash && (
             <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center splash-out"
               style={{ background: 'radial-gradient(ellipse 80% 70% at 50% 40%, #1a1040 0%, #0a0f1e 100%)' }}>
-              <img src="/app-icon.png" alt="FruitBiz" className="splash-icon w-28 h-28 rounded-[28px] shadow-[0_0_80px_rgba(124,109,243,.7),0_24px_48px_rgba(0,0,0,.6)]" />
-              <div className="splash-text text-[26px] font-bold tracking-tight mt-6" style={{ color: '#f0f4ff' }}>FruitBiz</div>
+              <img src="/app-icon.png" alt="BYD CASHFLOW" className="splash-icon w-28 h-28 rounded-[28px] shadow-[0_0_80px_rgba(124,109,243,.7),0_24px_48px_rgba(0,0,0,.6)]" />
+              <div className="splash-text text-[26px] font-bold tracking-tight mt-6" style={{ color: '#f0f4ff' }}>BYD CASHFLOW</div>
               <div className="splash-sub text-[13px] mt-1" style={{ color: '#6b7685' }}>Business Management</div>
               <div className="mt-8 flex gap-1.5">
                 {[0,1,2].map(i => (
@@ -225,9 +211,9 @@ export default function App() {
               {/* Logo — drag region for Mac traffic lights */}
               <div className="drag px-5 pt-5 pb-4 flex items-center gap-2.5 border-b border-content3 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />
-                <img src="/app-icon.png" alt="FruitBiz" className="no-drag w-9 h-9 rounded-[10px] flex-shrink-0 object-cover shadow-[0_4px_12px_rgba(124,109,243,.6)] relative z-10" />
+                <img src="/app-icon.png" alt="BYD CASHFLOW" className="no-drag w-9 h-9 rounded-[10px] flex-shrink-0 object-cover shadow-[0_4px_12px_rgba(124,109,243,.6)] relative z-10" />
                 <div className="no-drag">
-                  <div className="text-[15px] font-bold tracking-tight">FruitBiz</div>
+                  <div className="text-[15px] font-bold tracking-tight">BYD CASHFLOW</div>
                   <div className="text-[10px] text-default-500 mt-px">{t('app_subtitle')}</div>
                 </div>
               </div>
@@ -285,14 +271,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Status */}
-              <div className="px-3.5 py-3 border-t border-content3 flex items-center gap-2">
-                <div className="flex items-center gap-1.5 bg-content2 rounded-full px-2.5 py-1.5 text-[11px] text-default-500 flex-1">
-                  <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 inline-block ${apiOnline ? 'bg-success shadow-[0_0_8px_rgba(34,211,160,0.6)]' : 'bg-danger shadow-[0_0_8px_rgba(248,113,113,0.5)]'}`} />
-                  <span>{apiOnline ? t('status_connected') : t('status_disconnected')}</span>
-                </div>
-                {appVersion && <span className="text-[10px] text-default-400 flex-shrink-0 tracking-wide">v{appVersion}</span>}
-              </div>
             </aside>
 
             {/* Main */}

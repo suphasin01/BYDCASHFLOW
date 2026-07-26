@@ -60,7 +60,6 @@ function apiRequest(method, path, body) {
 }
 
 // ── Get App Version IPC ───────────────────────────────────────────────
-ipcMain.handle('get-version', () => app.getVersion());
 
 // ── Get Local IP IPC ──────────────────────────────────────────────────
 ipcMain.handle('get-local-ip', () => {
