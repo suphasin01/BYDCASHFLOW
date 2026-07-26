@@ -84,6 +84,7 @@ db.exec(`
     ,fabric_width TEXT
     ,chest       TEXT
     ,length      TEXT
+    ,sleeve_length TEXT
     ,cut_qty     REAL NOT NULL DEFAULT 0
     ,received_qty REAL NOT NULL DEFAULT 0
   );
@@ -248,7 +249,7 @@ try { db.exec('ALTER TABLE pay_slips ADD COLUMN receipt_image TEXT'); } catch {}
 try { db.exec('ALTER TABLE products ADD COLUMN image_url TEXT'); } catch {}
 try { db.exec("ALTER TABLE products ADD COLUMN product_usage TEXT NOT NULL DEFAULT 'both'"); } catch {}
 try { db.exec('ALTER TABLE documents ADD COLUMN meta TEXT'); } catch {}
-for (const col of ['color TEXT','size TEXT','fabric_width TEXT','chest TEXT','length TEXT','cut_qty REAL NOT NULL DEFAULT 0','received_qty REAL NOT NULL DEFAULT 0']) {
+for (const col of ['color TEXT','size TEXT','fabric_width TEXT','chest TEXT','length TEXT','sleeve_length TEXT','cut_qty REAL NOT NULL DEFAULT 0','received_qty REAL NOT NULL DEFAULT 0']) {
   try { db.exec(`ALTER TABLE document_items ADD COLUMN ${col}`); } catch {}
 }
 try {
@@ -480,12 +481,12 @@ export const documentRepo = {
     });
     const docId = r.lastInsertRowid as number;
     items.forEach((item, idx) => {
-      run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:cut_qty,:received_qty)`, {
+      run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,sleeve_length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:sleeve_length,:cut_qty,:received_qty)`, {
         ':document_id': docId, ':product_id': item.product_id ?? null,
         ':description': item.description ?? '', ':qty': item.qty ?? 1, ':unit': item.unit ?? null,
         ':price': item.price ?? 0, ':discount': item.discount ?? 0, ':amount': item.amount ?? 0, ':sort_order': idx,
         ':color': item.color ?? null, ':size': item.size ?? null, ':fabric_width': item.fabric_width ?? null,
-        ':chest': item.chest ?? null, ':length': item.length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
+        ':chest': item.chest ?? null, ':length': item.length ?? null, ':sleeve_length': item.sleeve_length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
       });
     });
     return documentRepo.get(docId);
@@ -505,12 +506,12 @@ export const documentRepo = {
     if (items !== undefined) {
       db.prepare('DELETE FROM document_items WHERE document_id = ?').run(id);
       items.forEach((item, idx) => {
-        run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:cut_qty,:received_qty)`, {
+        run(`INSERT INTO document_items (document_id,product_id,description,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,sleeve_length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:sleeve_length,:cut_qty,:received_qty)`, {
           ':document_id': id, ':product_id': item.product_id ?? null,
           ':description': item.description ?? '', ':qty': item.qty ?? 1, ':unit': item.unit ?? null,
           ':price': item.price ?? 0, ':discount': item.discount ?? 0, ':amount': item.amount ?? 0, ':sort_order': idx,
           ':color': item.color ?? null, ':size': item.size ?? null, ':fabric_width': item.fabric_width ?? null,
-          ':chest': item.chest ?? null, ':length': item.length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
+          ':chest': item.chest ?? null, ':length': item.length ?? null, ':sleeve_length': item.sleeve_length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
         });
       });
     }

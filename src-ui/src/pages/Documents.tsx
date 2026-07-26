@@ -993,18 +993,18 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               </>}
               <div className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">{fType === 'work_order' ? 'รายการสั่งผลิต' : 'รายการสินค้า / บริการ'}</div>
               {fType === 'work_order' ? <>
-                <div className="grid gap-1 px-0.5" style={{ gridTemplateColumns: '120px 60px 60px 60px 60px 60px 70px 70px 70px 32px' }}>
-                  {['สินค้า','สี','ไซส์','หน้าผ้า','รอบอก','ยาว','จำนวนสั่ง','จำนวนตัด','จำนวนได้',''].map((h, i) =>
+                <div className="grid gap-1 px-0.5" style={{ gridTemplateColumns: '112px 52px 52px 55px 55px 55px 55px 65px 65px 65px 32px' }}>
+                  {['สินค้า','สี','ไซส์','หน้าผ้า','รอบอก','เสื้อยาว','แขนยาว','จำนวนสั่ง','จำนวนตัด','จำนวนได้',''].map((h, i) =>
                     <span key={i} className="text-[9px] font-medium text-default-500 text-center">{h}</span>)}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {items.map((item, i) => (
-                    <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: '120px 60px 60px 60px 60px 60px 70px 70px 70px 32px' }}>
+                    <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: '112px 52px 52px 55px 55px 55px 55px 65px 65px 65px 32px' }}>
                       <select className={SELECT_CLASS + ' text-[11px] px-1'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
                         const p = availableProducts.find(pr => String(pr.id) === e.target.value)
                         if (p) fillItemFromProduct(i, p)
                       }}><option value="">เลือก</option>{selectableProducts.map(p => <option key={p.id} value={p.id}>{p.code ? `${p.code} · ` : ''}{p.name}</option>)}</select>
-                      {(['color','size','fabric_width','chest','length'] as (keyof DocumentItem)[]).map(field =>
+                      {(['color','size','fabric_width','chest','length','sleeve_length'] as (keyof DocumentItem)[]).map(field =>
                         <TextField key={field} value={String(item[field] || '')} onChange={e => updateItem(i,field,e.target.value)} />)}
                       <TextField type="number" min={0} value={item.qty ? String(item.qty) : ''} onChange={e => updateItem(i,'qty',Number(e.target.value)||0)} />
                       <TextField type="number" min={0} value={item.cut_qty ? String(item.cut_qty) : ''} onChange={e => updateItem(i,'cut_qty',Number(e.target.value)||0)} />
@@ -1426,11 +1426,11 @@ function buildWorkOrderHtml(
   try { meta = typeof doc.meta === 'string' ? JSON.parse(doc.meta) : (doc.meta || {}) } catch {}
   const rows = (doc.items || []).map((item, i) => `<tr>
     <td class="center">${i + 1}</td><td class="center">${item.color || ''}</td><td class="center">${item.size || ''}</td>
-    <td class="center">${item.fabric_width || ''}</td><td class="center">${item.chest || ''}</td><td class="center">${item.length || ''}</td>
+    <td class="center">${item.fabric_width || ''}</td><td class="center">${item.chest || ''}</td><td class="center">${item.length || ''}</td><td class="center">${item.sleeve_length || ''}</td>
     <td class="center">${item.qty || 0}</td><td class="center">${item.cut_qty || ''}</td><td class="center">${item.received_qty || ''}</td>
   </tr>`).join('')
   const blanks = Array.from({ length: Math.max(0, 10 - (doc.items || []).length) }, (_, i) =>
-    `<tr><td class="center">${(doc.items || []).length + i + 1}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')
+    `<tr><td class="center">${(doc.items || []).length + i + 1}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')
   return printShell(`ใบสั่งงาน ${doc.number || ''}`, `
     <div class="center bold" style="font-size:58px;line-height:1.2;margin:20px 0 24px">No:${doc.number || '-'}</div>
     <table>
@@ -1439,8 +1439,8 @@ function buildWorkOrderHtml(
       <tr><th>กำหนดส่ง</th><td>${fmtD(doc.due_date)}</td><th>ผ้า</th><td>${meta.fabric || ''}</td></tr>
       <tr><td colspan="2" style="border:0"></td><th>หมายเหตุ</th><td style="background:#fff900">${meta.cutting_note || doc.notes || ''}</td></tr>
     </table>
-    <table><thead><tr style="background:#e5e7eb"><th>No.</th><th>สี</th><th>ไซส์</th><th>หน้าผ้า</th><th>รอบอก</th><th>ยาว</th><th>จำนวน(สั่ง)</th><th>จำนวน(ตัด)</th><th>จำนวน(ได้)</th></tr></thead>
-    <tbody>${rows}${blanks}<tr><td colspan="6" class="right bold">รวม</td><td class="center bold">${(doc.items || []).reduce((s,i)=>s+(Number(i.qty)||0),0)}</td><td colspan="2"></td></tr></tbody></table>
+    <table><thead><tr style="background:#e5e7eb"><th>No.</th><th>สี</th><th>ไซส์</th><th>หน้าผ้า</th><th>รอบอก</th><th>เสื้อยาว</th><th>แขนยาว</th><th>จำนวน(สั่ง)</th><th>จำนวน(ตัด)</th><th>จำนวน(ได้)</th></tr></thead>
+    <tbody>${rows}${blanks}<tr><td colspan="7" class="right bold">รวม</td><td class="center bold">${(doc.items || []).reduce((s,i)=>s+(Number(i.qty)||0),0)}</td><td colspan="2"></td></tr></tbody></table>
     <div style="display:grid;grid-template-columns:1fr 1fr;align-items:stretch">
     <div style="border:1px solid #000;border-right:0;min-height:300px;padding:8px;text-align:center">
       <div class="bold" style="font-size:18px;margin-bottom:8px">แบบป้าย</div>

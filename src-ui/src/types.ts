@@ -42,6 +42,7 @@ export interface DocumentItem {
   fabric_width?: string
   chest?: string
   length?: string
+  sleeve_length?: string
   cut_qty?: number
   received_qty?: number
   remaining_qty?: number
