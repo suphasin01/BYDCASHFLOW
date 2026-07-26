@@ -958,8 +958,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                 <SectionLabel label="ข้อมูลใบสั่งงานตัด" />
                 <div className="grid grid-cols-3 gap-3">
                   {([
-                    ['รหัส Pattern','pattern_code'], ['อ้างอิง','reference'], ['ทรง','style'],
-                    ['ผ้า','fabric'], ['ตัดคอหนา (ซม.)','neck_width'], ['โรงตัด','cutter'],
+                    ['ทรง','style'], ['ผ้า','fabric'], ['หมายเหตุงานตัด','cutting_note'],
                   ] as [string, keyof WorkOrderMeta][]).map(([label, field]) =>
                     <TextField key={field} label={label} value={workMeta[field] || ''} onChange={e => setWorkMeta(m => ({ ...m, [field]: e.target.value }))} />
                   )}
@@ -967,18 +966,17 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               </>}
               <div className="text-[11px] font-semibold text-default-500 uppercase tracking-wide">{fType === 'work_order' ? 'รายการสั่งผลิต' : 'รายการสินค้า / บริการ'}</div>
               {fType === 'work_order' ? <>
-                <div className="grid gap-1 px-0.5" style={{ gridTemplateColumns: '110px 1.6fr 55px 55px 55px 55px 55px 62px 62px 62px 32px' }}>
-                  {['สินค้า','รายละเอียด','สี','ไซส์','หน้าผ้า','รอบอก','ยาว','จำนวนสั่ง','จำนวนตัด','จำนวนได้',''].map((h, i) =>
+                <div className="grid gap-1 px-0.5" style={{ gridTemplateColumns: '120px 60px 60px 60px 60px 60px 70px 70px 70px 32px' }}>
+                  {['สินค้า','สี','ไซส์','หน้าผ้า','รอบอก','ยาว','จำนวนสั่ง','จำนวนตัด','จำนวนได้',''].map((h, i) =>
                     <span key={i} className="text-[9px] font-medium text-default-500 text-center">{h}</span>)}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   {items.map((item, i) => (
-                    <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: '110px 1.6fr 55px 55px 55px 55px 55px 62px 62px 62px 32px' }}>
+                    <div key={i} className="grid gap-1 items-center" style={{ gridTemplateColumns: '120px 60px 60px 60px 60px 60px 70px 70px 70px 32px' }}>
                       <select className={SELECT_CLASS + ' text-[11px] px-1'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
                         const p = products.find(pr => String(pr.id) === e.target.value)
                         if (p) setItems(prev => { const next=[...prev]; next[i]={...next[i],product_id:p.id,description:p.name,unit:p.unit || '',price:p.price,amount:(next[i].qty || 1)*p.price}; return next })
                       }}><option value="">เลือก</option>{products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
-                      <TextField value={item.description} onChange={e => updateItem(i,'description',e.target.value)} />
                       {(['color','size','fabric_width','chest','length'] as (keyof DocumentItem)[]).map(field =>
                         <TextField key={field} value={String(item[field] || '')} onChange={e => updateItem(i,field,e.target.value)} />)}
                       <TextField type="number" min={0} value={item.qty ? String(item.qty) : ''} onChange={e => updateItem(i,'qty',Number(e.target.value)||0)} />
@@ -989,13 +987,12 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   ))}
                 </div>
                 <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description:'',qty:1,unit:'',price:0,amount:0 }])}>เพิ่มรายการสั่งผลิต</Btn>
-                <SectionLabel label="งานเย็บ / งานพิมพ์ / จัดส่ง" />
+                <SectionLabel label="งานเย็บ / งานเพิ่มเติม" />
                 <div className="grid grid-cols-3 gap-3">
                   {([
-                    ['โรงเย็บ','sewer'], ['คอเสื้อ','collar'], ['ไหล่','shoulder'], ['ชายเสื้อ/แขน','hem'],
-                    ['รหัสป้าย','label_code'], ['วิธีเย็บป้าย','label_method'], ['ตำแหน่งป้าย','label_position'],
-                    ['โรงพิมพ์','printer'], ['โรงฟอก','bleach_house'], ['ตรวจ QC','qc'], ['พับแพ็ค','packing'],
-                    ['จัดส่ง','delivery'], ['ผู้ส่ง','sender'],
+                    ['คอเสื้อ','collar'], ['ไหล่','shoulder'], ['ชายเสื้อ','hem'], ['แขน','sleeve'],
+                    ['ตำแหน่งป้ายคอ','label_position'], ['อื่นๆ','other_sewing'],
+                    ['ตรวจ QC','qc'], ['จัดส่ง','delivery'],
                   ] as [string, keyof WorkOrderMeta][]).map(([label, field]) =>
                     <TextField key={field} label={label} value={workMeta[field] || ''} onChange={e => setWorkMeta(m => ({ ...m, [field]: e.target.value }))} />
                   )}
@@ -1128,7 +1125,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   <span>รวม</span><span className="text-success">฿{fmt(total)}</span>
                 </div>
               )}
-              <TextAreaField label={t('lbl_notes')} value={fNotes} onChange={e => setFNotes(e.target.value)} />
+              {fType !== 'work_order' && <TextAreaField label={t('lbl_notes')} value={fNotes} onChange={e => setFNotes(e.target.value)} />}
             </div>
           )}
         </div>
@@ -1396,46 +1393,49 @@ function buildDeliveryNoteHtml(
 
 function buildWorkOrderHtml(
   doc: Document, company: Company | null,
-  fmtN: (n: number | undefined | null) => string,
+  _fmtN: (n: number | undefined | null) => string,
   fmtD: (d: string | undefined | null) => string,
 ): string {
   let meta: WorkOrderMeta = {}
   try { meta = typeof doc.meta === 'string' ? JSON.parse(doc.meta) : (doc.meta || {}) } catch {}
   const rows = (doc.items || []).map((item, i) => `<tr>
-    <td class="center">${i + 1}</td><td>${item.color || ''}</td><td class="center">${item.size || ''}</td>
-    <td>${item.fabric_width || ''}</td><td>${item.chest || ''}</td><td>${item.length || ''}</td>
+    <td class="center">${i + 1}</td><td class="center">${item.color || ''}</td><td class="center">${item.size || ''}</td>
+    <td class="center">${item.fabric_width || ''}</td><td class="center">${item.chest || ''}</td><td class="center">${item.length || ''}</td>
     <td class="center">${item.qty || 0}</td><td class="center">${item.cut_qty || ''}</td><td class="center">${item.received_qty || ''}</td>
   </tr>`).join('')
-  const blanks = Array.from({ length: Math.max(5, 10 - (doc.items || []).length) }, (_, i) =>
+  const blanks = Array.from({ length: Math.max(0, 10 - (doc.items || []).length) }, (_, i) =>
     `<tr><td class="center">${(doc.items || []).length + i + 1}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')
   return printShell(`ใบสั่งงาน ${doc.number || ''}`, `
-    <table><tr><td>Printed No.</td><td style="background:#fff500" class="center bold">PRODUCT</td><td>Printed on</td><td>${fmtD(doc.date)}</td><td>Printed by</td><td></td></tr></table>
-    <div class="center bold" style="font-size:70px;line-height:1.25;letter-spacing:3px">${doc.number || 'WORK ORDER'}</div>
-    <table><tr><td class="bold">ลูกค้า</td><td colspan="3">${doc.contact_name || '-'}</td><td class="bold">Inv. NO</td><td>${doc.number || '-'}</td></tr>
-    <tr><td class="bold">เริ่มงาน</td><td colspan="3">${fmtD(doc.date)}</td><td class="bold">กำหนดส่ง</td><td>${fmtD(doc.due_date)}</td></tr>
-    <tr style="background:#d9f2ff"><th colspan="4">ใบสั่งงานตัด</th><th>โรงตัด</th><th>${meta.cutter || ''}</th></tr>
-    <tr><td class="bold">รหัส Pattern</td><td>${meta.pattern_code || ''}</td><td class="bold">อ้างอิง</td><td>${meta.reference || ''}</td><td class="bold">ทรง</td><td>${meta.style || ''}</td></tr>
-    <tr><td class="bold">ตัดคอหนา(ซม.)</td><td colspan="3">${meta.neck_width || ''}</td><td class="bold">ผ้า</td><td>${meta.fabric || ''}</td></tr></table>
-    <table><thead><tr style="background:#111827;color:#fff"><th>NO.</th><th>สี</th><th>ไซส์</th><th>หน้าผ้า</th><th>รอบอก</th><th>ยาว</th><th>จำนวน(สั่ง)</th><th>จำนวน(ตัด)</th><th>จำนวน(ได้)</th></tr></thead>
+    <div class="center bold" style="font-size:58px;line-height:1.2;margin:20px 0 24px">No:${doc.number || '-'}</div>
+    <table>
+      <tr><th style="width:11%">ลูกค้า</th><td style="width:39%">${doc.contact_name || '-'}</td><th colspan="2" style="width:50%;background:#f4dede;font-size:22px">ใบสั่งงานตัด</th></tr>
+      <tr><th>วันที่</th><td>${fmtD(doc.date)}</td><th style="width:14%">ทรง</th><td>${meta.style || ''}</td></tr>
+      <tr><th>กำหนดส่ง</th><td>${fmtD(doc.due_date)}</td><th>ผ้า</th><td>${meta.fabric || ''}</td></tr>
+      <tr><td colspan="2" style="border:0"></td><th>หมายเหตุ</th><td style="background:#fff900">${meta.cutting_note || doc.notes || ''}</td></tr>
+    </table>
+    <table><thead><tr style="background:#e5e7eb"><th>No.</th><th>สี</th><th>ไซส์</th><th>หน้าผ้า</th><th>รอบอก</th><th>ยาว</th><th>จำนวน(สั่ง)</th><th>จำนวน(ตัด)</th><th>จำนวน(ได้)</th></tr></thead>
     <tbody>${rows}${blanks}<tr><td colspan="6" class="right bold">รวม</td><td class="center bold">${(doc.items || []).reduce((s,i)=>s+(Number(i.qty)||0),0)}</td><td colspan="2"></td></tr></tbody></table>
     <div style="display:grid;grid-template-columns:1fr 1fr;align-items:stretch">
-    <div style="border:1px solid #000;border-right:0;min-height:250px;padding:8px;text-align:center">
+    <div style="border:1px solid #000;border-right:0;min-height:300px;padding:8px;text-align:center">
       <div class="bold" style="font-size:18px;margin-bottom:8px">แบบป้าย</div>
       ${meta.label_image
-        ? `<img src="${meta.label_image}" alt="แบบป้าย" style="width:100%;height:205px;object-fit:contain;display:block" />`
-        : `<div style="height:205px;display:flex;align-items:center;justify-content:center;color:#777">ไม่มีรูปแบบป้าย</div>`}
+        ? `<img src="${meta.label_image}" alt="แบบป้าย" style="width:100%;height:250px;object-fit:contain;display:block" />`
+        : `<div style="height:250px;display:flex;align-items:center;justify-content:center;color:#777">ไม่มีรูปแบบป้าย</div>`}
     </div>
-    <table><tr style="background:#d6fae8"><th colspan="4">ใบสั่งงานเย็บ</th><th>โรงเย็บ</th><td colspan="4">${meta.sewer || ''}</td></tr>
-    <tr><th>คอเสื้อ</th><td colspan="3">${meta.collar || ''}</td><th>ไหล่</th><td colspan="4">${meta.shoulder || ''}</td></tr>
-    <tr><th>ชายเสื้อ/แขน</th><td colspan="3">${meta.hem || ''}</td><th>รหัสป้าย</th><td colspan="4">${meta.label_code || ''}</td></tr>
-    <tr><th>วิธีเย็บป้าย</th><td colspan="3">${meta.label_method || ''}</td><th>ตำแหน่งป้าย</th><td colspan="4">${meta.label_position || ''}</td></tr>
-    <tr style="background:#fff0cf"><th colspan="4">ใบสั่งงานพิมพ์</th><th>โรงฟอก</th><td colspan="4">${meta.bleach_house || ''}</td></tr>
-    <tr><th>โรงพิมพ์</th><td colspan="3">${meta.printer || ''}</td><th>ตรวจ QC</th><td colspan="4">${meta.qc || ''}</td></tr>
-    <tr><th>พับแพ็ค</th><td colspan="3">${meta.packing || ''}</td><th>หมายเหตุ</th><td colspan="4">${doc.notes || ''}</td></tr>
-    <tr><th>จัดส่ง</th><td colspan="3">${meta.delivery || ''}</td><th>ผู้ส่ง</th><td colspan="4">${meta.sender || ''}</td></tr></table>
+    <table>
+      <tr style="background:#dce9bd"><th colspan="2" style="font-size:20px">ใบสั่งเย็บ</th></tr>
+      <tr><th style="width:36%">คอเสื้อ</th><td>${meta.collar || ''}</td></tr>
+      <tr><th>ไหล่</th><td>${meta.shoulder || ''}</td></tr>
+      <tr><th>ชายเสื้อ</th><td>${meta.hem || ''}</td></tr>
+      <tr><th>แขน</th><td>${meta.sleeve || ''}</td></tr>
+      <tr><th>ตำแหน่งป้ายคอ</th><td>${meta.label_position || ''}</td></tr>
+      <tr><th>อื่นๆ</th><td>${meta.other_sewing || ''}</td></tr>
+      <tr style="background:#fffde0"><th colspan="2" style="font-size:18px">ใบสั่งเพิ่มเติม</th></tr>
+      <tr><th>ตรวจ QC</th><td>${meta.qc || ''}</td></tr>
+      <tr><th>จัดส่ง</th><td>${meta.delivery || ''}</td></tr>
+    </table>
     </div>
-    <div style="margin-top:8px;text-align:right"><b>มูลค่างาน:</b> ${fmtN(doc.total)}</div>
-  `, true)
+  `)
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────

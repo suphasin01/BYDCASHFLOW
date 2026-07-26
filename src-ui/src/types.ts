@@ -61,6 +61,9 @@ export interface WorkOrderMeta {
   label_method?: string
   label_position?: string
   label_image?: string
+  cutting_note?: string
+  sleeve?: string
+  other_sewing?: string
   printer?: string
   bleach_house?: string
   qc?: string
