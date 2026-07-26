@@ -171,7 +171,7 @@ export default function App() {
 
   const navSections = [
     { label: t('nav_sec_main'), items: ['dashboard', 'payments'] },
-    { label: t('nav_sec_docs'), items: ['documents', 'withholding_tax', 'pay_slips'] },
+    { label: t('nav_sec_docs'), items: ['documents', 'pay_slips'] },
     { label: t('nav_sec_data'), items: ['contacts', 'products', 'employees', 'evidence'] },
     { label: t('nav_sec_analyze'), items: ['reports'] },
     { label: '', items: ['companies', 'settings'] },
