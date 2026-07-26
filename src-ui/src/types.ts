@@ -21,6 +21,7 @@ export interface Product {
   vat_type: 'excluded' | 'included' | 'none'
   category?: string | null
   description?: string | null
+  image_url?: string | null
   created_at?: string
 }
 
@@ -33,6 +34,7 @@ export interface DocumentItem {
   price: number
   discount?: number
   amount: number
+  product_image?: string | null
 }
 
 export interface Payment {

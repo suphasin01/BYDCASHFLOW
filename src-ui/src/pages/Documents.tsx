@@ -1105,7 +1105,18 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
     ? `<img src="${company.logo_url}" style="max-height:64px;max-width:140px;object-fit:contain" />`
     : `<div style="width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff">${(company?.name || 'B').slice(0, 2)}</div>`
   const itemsRows = (doc.items || []).map((item, i) =>
-    `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:10px 12px;font-size:13px;color:#374151">${i + 1}</td><td style="padding:10px 12px;font-size:13px;color:#111827;font-weight:500">${item.description || '-'}</td><td style="padding:10px 12px;font-size:13px;color:#374151;text-align:center">${item.qty}</td><td style="padding:10px 12px;font-size:13px;color:#374151;text-align:center">${item.unit || '-'}</td><td style="padding:10px 12px;font-size:13px;color:#374151;text-align:right">${fmtN(item.price)}</td><td style="padding:10px 12px;font-size:13px;color:#111827;font-weight:600;text-align:right">${fmtN(item.amount)}</td></tr>`
+    `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:10px 8px;font-size:13px;color:#374151">${i + 1}</td>
+      <td style="padding:7px 8px;text-align:center">${item.product_image
+        ? `<img src="${item.product_image}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:7px;border:1px solid #e5e7eb;display:inline-block" />`
+        : `<div style="width:48px;height:48px;border-radius:7px;border:1px dashed #d1d5db;background:#f9fafb;display:inline-flex;align-items:center;justify-content:center;color:#9ca3af;font-size:9px">${t('pdf_no_image')}</div>`}
+      </td>
+      <td style="padding:10px 8px;font-size:13px;color:#111827;font-weight:500">${item.description || '-'}</td>
+      <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:center">${item.qty}</td>
+      <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:center">${item.unit || '-'}</td>
+      <td style="padding:10px 8px;font-size:13px;color:#374151;text-align:right">${fmtN(item.price)}</td>
+      <td style="padding:10px 8px;font-size:13px;color:#111827;font-weight:600;text-align:right">${fmtN(item.amount)}</td>
+    </tr>`
   ).join('')
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${docTitle} ${doc.number || ''}</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1154,13 +1165,14 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
   <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
     <thead><tr style="background:#6366f1">
       <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;color:#fff;width:40px">${t('pdf_item_no')}</th>
+      <th style="padding:11px 8px;text-align:center;font-size:12px;font-weight:600;color:#fff;width:66px">${t('pdf_image')}</th>
       <th style="padding:11px 12px;text-align:left;font-size:12px;font-weight:600;color:#fff">${t('pdf_item_desc')}</th>
       <th style="padding:11px 12px;text-align:center;font-size:12px;font-weight:600;color:#fff;width:70px">${t('pdf_qty')}</th>
       <th style="padding:11px 12px;text-align:center;font-size:12px;font-weight:600;color:#fff;width:70px">${t('pdf_unit')}</th>
       <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;color:#fff;width:110px">${t('pdf_unit_price')}</th>
       <th style="padding:11px 12px;text-align:right;font-size:12px;font-weight:600;color:#fff;width:110px">${t('pdf_amount')}</th>
     </tr></thead>
-    <tbody>${itemsRows || `<tr><td colspan="6" style="padding:20px;text-align:center;color:#9ca3af;font-size:13px">${t('pdf_no_items')}</td></tr>`}</tbody>
+    <tbody>${itemsRows || `<tr><td colspan="7" style="padding:20px;text-align:center;color:#9ca3af;font-size:13px">${t('pdf_no_items')}</td></tr>`}</tbody>
   </table>
   <div style="display:flex;justify-content:flex-end;margin-bottom:28px">
     <div style="width:300px">

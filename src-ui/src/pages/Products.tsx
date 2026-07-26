@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ImageIcon, Upload, X } from 'lucide-react'
 import {
   Card, CardBody, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
@@ -33,6 +34,8 @@ export default function Products() {
   const [fVat, setFVat] = useState<'excluded' | 'included' | 'none'>('excluded')
   const [fCategory, setFCategory] = useState('')
   const [fDescription, setFDescription] = useState('')
+  const [fImage, setFImage] = useState<string | null>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const load = async (q?: string) => {
     setLoading(true)
@@ -44,19 +47,19 @@ export default function Products() {
 
   const openCreate = () => {
     setEditing(null)
-    setFCode(''); setFName(''); setFPrice(0); setFUnit(''); setFVat('excluded'); setFCategory(''); setFDescription('')
+    setFCode(''); setFName(''); setFPrice(0); setFUnit(''); setFVat('excluded'); setFCategory(''); setFDescription(''); setFImage(null)
     setModal(true)
   }
 
   const openEdit = (p: Product) => {
     setEditing(p)
-    setFCode(p.code || ''); setFName(p.name); setFPrice(p.price); setFUnit(p.unit || ''); setFVat(p.vat_type); setFCategory(p.category || ''); setFDescription(p.description || '')
+    setFCode(p.code || ''); setFName(p.name); setFPrice(p.price); setFUnit(p.unit || ''); setFVat(p.vat_type); setFCategory(p.category || ''); setFDescription(p.description || ''); setFImage(p.image_url || null)
     setModal(true)
   }
 
   const save = async () => {
     try {
-      const payload = { code: fCode || null, name: fName, price: fPrice, unit: fUnit || null, vat_type: fVat, category: fCategory || null, description: fDescription || null }
+      const payload = { code: fCode || null, name: fName, price: fPrice, unit: fUnit || null, vat_type: fVat, category: fCategory || null, description: fDescription || null, image_url: fImage }
       if (editing) { await updateProduct(editing.id, payload); toast(t('toast_product_edited')) }
       else { await createProduct(payload); toast(t('toast_product_added')) }
       setModal(false); load()
@@ -67,6 +70,15 @@ export default function Products() {
     if (!confirm(t('confirm_delete_product'))) return
     try { await deleteProduct(id); toast(t('toast_product_deleted')); load() }
     catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  const chooseImage = (file?: File) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) { toast(t('err_image_type'), 'err'); return }
+    if (file.size > 5 * 1024 * 1024) { toast(t('err_image_size'), 'err'); return }
+    const reader = new FileReader()
+    reader.onload = e => setFImage(String(e.target?.result || ''))
+    reader.readAsDataURL(file)
   }
 
   const vatBadge = (vt: string): { color: ChipColor; label: string } => {
@@ -94,6 +106,7 @@ export default function Products() {
             <Table removeWrapper aria-label={t('btn_add_product')}
               classNames={{ th: 'bg-transparent text-default-500 uppercase text-[11px]', td: 'text-[13px]' }}>
               <TableHeader>
+                <TableColumn>{t('col_image')}</TableColumn>
                 <TableColumn>{t('col_code')}</TableColumn>
                 <TableColumn>{t('col_product_name')}</TableColumn>
                 <TableColumn>{t('col_price')}</TableColumn>
@@ -112,6 +125,11 @@ export default function Products() {
                   const vb = vatBadge(p.vat_type)
                   return (
                     <TableRow key={p.id} className="hover:bg-content2/60 transition-colors">
+                      <TableCell>
+                        {p.image_url
+                          ? <img src={p.image_url} alt={p.name} className="w-11 h-11 rounded-lg object-cover border border-content3 bg-content2" />
+                          : <div className="w-11 h-11 rounded-lg border border-dashed border-content3 bg-content2 flex items-center justify-center text-default-400"><ImageIcon size={17} /></div>}
+                      </TableCell>
                       <TableCell className="text-default-500">{p.code || '—'}</TableCell>
                       <TableCell>
                         <div className="font-medium">{p.name}</div>
@@ -145,6 +163,27 @@ export default function Products() {
           <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
         </>}>
         <div className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5">{t('lbl_product_image')}</label>
+                  <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => { chooseImage(e.target.files?.[0]); e.target.value = '' }} />
+                  {fImage ? (
+                    <div className="relative w-full h-44 rounded-xl overflow-hidden border border-content3 bg-content2">
+                      <img src={fImage} alt={fName || t('lbl_product_image')} className="w-full h-full object-contain" />
+                      <button type="button" onClick={() => setFImage(null)}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-danger/85 text-white flex items-center justify-center cursor-pointer hover:bg-danger">
+                        <X size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => imageInputRef.current?.click()}
+                      className="w-full h-32 border-2 border-dashed border-content3 rounded-xl flex flex-col items-center justify-center gap-2 text-default-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-colors cursor-pointer">
+                      <Upload size={22} />
+                      <span className="text-[12px]">{t('btn_upload_image')}</span>
+                    </button>
+                  )}
+                  {fImage && <Btn size="sm" variant="ghost" className="mt-2" onClick={() => imageInputRef.current?.click()}>{t('btn_change_image')}</Btn>}
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <TextField label={t('lbl_product_code')}
                     value={fCode} onChange={e => setFCode(e.target.value)} />
