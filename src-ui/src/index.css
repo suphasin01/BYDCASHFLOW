@@ -148,6 +148,57 @@ select option {
   transform: translateY(2px);
 }
 
+/* Flat, high-contrast button treatment */
+.btn-3d-primary,
+.btn-3d-success {
+  background: #16a34a;
+  border: 1px solid #15803d;
+  box-shadow: none;
+  color: #fff;
+  transition: background-color .15s ease;
+  transform: none;
+}
+.btn-3d-primary:hover:not(:disabled),
+.btn-3d-success:hover:not(:disabled) {
+  background: #15803d;
+  box-shadow: none;
+  transform: none;
+}
+.btn-3d-primary:active:not(:disabled),
+.btn-3d-success:active:not(:disabled) {
+  background: #166534;
+  box-shadow: none;
+  transform: none;
+}
+.btn-3d-ghost,
+[data-theme="light"] .btn-3d-ghost {
+  box-shadow: none;
+  transform: none;
+}
+.btn-3d-ghost:hover:not(:disabled),
+.btn-3d-ghost:active:not(:disabled),
+[data-theme="light"] .btn-3d-ghost:hover:not(:disabled) {
+  box-shadow: none;
+  transform: none;
+}
+.btn-3d-danger {
+  background: #dc2626;
+  border: 1px solid #b91c1c;
+  box-shadow: none;
+  transition: background-color .15s ease;
+  transform: none;
+}
+.btn-3d-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  box-shadow: none;
+  transform: none;
+}
+.btn-3d-danger:active:not(:disabled) {
+  background: #991b1b;
+  box-shadow: none;
+  transform: none;
+}
+
 /* ── Nav items ───────────────────────────────────────────────── */
 .nav-item-active {
   background: linear-gradient(90deg, rgba(124,109,243,.25) 0%, rgba(124,109,243,.07) 100%);

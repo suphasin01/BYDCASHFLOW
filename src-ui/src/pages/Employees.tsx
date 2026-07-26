@@ -276,7 +276,7 @@ export default function Employees() {
                         </div>
                       ) : (
                         <button onClick={() => openPay(emp)} title={t('emp_btn_pay_salary')} aria-label={t('emp_btn_pay_salary')}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg btn-3d-primary hover-grow">
+                          className="w-8 h-8 flex items-center justify-center rounded-md btn-3d-primary">
                           <Wallet size={15} strokeWidth={2} />
                         </button>
                       )}

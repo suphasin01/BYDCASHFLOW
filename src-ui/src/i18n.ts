@@ -755,7 +755,7 @@ export const I18nContext = createContext<I18nContextType>({
 })
 
 export function useI18nState() {
-  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('lang') as Lang) || 'th')
+  const [lang, setLang] = useState<Lang>(() => localStorage.getItem('lang') === 'en' ? 'en' : 'th')
 
   const t = useCallback((key: string): string => {
     const val = (I18N[lang] || I18N.th)[key] ?? (I18N.th as Record<string, unknown>)[key] ?? key

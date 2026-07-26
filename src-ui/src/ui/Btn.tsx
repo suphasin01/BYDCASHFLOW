@@ -17,8 +17,8 @@ const VARIANTS: Record<Variant, string> = {
   success: 'btn-3d-success',
 }
 const SIZES: Record<Size, string> = {
-  sm: 'text-xs px-3 py-1.5 rounded-lg gap-1.5',
-  md: 'text-[13px] px-4 py-2 rounded-lg gap-2',
+  sm: 'text-xs px-3 py-1.5 rounded-md gap-1.5',
+  md: 'text-[13px] px-4 py-2 rounded-md gap-2',
 }
 
 export default function Btn({ variant = 'primary', size = 'md', startContent, isLoading, className = '', children, disabled, ...rest }: BtnProps) {
