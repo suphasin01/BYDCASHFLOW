@@ -265,6 +265,7 @@ function all<T = unknown>(sql: string, ...params: unknown[]): T[] {
 // ── Auto-number generator ──────────────────────────────────────────────────────────────
 
 const prefixMap: Record<string, string> = {
+  delivery_tax_invoice: 'DTI', delivery_note: 'DN', work_order: 'WO',
   quotation: 'QT', invoice: 'INV', receipt: 'REC',
   billing_note: 'BN', cash_invoice: 'CI', purchase_order: 'PO', expense: 'EXP',
 };
@@ -416,7 +417,7 @@ export const documentRepo = {
   listForPayments: (direction?: 'in' | 'out') => {
     // A `receipt` is issued AFTER money is received — it is proof of payment,
     // not an amount still owed — so it is intentionally excluded from receivables.
-    const IN_TYPES = ['invoice', 'billing_note', 'cash_invoice'];
+    const IN_TYPES = ['delivery_tax_invoice', 'invoice', 'billing_note', 'cash_invoice'];
     const OUT_TYPES = ['purchase_order', 'expense'];
     const types = direction === 'in' ? IN_TYPES : direction === 'out' ? OUT_TYPES : [...IN_TYPES, ...OUT_TYPES];
     const placeholders = types.map(() => '?').join(',');
@@ -841,9 +842,9 @@ export const reportRepo = {
       ? 'AND strftime(\'%Y-%m\', date) = ?'
       : '';
     const params = safePeriod ? [safePeriod] : [];
-    const revenue = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('invoice','receipt','cash_invoice') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
+    const revenue = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('delivery_tax_invoice','invoice','receipt','cash_invoice') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
     const expense = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('expense','purchase_order') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
-    const pending = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE ((type IN ('invoice','billing_note') AND status = 'sent') OR (type IN ('expense','purchase_order') AND status = 'approved')) ${whereClause}`, ...params) ?? { v: 0 }).v;
+    const pending = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE ((type IN ('delivery_tax_invoice','invoice','billing_note') AND status = 'sent') OR (type IN ('expense','purchase_order') AND status = 'approved')) ${whereClause}`, ...params) ?? { v: 0 }).v;
     const counts = all<{ type: string; cnt: number }>(`SELECT type, COUNT(*) as cnt FROM documents WHERE 1=1 ${whereClause} GROUP BY type`, ...params);
     const countMap: Record<string, number> = {};
     counts.forEach(r => { countMap[r.type] = r.cnt; });

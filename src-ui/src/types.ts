@@ -59,7 +59,7 @@ export interface PayableDoc extends Document {
 
 export interface Document {
   id: number
-  type: 'quotation' | 'invoice' | 'receipt' | 'billing_note' | 'cash_invoice' | 'purchase_order' | 'expense'
+  type: 'delivery_tax_invoice' | 'delivery_note' | 'work_order' | 'quotation' | 'invoice' | 'receipt' | 'purchase_order' | 'billing_note' | 'cash_invoice' | 'expense'
   number?: string | null
   contact_id?: number | null
   contact_name?: string | null

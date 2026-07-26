@@ -85,11 +85,9 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const { period } = usePeriod()
 
   const DOC_TYPES: Record<string, string> = {
-    quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt'),
-    billing_note: t('type_billing_note'), cash_invoice: t('type_cash_invoice'),
-    purchase_order: t('type_purchase_order'), expense: t('type_expense'),
-    withholding_tax: t('nav_withholding_tax'),
-    pay_slips: t('nav_pay_slips'),
+    delivery_tax_invoice: t('type_delivery_tax_invoice'),
+    delivery_note: t('type_delivery_note'),
+    work_order: t('type_work_order'),
   }
   const STATUS_LABELS: Record<string, string> = {
     draft: t('status_draft'), sent: t('status_sent'), approved: t('status_approved'),
@@ -122,7 +120,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const [whtPreview, setWhtPreview] = useState<{ html: string; id: number } | null>(null)
 
   // ── Standard doc form ───────────────────────────────────────────────────────
-  const [fType, setFType] = useState('quotation')
+  const [fType, setFType] = useState('delivery_tax_invoice')
   const [fNumber, setFNumber] = useState('')
   const [fContactId, setFContactId] = useState('')
   const [fContactName, setFContactName] = useState('')
@@ -181,33 +179,14 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   const load = async () => {
     setLoading(true)
     try {
-      const showDocs = !filterType || !['withholding_tax', 'pay_slips'].includes(filterType)
-      const showWhts = !filterType || filterType === 'withholding_tax'
-      const showPSs = !filterType || filterType === 'pay_slips'
       const params: Record<string, string> = { month: period }
-      if (filterType && showDocs) params.type = filterType
+      if (filterType) params.type = filterType
       if (filterStatus) params.status = filterStatus
       if (search) params.q = search
-      const [docsRes, whtsRes, psRes] = await Promise.all([
-        showDocs ? getDocuments(params) : Promise.resolve({ data: [] as Document[] }),
-        showWhts ? getWithholdingTaxList() : Promise.resolve({ data: [] as WithholdingTax[] }),
-        showPSs ? getPaySlips(search || undefined) : Promise.resolve({ data: [] as PaySlip[] }),
-      ])
-      setDocs(docsRes.data)
-      const q = search.toLowerCase()
-      // Scope WHT certificates (by issue date) and pay slips (by pay date) to the selected month.
-      const whtMonth = whtsRes.data.filter(w => (w.issue_date || '').slice(0, 7) === period)
-      setWhts(q ? whtMonth.filter(w =>
-        (w.cert_no || '').toLowerCase().includes(q) ||
-        w.payee_name.toLowerCase().includes(q) ||
-        w.payer_name.toLowerCase().includes(q)
-      ) : whtMonth)
-      const psMonth = psRes.data.filter(s => (s.pay_date || s.period || '').slice(0, 7) === period)
-      setPaySlips(q ? psMonth.filter(s =>
-        s.employee_name.toLowerCase().includes(q) ||
-        (s.department || '').toLowerCase().includes(q) ||
-        (s.period || '').toLowerCase().includes(q)
-      ) : psMonth)
+      const docsRes = await getDocuments(params)
+      setDocs(docsRes.data.filter(d => ['delivery_tax_invoice', 'delivery_note', 'work_order'].includes(d.type)))
+      setWhts([])
+      setPaySlips([])
     } catch {}
     setLoading(false)
   }
@@ -398,7 +377,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     const [{ data: cs }, { data: ps }, { data: emps }] = await Promise.all([getContacts(), getProducts(), getEmployees()])
     setContacts(cs); setProducts(ps); setEmployees(emps)
     setEditDoc(null)
-    setFType('quotation'); setFNumber(''); setFContactId(''); setFContactName('')
+    setFType('delivery_tax_invoice'); setFNumber(''); setFContactId(''); setFContactName('')
     setFDate(today()); setFDue(''); setFDiscount(0); setFDiscountMode('amount')
     setFVat(7); setFVatMode('percent'); setFNotes('')
     setItems([{ description: '', qty: 1, unit: '', price: 0, amount: 0 }])
@@ -1090,10 +1069,12 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
   const fmtN = (n: number | undefined | null) =>
     new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)
   const fmtD = (d: string | undefined | null) => d ? d.slice(0, 10) : '-'
+  if (doc.type === 'delivery_note') return buildDeliveryNoteHtml(doc, company, fmtN, fmtD)
+  if (doc.type === 'work_order') return buildWorkOrderHtml(doc, company, fmtN, fmtD)
   const PDF_TL: Record<string, string> = {
-    quotation: t('type_quotation'), invoice: t('type_invoice'), receipt: t('type_receipt_f'),
-    billing_note: t('type_billing_note_f'), cash_invoice: t('type_cash_invoice_f'),
-    purchase_order: t('type_purchase_order'), expense: t('type_expense_f'),
+    delivery_tax_invoice: t('type_delivery_tax_invoice'),
+    delivery_note: t('type_delivery_note'),
+    work_order: t('type_work_order'),
   }
   const PDF_SL: Record<string, string> = {
     draft: t('status_draft_f'), sent: t('status_sent_f'), approved: t('status_approved_f'),
@@ -1188,6 +1169,71 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
     <div style="text-align:center"><div style="border-top:1px solid #d1d5db;padding-top:8px;margin-top:48px"><div style="font-size:12px;color:#6b7280">${t('pdf_recv_sig')}</div><div style="font-size:12px;color:#6b7280;margin-top:2px">${doc.contact_name || ''}</div></div></div>
   </div>
 </div></body></html>`
+}
+
+function printShell(title: string, body: string, landscape = false): string {
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+  <style>
+  *{box-sizing:border-box}body{margin:0;background:#fff;color:#000;font-family:Tahoma,"Sarabun",sans-serif;font-size:12px}
+  @page{size:A4 ${landscape ? 'landscape' : 'portrait'};margin:10mm}.page{margin:auto;padding:10mm;max-width:${landscape ? '1120px' : '794px'}}
+  table{border-collapse:collapse;width:100%}th,td{border:1px solid #000;padding:5px;vertical-align:middle}th{font-weight:700}
+  .center{text-align:center}.right{text-align:right}.bold{font-weight:700}.no-border{border:0}.print{position:fixed;right:16px;top:16px;border:0;border-radius:7px;padding:9px 18px;background:#111;color:#fff;cursor:pointer}
+  @media print{.print{display:none}.page{padding:0}}
+  </style></head><body><button class="print" onclick="window.print()">พิมพ์ / บันทึก PDF</button><div class="page">${body}</div></body></html>`
+}
+
+function buildDeliveryNoteHtml(
+  doc: Document, company: Company | null,
+  fmtN: (n: number | undefined | null) => string,
+  fmtD: (d: string | undefined | null) => string,
+): string {
+  const rows = (doc.items || []).map((item, i) => `<tr>
+    <td class="center">${i + 1}</td><td class="center">${item.unit || '-'}</td>
+    <td>${item.description || '-'}</td><td class="center">${item.qty || 0}</td>
+    <td class="right">${fmtN(item.price)}</td><td class="right">${fmtN(item.amount)}</td>
+  </tr>`).join('')
+  const blanks = Array.from({ length: Math.max(5, 18 - (doc.items || []).length) }, () =>
+    '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>').join('')
+  return printShell(`ใบส่งของ ${doc.number || ''}`, `
+    <div class="center bold" style="font-size:23px;margin:12px 0 20px">ใบส่งของ</div>
+    <table style="margin-bottom:14px"><tr>
+      <td style="width:13%" class="bold">นาม</td><td style="width:57%">${doc.contact_name || '-'}</td>
+      <td style="width:12%" class="bold">เลขที่</td><td>${doc.number || '-'}</td>
+    </tr><tr><td class="bold">บริษัท</td><td>${company?.name || '-'}</td><td class="bold">วันที่</td><td>${fmtD(doc.date)}</td></tr></table>
+    <table><thead><tr><th style="width:9%">ลำดับ</th><th style="width:10%">Size</th><th>รายการ</th><th style="width:11%">จำนวน</th><th style="width:11%">ราคา</th><th style="width:15%">จำนวนเงิน</th></tr></thead>
+    <tbody>${rows}${blanks}<tr style="background:#f4cc18"><td></td><td colspan="2" class="center bold">รวม</td><td class="center bold">${(doc.items || []).reduce((s,i)=>s+(Number(i.qty)||0),0)}</td><td></td><td class="right bold">${fmtN(doc.total)}</td></tr></tbody></table>
+    ${doc.notes ? `<div style="margin-top:10px"><b>หมายเหตุ:</b> ${doc.notes}</div>` : ''}
+  `)
+}
+
+function buildWorkOrderHtml(
+  doc: Document, company: Company | null,
+  fmtN: (n: number | undefined | null) => string,
+  fmtD: (d: string | undefined | null) => string,
+): string {
+  const rows = (doc.items || []).map((item, i) => `<tr>
+    <td class="center">${i + 1}</td><td></td><td class="center">${item.unit || '-'}</td>
+    <td></td><td></td><td></td><td class="center">${item.qty || 0}</td><td>${item.description || ''}</td><td></td>
+  </tr>`).join('')
+  const blanks = Array.from({ length: Math.max(5, 10 - (doc.items || []).length) }, (_, i) =>
+    `<tr><td class="center">${(doc.items || []).length + i + 1}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join('')
+  return printShell(`ใบสั่งงาน ${doc.number || ''}`, `
+    <table><tr><td>Printed No.</td><td style="background:#fff500" class="center bold">PRODUCT</td><td>Printed on</td><td>${fmtD(doc.date)}</td><td>Printed by</td><td></td></tr></table>
+    <div class="center bold" style="font-size:70px;line-height:1.25;letter-spacing:3px">${doc.number || 'WORK ORDER'}</div>
+    <table><tr><td class="bold">ลูกค้า</td><td colspan="3">${doc.contact_name || '-'}</td><td class="bold">Inv. NO</td><td>${doc.number || '-'}</td></tr>
+    <tr><td class="bold">เริ่มงาน</td><td colspan="3">${fmtD(doc.date)}</td><td class="bold">กำหนดส่ง</td><td>${fmtD(doc.due_date)}</td></tr>
+    <tr style="background:#d9f2ff"><th colspan="4">ใบสั่งงานตัด</th><th>โรงตัด</th><th></th></tr>
+    <tr><td class="bold">รหัส Pattern</td><td></td><td class="bold">อ้างอิง</td><td></td><td class="bold">ทรง</td><td></td></tr>
+    <tr><td class="bold">ตัดคอหนา(ซม.)</td><td colspan="3"></td><td class="bold">ผ้า</td><td></td></tr></table>
+    <table><thead><tr style="background:#111827;color:#fff"><th>NO.</th><th>สี</th><th>ไซส์</th><th>หน้าผ้า</th><th>รอบอก</th><th>ยาว</th><th>จำนวน(สั่ง)</th><th>จำนวน(ตัด)</th><th>จำนวน(ได้)</th></tr></thead>
+    <tbody>${rows}${blanks}<tr><td colspan="6" class="right bold">รวม</td><td class="center bold">${(doc.items || []).reduce((s,i)=>s+(Number(i.qty)||0),0)}</td><td colspan="2"></td></tr></tbody></table>
+    <table><tr style="background:#d6fae8"><th colspan="4">ใบสั่งงานเย็บ</th><th>โรงเย็บ</th><td colspan="4"></td></tr>
+    <tr><th>คอเสื้อ</th><td colspan="3"></td><th>ไหล่</th><td colspan="4"></td></tr><tr><th>ชายเสื้อ/แขน</th><td colspan="3"></td><th>หมายเหตุ</th><td colspan="4">${doc.notes || ''}</td></tr>
+    <tr style="background:#fff0cf"><th colspan="4">ใบสั่งงานพิมพ์</th><th>โรงฟอก</th><td colspan="4"></td></tr>
+    <tr><th>ตรวจ QC</th><td colspan="3"></td><th>พับแพ็ค</th><td colspan="4"></td></tr>
+    <tr><th>จัดส่ง</th><td colspan="3"></td><th>ผู้ส่ง</th><td colspan="4"></td></tr></table>
+    <div style="margin-top:8px;text-align:right"><b>มูลค่างาน:</b> ${fmtN(doc.total)}</div>
+  `, true)
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
