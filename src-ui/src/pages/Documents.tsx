@@ -165,8 +165,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
 
   // ── Derived ─────────────────────────────────────────────────────────────────
   const subtotal = items.reduce((s, i) => s + (i.amount || 0), 0)
-  const discountAmt = fDiscountMode === 'percent' ? subtotal * fDiscount / 100 : fDiscount
-  const vatAmt = fVatMode === 'percent' ? (subtotal - discountAmt) * fVat / 100 : fVat
+  const discountAmt = fType === 'delivery_tax_invoice' ? (fDiscountMode === 'percent' ? subtotal * fDiscount / 100 : fDiscount) : 0
+  const vatAmt = fType === 'delivery_tax_invoice' ? (fVatMode === 'percent' ? (subtotal - discountAmt) * fVat / 100 : fVat) : 0
   const total = subtotal - discountAmt + vatAmt
 
   const wfTotalAmount = wfItems.reduce((s, i) => s + (Number(i.amount) || 0), 0)
@@ -905,7 +905,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <TextField type="date" label={t('lbl_date')} value={fDate} onChange={e => setFDate(e.target.value)} />
-                <TextField type="date" label={fType === 'work_order' ? 'กำหนดส่ง' : t('lbl_due_date')} value={fDue} onChange={e => setFDue(e.target.value)} />
+                <TextField type="date" label={fType === 'delivery_tax_invoice' ? t('lbl_due_date') : 'กำหนดส่ง'} value={fDue} onChange={e => setFDue(e.target.value)} />
               </div>
               <Divider className="my-1" />
               {fType === 'work_order' && <>
@@ -954,6 +954,29 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                     <TextField key={field} label={label} value={workMeta[field] || ''} onChange={e => setWorkMeta(m => ({ ...m, [field]: e.target.value }))} />
                   )}
                 </div>
+              </> : fType === 'delivery_note' ? <>
+                <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 70px 1fr 70px 105px 95px 32px' }}>
+                  {['สินค้า','Size','รายการ','จำนวน','ราคา','จำนวนเงิน',''].map((h, i) => (
+                    <span key={i} className="text-[10px] font-medium text-default-500 uppercase tracking-wide">{h}</span>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {items.map((item, i) => (
+                    <div key={i} className="grid gap-1.5 items-center" style={{ gridTemplateColumns: '130px 70px 1fr 70px 105px 95px 32px' }}>
+                      <select className={SELECT_CLASS + ' text-[12px]'} value={item.product_id ? String(item.product_id) : ''} onChange={e => {
+                        const p = products.find(pr => String(pr.id) === e.target.value)
+                        if (p) setItems(prev => { const next=[...prev]; next[i]={...next[i],product_id:p.id,description:p.name,price:p.price,amount:(next[i].qty || 1)*p.price}; return next })
+                      }}><option value="">เลือก</option>{products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                      <TextField placeholder="S/M/L/XL" value={item.unit || ''} onChange={e => updateItem(i,'unit',e.target.value)} />
+                      <TextField placeholder="รายละเอียดสินค้า" value={item.description} onChange={e => updateItem(i,'description',e.target.value)} />
+                      <TextField type="number" min={0} value={item.qty ? String(item.qty) : ''} onChange={e => updateItem(i,'qty',Number(e.target.value)||0)} />
+                      <TextField type="number" min={0} value={item.price ? String(item.price) : ''} onChange={e => updateItem(i,'price',Number(e.target.value)||0)} />
+                      <span className="text-[13px] text-right px-1">฿{fmt(item.amount)}</span>
+                      <Btn size="sm" variant="danger" className="px-0 w-8 h-8" onClick={() => setItems(prev => prev.filter((_, j) => j !== i))}>×</Btn>
+                    </div>
+                  ))}
+                </div>
+                <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description:'',qty:1,unit:'',price:0,amount:0 }])}>เพิ่มรายการ</Btn>
               </> : <>
               <div className="grid gap-1.5 px-0.5" style={{ gridTemplateColumns: '130px 1fr 64px 56px 100px 90px 32px' }}>
                 {[t('lbl_product_col'), t('lbl_items_col'), t('lbl_qty'), t('lbl_unit'), t('lbl_price_per'), t('lbl_total_col'), ''].map((h, i) => (
@@ -985,6 +1008,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
               <Btn size="sm" variant="ghost" onClick={() => setItems(prev => [...prev, { description: '', qty: 1, unit: '', price: 0, amount: 0 }])}>{t('btn_add_item')}</Btn>
               </>}
               <Divider className="my-1" />
+              {fType === 'delivery_tax_invoice' && <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL_CLASS}>{t('lbl_discount')}</label>
@@ -1015,6 +1039,12 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   <span>{t('lbl_grand_total')}</span><span className="text-success">฿{fmt(total)}</span>
                 </div>
               </div>
+              </>}
+              {fType === 'delivery_note' && (
+                <div className="bg-content2 border border-content3 rounded-lg px-4 py-3.5 flex justify-between text-[16px] font-bold">
+                  <span>รวม</span><span className="text-success">฿{fmt(total)}</span>
+                </div>
+              )}
               <TextAreaField label={t('lbl_notes')} value={fNotes} onChange={e => setFNotes(e.target.value)} />
             </div>
           )}
