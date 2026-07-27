@@ -76,6 +76,7 @@ export interface WorkOrderMeta {
 }
 
 export interface TaxInvoiceMeta {
+  vat_rate?: number
   credit_term?: string
   reference?: string
   salesperson?: string

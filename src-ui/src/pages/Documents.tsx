@@ -452,14 +452,15 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
 
   const openEdit = async (id: number) => {
     const [doc, { data: cs }, { data: ps }, { data: emps }] = await Promise.all([getDocument(id), getContacts(), getProducts(), getEmployees()])
+    const invoiceMeta = readTaxInvoiceMeta(doc.meta)
     setContacts(cs); setProducts(ps); setEmployees(emps)
     setEditDoc(doc)
     setFType(doc.type); setFNumber(doc.number || ''); setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
     setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || '')
-    setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
+    setFDiscount(doc.discount || 0); setFDiscountMode('amount'); setFVat(doc.type === 'delivery_tax_invoice' ? Number(invoiceMeta.vat_rate ?? 7) : doc.vat || 0); setFVatMode(doc.type === 'delivery_tax_invoice' ? 'percent' : 'amount'); setFNotes(doc.notes || '')
     setFRefDocId(doc.ref_doc_id || null)
     setWorkMeta(readWorkMeta(doc.meta))
-    setTaxInvoiceMeta(readTaxInvoiceMeta(doc.meta))
+    setTaxInvoiceMeta(invoiceMeta)
     setItems(copyDocumentItems(doc.items, ps))
     setModal('edit')
   }
@@ -481,7 +482,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
         contact_id: fContactId ? Number(fContactId) : null,
         contact_name: fContactName || null, date: fDate, due_date: fDue || null,
         subtotal, discount: discountAmt, vat: vatAmt, total, notes: fNotes || null,
-        meta: fType === 'work_order' ? JSON.stringify(workMeta) : fType === 'delivery_tax_invoice' ? JSON.stringify(taxInvoiceMeta) : null,
+        meta: fType === 'work_order' ? JSON.stringify(workMeta) : fType === 'delivery_tax_invoice' ? JSON.stringify({ ...taxInvoiceMeta, vat_rate: fVat }) : null,
         ref_doc_id: fRefDocId, items: validItems,
       }
       if (modal === 'edit' && editDoc) { await updateDocument(editDoc.id, payload); toast(t('toast_doc_edited')) }
@@ -524,9 +525,10 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
     setFContactId(viewDoc.contact_id ? String(viewDoc.contact_id) : ''); setFContactName(viewDoc.contact_name || '')
     setFDate(today()); setFDue(viewDoc.due_date?.slice(0, 10) || '')
     setFDiscount(viewDoc.discount || 0); setFDiscountMode('amount')
-    setFVat(viewDoc.vat || 0); setFVatMode('amount'); setFNotes(viewDoc.notes || '')
+    const convertedInvoiceMeta = convertType === 'delivery_tax_invoice' ? readTaxInvoiceMeta(viewDoc.meta) : {}
+    setFVat(convertType === 'delivery_tax_invoice' ? Number(convertedInvoiceMeta.vat_rate ?? 7) : viewDoc.vat || 0); setFVatMode(convertType === 'delivery_tax_invoice' ? 'percent' : 'amount'); setFNotes(viewDoc.notes || '')
     setWorkMeta(readWorkMeta(viewDoc.meta))
-    setTaxInvoiceMeta(convertType === 'delivery_tax_invoice' ? readTaxInvoiceMeta(viewDoc.meta) : {})
+    setTaxInvoiceMeta(convertedInvoiceMeta)
     if (viewDoc.type === 'work_order' && convertType === 'delivery_note') {
       setItems((viewDoc.items || []).filter(item => (item.remaining_qty || 0) > 0).map(item => ({
         ...item,
@@ -545,15 +547,16 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
 
   const doDuplicate = async (docId: number) => {
     const [doc, { data: cs }, { data: ps }, { data: emps }] = await Promise.all([getDocument(docId), getContacts(), getProducts(), getEmployees()])
+    const duplicatedInvoiceMeta = readTaxInvoiceMeta(doc.meta)
     setContacts(cs); setProducts(ps); setEmployees(emps); setEditDoc(null)
     setFType(doc.type); setFNumber('')
     setFRefDocId(null)
     setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
     setFDate(today()); setFDue(doc.due_date?.slice(0, 10) || '')
     setFDiscount(doc.discount || 0); setFDiscountMode('amount')
-    setFVat(doc.vat || 0); setFVatMode('amount'); setFNotes(doc.notes || '')
+    setFVat(doc.type === 'delivery_tax_invoice' ? Number(duplicatedInvoiceMeta.vat_rate ?? 7) : doc.vat || 0); setFVatMode(doc.type === 'delivery_tax_invoice' ? 'percent' : 'amount'); setFNotes(doc.notes || '')
     setWorkMeta(readWorkMeta(doc.meta))
-    setTaxInvoiceMeta(readTaxInvoiceMeta(doc.meta))
+    setTaxInvoiceMeta(duplicatedInvoiceMeta)
     setItems(copyDocumentItems(doc.items, ps))
     setModal('create')
   }
@@ -1165,7 +1168,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   <label className={LABEL_CLASS}>VAT</label>
                   <div className="flex gap-1.5">
                     <TextField type="number" min={0} className="flex-1" value={fVat === 0 ? '' : String(fVat)} onChange={e => setFVat(e.target.value === '' ? 0 : Number(e.target.value))} />
-                    <ModeToggle mode={fVatMode} onChange={setFVatMode} />
+                    <div className="w-[52px] flex items-center justify-center rounded-lg border border-content3 bg-content2 text-[13px] font-semibold text-default-600">%</div>
                   </div>
                 </div>
               </div>
@@ -1463,7 +1466,9 @@ function buildTaxInvoiceHtml(
   const blanks = Array.from({ length: Math.max(0, 5 - lineItems.length) }, () =>
     '<tr class="blank"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')
   const beforeTax = Number(doc.subtotal || 0) - Number(doc.discount || 0)
-  const vatRate = beforeTax > 0 ? Number(doc.vat || 0) / beforeTax * 100 : 0
+  const vatRate = Number(invoiceMeta.vat_rate ?? 7)
+  const calculatedVat = Math.round(beforeTax * vatRate) / 100
+  const calculatedTotal = beforeTax + calculatedVat
   const customerName = contact?.company || doc.contact_name || contact?.name || '-'
   const logo = company?.logo_url ? `<img class="logo" src="${company.logo_url}" alt="" />` : ''
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ใบเสร็จรับเงิน/ใบกำกับภาษี ${doc.number || ''}</title>
@@ -1498,10 +1503,10 @@ function buildTaxInvoiceHtml(
       <tr><td>เงื่อนไขชำระ Credit Term</td><td>${invoiceMeta.credit_term || ''}</td></tr><tr><td>อ้างอิง Reference</td><td>${invoiceMeta.reference || doc.source_document?.number || ''}</td></tr><tr><td>พนักงานขาย Employee</td><td>${invoiceMeta.salesperson || ''}</td></tr><tr><td>เลขที่ใบสั่งซื้อ PO No.</td><td>${invoiceMeta.po_number || ''}</td></tr>
     </tbody></table></div>
     <table class="items"><thead><tr><th>ลำดับ<br>Item</th><th>รายการสินค้า<br>Description</th><th>จำนวน<br>Qty</th><th>หน่วย<br>Unit</th><th>ราคาต่อหน่วย<br>Unit Price</th><th>ส่วนลด<br>Discount</th><th>จำนวนเงิน<br>Amount</th></tr></thead><tbody>${rows}${blanks}</tbody></table>
-    <div class="summary"><div class="left-summary"><div class="notes-box">${doc.notes || ''}</div><div class="amount-words">(${thaiBahtText(Number(doc.total || 0))})</div></div>
+    <div class="summary"><div class="left-summary"><div class="notes-box">${doc.notes || ''}</div><div class="amount-words">(${thaiBahtText(calculatedTotal)})</div></div>
       <table class="totals"><tbody><tr><td>รวมจำนวนเงิน Total Amount</td><td>${fmtN(doc.subtotal)}</td></tr><tr><td>ส่วนลด Discount</td><td>${fmtN(doc.discount)}</td></tr>
-      <tr><td>จำนวนเงินก่อนภาษี Amount not include tax</td><td>${fmtN(beforeTax)}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม V.A.T. ${vatRate ? `${fmtN(vatRate)}%` : ''}</td><td>${fmtN(doc.vat)}</td></tr>
-      <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น Grand Total</td><td>${fmtN(doc.total)}</td></tr></tbody></table>
+      <tr><td>จำนวนเงินก่อนภาษี Amount not include tax</td><td>${fmtN(beforeTax)}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม V.A.T. ${vatRate ? `${fmtN(vatRate)}%` : ''}</td><td>${fmtN(calculatedVat)}</td></tr>
+      <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น Grand Total</td><td>${fmtN(calculatedTotal)}</td></tr></tbody></table>
     </div>
     <div class="signatures">
       <div class="sign payment-sign"><div class="payment"><div class="payment-methods"><span class="thai">ชำระโดย</span><span class="thai">(${paymentMark('cash')}) เงินสด</span><span class="thai">(${paymentMark('cheque')}) เช็ค</span><span class="thai">(${paymentMark('transfer')}) เงินโอน</span><span class="en">PAY BY</span><span class="en">CASH</span><span class="en">CHEQUE</span><span class="en">TRANSFER</span></div><div class="payment-grid"><div class="payment-field"><div class="payment-label">ธนาคาร<br>BANK</div><div class="fill-line">${invoiceMeta.payment_bank || ''}</div></div><div class="payment-field"><div class="payment-label">สาขา<br>BRANCH</div><div class="fill-line">${invoiceMeta.payment_branch || ''}</div></div><div class="payment-field"><div class="payment-label">เลขที่<br>NO.</div><div class="fill-line">${invoiceMeta.payment_number || ''}</div></div><div class="payment-field"><div class="payment-label">วันที่<br>DATE</div><div class="fill-line">${invoiceMeta.payment_date ? fmtD(invoiceMeta.payment_date) : ''}</div></div><div class="payment-field full"><div class="payment-label">จำนวนเงิน<br>AMOUNT</div><div class="fill-line">${invoiceMeta.payment_amount ? fmtN(Number(invoiceMeta.payment_amount)) : ''}</div></div></div></div><div class="line">ผู้รับเงิน / COLLECTOR<br>วันที่ DATE ____/____/____</div></div>
