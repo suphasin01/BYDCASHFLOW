@@ -302,6 +302,23 @@ export function generateDocNumber(type: string): string {
   return `${prefix}${year}${month}-${seq}`;
 }
 
+function ensureTaxInvoicePoNumber(data: Record<string, unknown>): void {
+  if (data.type !== 'delivery_tax_invoice') return;
+  let meta: Record<string, unknown> = {};
+  try {
+    meta = typeof data.meta === 'string' ? JSON.parse(data.meta) : (data.meta as Record<string, unknown> || {});
+  } catch {
+    meta = {};
+  }
+  if (String(meta.po_number || '').trim()) return;
+  const documentNumber = String(data.number || '').trim();
+  if (!documentNumber) return;
+  meta.po_number = documentNumber.startsWith('DTI')
+    ? documentNumber.replace(/^DTI/, 'PO')
+    : documentNumber.startsWith('PO') ? documentNumber : `PO-${documentNumber}`;
+  data.meta = JSON.stringify(meta);
+}
+
 // ── Contacts ─────────────────────────────────────────────────────────────────────
 
 export const contactRepo = {
@@ -473,6 +490,7 @@ export const documentRepo = {
   create: (data: Record<string, unknown>, items: Record<string, unknown>[] = []) => {
     validateDocumentWorkflow(data, items);
     if (!data.number) data.number = generateDocNumber(data.type as string);
+    ensureTaxInvoicePoNumber(data);
     const r = run(`INSERT INTO documents (type,number,contact_id,contact_name,date,due_date,status,subtotal,discount,vat,total,notes,meta,ref_doc_id) VALUES (:type,:number,:contact_id,:contact_name,:date,:due_date,:status,:subtotal,:discount,:vat,:total,:notes,:meta,:ref_doc_id)`, {
       ':type': data.type, ':number': data.number, ':contact_id': data.contact_id ?? null,
       ':contact_name': data.contact_name ?? null, ':date': data.date ?? new Date().toISOString().slice(0,10),
@@ -496,6 +514,8 @@ export const documentRepo = {
     const current = get<Record<string, unknown>>('SELECT * FROM documents WHERE id = ?', id);
     if (!current) throw new Error('ไม่พบเอกสาร');
     const merged = { ...current, ...data };
+    ensureTaxInvoicePoNumber(merged);
+    if (merged.meta !== current.meta) data.meta = merged.meta;
     if (items !== undefined) validateDocumentWorkflow(merged, items, id);
     const allowed = ['number','contact_id','contact_name','date','due_date','status','subtotal','discount','vat','total','notes','meta','ref_doc_id'];
     const fields = Object.keys(data).filter(k => allowed.includes(k)).map(k => `${k} = :${k}`).join(', ');

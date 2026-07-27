@@ -1011,7 +1011,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                         ))}
                       </select>
                     </div>
-                    <TextField label="เลขที่ใบสั่งซื้อ / PO No." value={taxInvoiceMeta.po_number || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, po_number: e.target.value }))} />
+                    <TextField label="เลขที่ใบสั่งซื้อ / PO No." placeholder="เว้นว่างเพื่อสร้างเลขอัตโนมัติ" value={taxInvoiceMeta.po_number || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, po_number: e.target.value }))} />
                   </div>
                 </div>
               )}
