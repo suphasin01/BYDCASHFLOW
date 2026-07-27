@@ -193,9 +193,9 @@ export default function Payments() {
     const name = contacts.find(c => c.key === statementContact)?.name || ''
     const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]!))
     const rows = [
-      ...(statementData.opening > 0 ? [{ date: '', label: 'ยอดค้างชำระเดือนที่แล้ว', bill: statementData.opening, pay: 0, note: '' }] : []),
-      ...statementData.bills.map(d => ({ date: d.date, label: d.number || `#${d.id}`, bill: d.total || 0, pay: 0, note: d.notes || '' })),
-      ...statementData.paid.map(p => ({ date: p.date, label: p.doc_number || '', bill: 0, pay: p.amount, note: p.notes || p.reference || '' })),
+      ...(statementData.opening > 0 ? [{ billDate: '', label: 'ยอดยกมา', amount: statementData.opening, vat: 0, total: statementData.opening, payDate: '', paid: 0, note: 'ยอดค้างชำระเดือนที่แล้ว' }] : []),
+      ...statementData.bills.map(d => ({ billDate: d.date, label: d.number || `#${d.id}`, amount: Math.max(0, (d.total || 0) - (d.vat || 0)), vat: d.vat || 0, total: d.total || 0, payDate: '', paid: 0, note: d.notes || '' })),
+      ...statementData.paid.map(p => ({ billDate: '', label: p.doc_number || '', amount: 0, vat: 0, total: 0, payDate: p.date, paid: p.amount, note: p.notes || p.reference || '' })),
     ]
     const thaiMonth = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(new Date(`${statementMonth}-01T00:00:00`))
     return `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -205,9 +205,9 @@ export default function Payments() {
     tfoot td{font-weight:bold;background:#f5f5f5}.closing{font-size:16px;background:#fff7bf!important}.print{position:fixed;right:18px;top:18px;background:#16a34a;color:white;border:0;padding:10px 18px;border-radius:7px;font-weight:bold}
     @media print{.print{display:none}.page{padding:8mm}}</style></head><body><button class="print" onclick="window.print()">พิมพ์ / บันทึก PDF</button><div class="page">
     <div class="head"><div><h1>${esc(activeCompany?.name || 'BYD CASHFLOW')}</h1><div>${esc(activeCompany?.address || '')}</div></div><div style="text-align:right"><h1>สรุปยอดชำระรายเดือน</h1><div>${esc(thaiMonth)}</div></div></div>
-    <div class="sub"><b>ลูกค้า:</b> ${esc(name)}</div><table><thead><tr><th style="width:55px">ลำดับ</th><th style="width:105px">วันที่</th><th>เลขที่เอกสาร / รายการ</th><th style="width:125px">ยอดวางบิล</th><th style="width:125px">ยอดชำระ</th><th>หมายเหตุ</th></tr></thead>
-    <tbody>${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:center">${r.date ? r.date.split('-').reverse().join('-') : ''}</td><td>${esc(r.label)}</td><td class="num bill">${r.bill ? fmt(r.bill) : ''}</td><td class="num pay">${r.pay ? fmt(r.pay) : ''}</td><td>${esc(r.note)}</td></tr>`).join('')}${Array.from({length:Math.max(3,10-rows.length)},()=>'<tr><td>&nbsp;</td><td></td><td></td><td class="bill"></td><td class="pay"></td><td></td></tr>').join('')}</tbody>
-    <tfoot><tr><td colspan="3">รวมเดือนนี้</td><td class="num">${fmt(statementData.billed)}</td><td class="num">${fmt(statementData.received)}</td><td></td></tr><tr><td colspan="5">ยอดคงเหลือยกไปเดือนถัดไป</td><td class="num closing">${fmt(statementData.closing)}</td></tr></tfoot></table></div></body></html>`
+    <div class="sub"><b>ลูกค้า:</b> ${esc(name)}</div><table><thead><tr><th>ลำดับ</th><th>วันที่บิล</th><th>จำนวนเงิน</th><th>VAT</th><th>รวม VAT</th><th>วันที่ชำระ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td class="bill" style="text-align:center">${r.billDate ? r.billDate.split('-').reverse().join('/') : esc(r.label)}</td><td class="num bill">${r.amount ? fmt(r.amount) : ''}</td><td class="num bill">${r.vat ? fmt(r.vat) : ''}</td><td class="num bill">${r.total ? fmt(r.total) : ''}</td><td class="pay" style="text-align:center">${r.payDate ? r.payDate.split('-').reverse().join('/') : ''}</td><td class="num pay">${r.paid ? fmt(r.paid) : ''}</td><td>${esc(r.note)}</td></tr>`).join('')}${Array.from({length:Math.max(3,12-rows.length)},()=>'<tr><td>&nbsp;</td><td class="bill"></td><td class="bill"></td><td class="bill"></td><td class="bill"></td><td class="pay"></td><td class="pay"></td><td></td></tr>').join('')}</tbody>
+    <tfoot><tr><td colspan="2">รวม</td><td class="num">${fmt(statementData.bills.reduce((s,d)=>s+Math.max(0,(d.total||0)-(d.vat||0)),0))}</td><td class="num">${fmt(statementData.bills.reduce((s,d)=>s+(d.vat||0),0))}</td><td class="num">${fmt(statementData.billed)}</td><td></td><td class="num">${fmt(statementData.received)}</td><td></td></tr><tr><td colspan="7">ยอดคงเหลือยกไปเดือนถัดไป</td><td class="num closing">${fmt(statementData.closing)}</td></tr></tfoot></table></div></body></html>`
   }
 
   const openHistory = async (d: PayableDoc) => {
@@ -499,18 +499,18 @@ export default function Payments() {
               ))}
             </div>
             <div className="border border-content3 rounded-xl overflow-x-auto">
-              <div className="min-w-[700px]">
-                <div className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2 bg-content2 text-[11px] text-default-500 font-semibold">
-                  <div>วันที่</div><div>รายการ</div><div className="text-right">ยอดวางบิล</div><div className="text-right">ยอดชำระ</div><div></div>
+              <div className="min-w-[980px]">
+                <div className="grid grid-cols-[55px_105px_115px_90px_115px_105px_115px_1fr_86px] gap-2 px-3 py-2 bg-content2 text-[11px] text-default-500 font-semibold">
+                  <div>ลำดับ</div><div>วันที่บิล</div><div className="text-right">จำนวนเงิน</div><div className="text-right">VAT</div><div className="text-right">รวม VAT</div><div>วันที่ชำระ</div><div className="text-right">จำนวนเงิน</div><div>หมายเหตุ</div><div></div>
                 </div>
-                {statementData.opening > 0 && <div className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm">
-                  <div>—</div><div className="font-semibold text-warning">ยอดค้างชำระเดือนที่แล้ว</div><div className="text-right">฿{fmt(statementData.opening)}</div><div></div><div></div>
+                {statementData.opening > 0 && <div className="grid grid-cols-[55px_105px_115px_90px_115px_105px_115px_1fr_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm">
+                  <div>1</div><div className="font-semibold text-warning">ยอดยกมา</div><div className="text-right">฿{fmt(statementData.opening)}</div><div></div><div className="text-right">฿{fmt(statementData.opening)}</div><div></div><div></div><div>ยอดค้างชำระเดือนที่แล้ว</div><div></div>
                 </div>}
-                {statementData.bills.map(d => <div key={`d${d.id}`} className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm">
-                  <div>{fmtDate(d.date)}</div><div>{d.number || `#${d.id}`}</div><div className="text-right">฿{fmt(d.total || 0)}</div><div></div><div></div>
+                {statementData.bills.map((d, i) => <div key={`d${d.id}`} className="grid grid-cols-[55px_105px_115px_90px_115px_105px_115px_1fr_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm">
+                  <div>{i + 1 + (statementData.opening > 0 ? 1 : 0)}</div><div>{fmtDate(d.date)}</div><div className="text-right">฿{fmt(Math.max(0,(d.total||0)-(d.vat||0)))}</div><div className="text-right">฿{fmt(d.vat||0)}</div><div className="text-right">฿{fmt(d.total||0)}</div><div></div><div></div><div>{d.number || `#${d.id}`}</div><div></div>
                 </div>)}
-                {statementData.paid.map(p => <div key={`p${p.id}`} className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm items-center">
-                  <div>{fmtDate(p.date)}</div><div>{p.doc_number || 'รับชำระ'}{p.notes ? ` · ${p.notes}` : ''}</div><div></div><div className="text-right text-success">฿{fmt(p.amount)}</div>
+                {statementData.paid.map((p, i) => <div key={`p${p.id}`} className="grid grid-cols-[55px_105px_115px_90px_115px_105px_115px_1fr_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm items-center">
+                  <div>{statementData.bills.length + i + 1 + (statementData.opening > 0 ? 1 : 0)}</div><div></div><div></div><div></div><div></div><div>{fmtDate(p.date)}</div><div className="text-right text-success">฿{fmt(p.amount)}</div><div>{p.doc_number || 'รับชำระ'}{p.notes ? ` · ${p.notes}` : ''}</div>
                   <Btn size="sm" variant="ghost" onClick={() => openEditPayment(p)} startContent={<Pencil size={12} />}>แก้ไข</Btn>
                 </div>)}
                 {!statementData.opening && !statementData.bills.length && !statementData.paid.length &&
