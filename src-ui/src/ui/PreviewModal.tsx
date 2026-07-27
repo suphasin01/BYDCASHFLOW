@@ -19,7 +19,7 @@ export default function PreviewModal({ open, onClose, title, html, onDownload, d
         {onDownload && <Btn variant="primary" onClick={onDownload}>{downloadLabel}</Btn>}
       </>}>
       <div className="bg-default-100 rounded-lg p-2 -m-1">
-        <iframe title="document-preview" srcDoc={html} sandbox="allow-same-origin"
+        <iframe title="document-preview" srcDoc={html} sandbox="allow-same-origin allow-scripts allow-modals"
           className="w-full h-[80vh] bg-white rounded-md border border-content3" />
       </div>
     </Modal>
