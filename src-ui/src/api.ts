@@ -54,6 +54,7 @@ export const getPayments = () => GET<{ data: Payment[] }>('/payments')
 export const getPaymentDocuments = (direction?: 'in' | 'out') =>
   GET<{ data: PayableDoc[] }>('/payments/documents' + (direction ? '?direction=' + direction : ''))
 export const createPayment = (data: Partial<Payment>) => POST<Payment>('/payments', data)
+export const updatePayment = (id: number, data: Partial<Payment>) => PUT<Payment>('/payments/' + id, data)
 export const deletePayment = (id: number) => DEL<void>('/payments/' + id)
 
 // Companies

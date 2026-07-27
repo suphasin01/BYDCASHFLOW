@@ -588,6 +588,21 @@ export const paymentRepo = {
     }
     return get('SELECT * FROM payments WHERE id = ?', r.lastInsertRowid);
   },
+  update: (id: number, data: Record<string, unknown>) => {
+    const old = get<{ document_id: number }>('SELECT document_id FROM payments WHERE id = ?', id);
+    if (!old) throw new Error('ไม่พบรายการชำระเงิน');
+    run(`UPDATE payments SET amount=:amount,date=:date,method=:method,reference=:reference,notes=:notes WHERE id=:id`, {
+      ':id': id, ':amount': data.amount ?? 0, ':date': data.date,
+      ':method': data.method ?? 'transfer', ':reference': data.reference ?? null, ':notes': data.notes ?? null,
+    });
+    const doc = get<{ total: number; status: string }>('SELECT total,status FROM documents WHERE id = ?', old.document_id);
+    const paid = get<{ s: number }>('SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE document_id = ?', old.document_id);
+    if (doc && paid) {
+      const status = paid.s >= doc.total ? 'paid' : doc.status === 'paid' ? 'sent' : doc.status;
+      db.prepare(`UPDATE documents SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`).run(status, old.document_id);
+    }
+    return get('SELECT * FROM payments WHERE id = ?', id);
+  },
   delete: (id: number) => db.prepare('DELETE FROM payments WHERE id = ?').run(id),
 };
 

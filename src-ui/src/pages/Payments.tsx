@@ -3,15 +3,16 @@ import {
   Card, CardBody, Chip, Spinner,
   Table, TableHeader, TableColumn, TableBody, TableRow, TableCell,
 } from '@heroui/react'
-import { CreditCard, ArrowDownLeft, ArrowUpRight, History, AlertCircle, Camera, X } from 'lucide-react'
+import { CreditCard, ArrowDownLeft, ArrowUpRight, History, AlertCircle, Camera, X, Printer, Pencil } from 'lucide-react'
 import { TextField, TextAreaField } from '../ui/Field'
 import { useI18n } from '../i18n'
 import { useToast, useActiveCompany } from '../App'
-import { getPaymentDocuments, getPayments, createPayment, deletePayment, createEvidence } from '../api'
+import { getPaymentDocuments, getPayments, createPayment, updatePayment, deletePayment, createEvidence } from '../api'
 import type { PayableDoc, Payment } from '../types'
 import { fmt, fmtDate, today } from '../utils'
 import Btn from '../ui/Btn'
 import Modal from '../ui/Modal'
+import PreviewModal from '../ui/PreviewModal'
 
 const SELECT_CLASS = 'w-full bg-content2 border border-content3 rounded-lg px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary transition-colors cursor-pointer [color-scheme:dark]'
 const LABEL_CLASS = 'block text-[11px] font-medium text-default-500 uppercase tracking-wide mb-1.5'
@@ -48,6 +49,12 @@ export default function Payments() {
   // History modal
   const [histDoc, setHistDoc] = useState<PayableDoc | null>(null)
   const [history, setHistory] = useState<Payment[]>([])
+  const [allPayments, setAllPayments] = useState<Payment[]>([])
+  const [editPayment, setEditPayment] = useState<Payment | null>(null)
+  const [statementOpen, setStatementOpen] = useState(false)
+  const [statementContact, setStatementContact] = useState('')
+  const [statementMonth, setStatementMonth] = useState(today().slice(0, 7))
+  const [statementPreview, setStatementPreview] = useState('')
 
   const METHODS: Record<string, string> = {
     cash: t('method_cash'), transfer: t('method_transfer'), cheque: t('method_cheque'), credit_card: t('method_credit_card'),
@@ -63,9 +70,9 @@ export default function Payments() {
   useEffect(() => { load() }, [direction, activeCompany?.id])
 
   // ── Derived helpers ─────────────────────────────────────────────────────────
-  // A document marked 'paid' (e.g. a receipt or fully-settled invoice) has no balance,
-  // even if it has no individual payment records logged.
-  const outstanding = (d: PayableDoc) => d.status === 'paid' ? 0 : Math.max(0, (d.total || 0) - (d.paid_amount || 0))
+  // The ledger is the source of truth: a manually changed document status must not
+  // hide an amount that has not actually been received or paid.
+  const outstanding = (d: PayableDoc) => Math.max(0, (d.total || 0) - (d.paid_amount || 0))
   const statusOf = (d: PayableDoc): PayStatus => {
     if (outstanding(d) <= 0.01) return 'paid'
     if ((d.paid_amount || 0) > 0) return 'partial'
@@ -99,17 +106,27 @@ export default function Payments() {
   }
 
   const openPay = (d: PayableDoc) => {
+    setEditPayment(null)
     setPayDoc(d)
     setFAmount(outstanding(d))
     setFDate(today()); setFMethod('transfer'); setFRef(''); setFNotes(''); setFImage(null)
   }
 
+  const openEditPayment = (p: Payment) => {
+    const doc = docs.find(d => d.id === p.document_id)
+    if (!doc) return
+    setEditPayment(p); setPayDoc(doc); setFAmount(p.amount); setFDate(p.date)
+    setFMethod(p.method); setFRef(p.reference || ''); setFNotes(p.notes || ''); setFImage(null)
+  }
+
   const savePayment = async () => {
     if (!payDoc) return
     try {
-      await createPayment({ document_id: payDoc.id, amount: fAmount, date: fDate, method: fMethod, reference: fRef || null, notes: fNotes || null })
+      const payload = { document_id: payDoc.id, amount: fAmount, date: fDate, method: fMethod, reference: fRef || null, notes: fNotes || null }
+      if (editPayment) await updatePayment(editPayment.id, payload)
+      else await createPayment(payload)
       // Auto-create Evidence if image attached
-      if (fImage) {
+      if (fImage && !editPayment) {
         try {
           await createEvidence({
             title: `ชำระเงิน - ${payDoc.number || ''} · ${payDoc.contact_name || payDoc.contact_display || ''}`.trim().replace(/·\s*$/, ''),
@@ -124,8 +141,69 @@ export default function Payments() {
         } catch {}
       }
       toast(t('toast_payment_saved'))
-      setPayDoc(null); load()
+      setPayDoc(null); setEditPayment(null); await load()
+      const { data } = await getPayments(); setAllPayments(data)
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
+  }
+
+  const contacts = useMemo(() => {
+    const map = new Map<string, string>()
+    docs.forEach(d => {
+      const key = d.contact_id ? `id:${d.contact_id}` : `name:${d.contact_name || d.contact_display || ''}`
+      const name = d.contact_name || d.contact_display || ''
+      if (name) map.set(key, name)
+    })
+    return [...map].map(([key, name]) => ({ key, name })).sort((a, b) => a.name.localeCompare(b.name, 'th'))
+  }, [docs])
+
+  const statementData = useMemo(() => {
+    if (!statementContact) return null
+    const [year, month] = statementMonth.split('-').map(Number)
+    const start = `${year}-${String(month).padStart(2, '0')}-01`
+    const next = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const matches = (d: PayableDoc) => statementContact.startsWith('id:')
+      ? d.contact_id === Number(statementContact.slice(3))
+      : (d.contact_name || d.contact_display || '') === statementContact.slice(5)
+    const customerDocs = docs.filter(matches)
+    const docIds = new Set(customerDocs.map(d => d.id))
+    const payments = allPayments.filter(p => docIds.has(p.document_id))
+    const openingBills = customerDocs.filter(d => d.date < start).reduce((s, d) => s + (d.total || 0), 0)
+    const openingPaid = payments.filter(p => p.date < start).reduce((s, p) => s + p.amount, 0)
+    const opening = Math.max(0, openingBills - openingPaid)
+    const bills = customerDocs.filter(d => d.date >= start && d.date < next).sort((a, b) => a.date.localeCompare(b.date))
+    const paid = payments.filter(p => p.date >= start && p.date < next).sort((a, b) => a.date.localeCompare(b.date))
+    const billed = bills.reduce((s, d) => s + (d.total || 0), 0)
+    const received = paid.reduce((s, p) => s + p.amount, 0)
+    return { start, next, opening, bills, paid, billed, received, closing: Math.max(0, opening + billed - received) }
+  }, [statementContact, statementMonth, docs, allPayments])
+
+  const openMonthlyStatement = async (d?: PayableDoc) => {
+    const { data } = await getPayments(); setAllPayments(data)
+    if (d) setStatementContact(d.contact_id ? `id:${d.contact_id}` : `name:${d.contact_name || d.contact_display || ''}`)
+    else if (!statementContact && contacts[0]) setStatementContact(contacts[0].key)
+    setStatementOpen(true)
+  }
+
+  const buildStatementHtml = () => {
+    if (!statementData) return ''
+    const name = contacts.find(c => c.key === statementContact)?.name || ''
+    const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]!))
+    const rows = [
+      ...(statementData.opening > 0 ? [{ date: '', label: 'ยอดค้างชำระเดือนที่แล้ว', bill: statementData.opening, pay: 0, note: '' }] : []),
+      ...statementData.bills.map(d => ({ date: d.date, label: d.number || `#${d.id}`, bill: d.total || 0, pay: 0, note: d.notes || '' })),
+      ...statementData.paid.map(p => ({ date: p.date, label: p.doc_number || '', bill: 0, pay: p.amount, note: p.notes || p.reference || '' })),
+    ]
+    const thaiMonth = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(new Date(`${statementMonth}-01T00:00:00`))
+    return `<!doctype html><html><head><meta charset="utf-8"><style>
+    *{box-sizing:border-box}body{font-family:Tahoma,'Sarabun',sans-serif;color:#111;margin:0;background:#fff}.page{width:210mm;min-height:297mm;margin:auto;padding:14mm}
+    h1{font-size:22px;margin:0 0 4px}.sub{font-size:14px;margin-bottom:16px}.head{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #555;padding:7px 8px}th{background:#eef7f5;text-align:center}.num{text-align:right}.bill{background:#fff4fb}.pay{background:#eef8ff}
+    tfoot td{font-weight:bold;background:#f5f5f5}.closing{font-size:16px;background:#fff7bf!important}.print{position:fixed;right:18px;top:18px;background:#16a34a;color:white;border:0;padding:10px 18px;border-radius:7px;font-weight:bold}
+    @media print{.print{display:none}.page{padding:8mm}}</style></head><body><button class="print" onclick="window.print()">พิมพ์ / บันทึก PDF</button><div class="page">
+    <div class="head"><div><h1>${esc(activeCompany?.name || 'BYD CASHFLOW')}</h1><div>${esc(activeCompany?.address || '')}</div></div><div style="text-align:right"><h1>สรุปยอดชำระรายเดือน</h1><div>${esc(thaiMonth)}</div></div></div>
+    <div class="sub"><b>ลูกค้า:</b> ${esc(name)}</div><table><thead><tr><th style="width:55px">ลำดับ</th><th style="width:105px">วันที่</th><th>เลขที่เอกสาร / รายการ</th><th style="width:125px">ยอดวางบิล</th><th style="width:125px">ยอดชำระ</th><th>หมายเหตุ</th></tr></thead>
+    <tbody>${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:center">${r.date ? r.date.split('-').reverse().join('-') : ''}</td><td>${esc(r.label)}</td><td class="num bill">${r.bill ? fmt(r.bill) : ''}</td><td class="num pay">${r.pay ? fmt(r.pay) : ''}</td><td>${esc(r.note)}</td></tr>`).join('')}${Array.from({length:Math.max(3,10-rows.length)},()=>'<tr><td>&nbsp;</td><td></td><td></td><td class="bill"></td><td class="pay"></td><td></td></tr>').join('')}</tbody>
+    <tfoot><tr><td colspan="3">รวมเดือนนี้</td><td class="num">${fmt(statementData.billed)}</td><td class="num">${fmt(statementData.received)}</td><td></td></tr><tr><td colspan="5">ยอดคงเหลือยกไปเดือนถัดไป</td><td class="num closing">${fmt(statementData.closing)}</td></tr></tfoot></table></div></body></html>`
   }
 
   const openHistory = async (d: PayableDoc) => {
@@ -182,6 +260,8 @@ export default function Payments() {
             direction === 'out' ? 'bg-warning/15 border-warning/40 text-warning' : 'bg-content2 border-content3 text-default-500 hover:text-foreground'}`}>
           <ArrowUpRight size={16} strokeWidth={2} /> {t('pay_tab_out')}
         </button>
+        {direction === 'in' && <Btn variant="primary" onClick={() => openMonthlyStatement()}
+          startContent={<Printer size={15} />} className="ml-auto">พิมพ์ยอดชำระรายเดือน</Btn>}
       </div>
 
       {/* Summary cards */}
@@ -274,6 +354,8 @@ export default function Payments() {
                             startContent={<History size={13} strokeWidth={2} />}>
                             {t('btn_view_history')}
                           </Btn>
+                          {direction === 'in' && <Btn size="sm" variant="ghost" onClick={() => openMonthlyStatement(d)}
+                            startContent={<Printer size={13} />}>ยอดรายเดือน</Btn>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -287,10 +369,10 @@ export default function Payments() {
       </Card>
 
       {/* Record payment modal */}
-      <Modal open={!!payDoc} onClose={() => setPayDoc(null)} size="lg"
-        title={`${direction === 'in' ? t('btn_receive') : t('btn_pay_now')} — ${payDoc?.number || ''}`}
+      <Modal open={!!payDoc} onClose={() => { setPayDoc(null); setEditPayment(null) }} size="lg"
+        title={`${editPayment ? 'แก้ไขรายการชำระ' : direction === 'in' ? t('btn_receive') : t('btn_pay_now')} — ${payDoc?.number || ''}`}
         footer={<>
-          <Btn variant="ghost" onClick={() => setPayDoc(null)}>{t('btn_cancel')}</Btn>
+          <Btn variant="ghost" onClick={() => { setPayDoc(null); setEditPayment(null) }}>{t('btn_cancel')}</Btn>
           <Btn variant="primary" onClick={savePayment}>{t('btn_save')}</Btn>
         </>}>
         {payDoc && (
@@ -370,12 +452,77 @@ export default function Payments() {
                   </div>
                   {p.notes && <div className="text-[11px] text-default-400 mt-0.5">{p.notes}</div>}
                 </div>
-                <Btn size="sm" variant="danger" onClick={() => deleteHistoryItem(p.id)}>{t('btn_delete')}</Btn>
+                <div className="flex gap-1.5">
+                  <Btn size="sm" variant="ghost" onClick={() => openEditPayment(p)}
+                    startContent={<Pencil size={12} />}>แก้ไข</Btn>
+                  <Btn size="sm" variant="danger" onClick={() => deleteHistoryItem(p.id)}>{t('btn_delete')}</Btn>
+                </div>
               </div>
             ))}
           </div>
         )}
       </Modal>
+
+      <Modal open={statementOpen} onClose={() => setStatementOpen(false)} size="4xl"
+        title="สรุปยอดชำระของลูกค้ารายเดือน"
+        footer={<>
+          <Btn variant="ghost" onClick={() => setStatementOpen(false)}>ปิด</Btn>
+          <Btn variant="primary" onClick={() => setStatementPreview(buildStatementHtml())}
+            startContent={<Printer size={15} />}>ดูตัวอย่าง / พิมพ์</Btn>
+        </>}>
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><label className={LABEL_CLASS}>ลูกค้า</label>
+              <select className={SELECT_CLASS} value={statementContact} onChange={e => setStatementContact(e.target.value)}>
+                <option value="">— เลือกลูกค้า —</option>
+                {contacts.map(c => <option key={c.key} value={c.key}>{c.name}</option>)}
+              </select>
+            </div>
+            <TextField type="month" label="เดือนที่สรุปยอด" value={statementMonth} onChange={e => setStatementMonth(e.target.value)} />
+          </div>
+          {statementData && <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {([
+                ['ยอดค้างเดือนก่อน', statementData.opening, 'text-warning'],
+                ['ยอดวางบิลเดือนนี้', statementData.billed, 'text-foreground'],
+                ['รับชำระเดือนนี้', statementData.received, 'text-success'],
+                ['ยอดคงเหลือยกไป', statementData.closing, 'text-danger'],
+              ] as Array<[string, number, string]>).map(([label, value, color]) => (
+                <div key={label} className="rounded-xl border border-content3 bg-content2 p-3">
+                  <div className="text-[11px] text-default-500">{label}</div>
+                  <div className={`text-lg font-bold ${color}`}>฿{fmt(value)}</div>
+                </div>
+              ))}
+            </div>
+            <div className="border border-content3 rounded-xl overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2 bg-content2 text-[11px] text-default-500 font-semibold">
+                  <div>วันที่</div><div>รายการ</div><div className="text-right">ยอดวางบิล</div><div className="text-right">ยอดชำระ</div><div></div>
+                </div>
+                {statementData.opening > 0 && <div className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm">
+                  <div>—</div><div className="font-semibold text-warning">ยอดค้างชำระเดือนที่แล้ว</div><div className="text-right">฿{fmt(statementData.opening)}</div><div></div><div></div>
+                </div>}
+                {statementData.bills.map(d => <div key={`d${d.id}`} className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm">
+                  <div>{fmtDate(d.date)}</div><div>{d.number || `#${d.id}`}</div><div className="text-right">฿{fmt(d.total || 0)}</div><div></div><div></div>
+                </div>)}
+                {statementData.paid.map(p => <div key={`p${p.id}`} className="grid grid-cols-[95px_1fr_120px_120px_86px] gap-2 px-3 py-2.5 border-t border-content3 text-sm items-center">
+                  <div>{fmtDate(p.date)}</div><div>{p.doc_number || 'รับชำระ'}{p.notes ? ` · ${p.notes}` : ''}</div><div></div><div className="text-right text-success">฿{fmt(p.amount)}</div>
+                  <Btn size="sm" variant="ghost" onClick={() => openEditPayment(p)} startContent={<Pencil size={12} />}>แก้ไข</Btn>
+                </div>)}
+                {!statementData.opening && !statementData.bills.length && !statementData.paid.length &&
+                  <div className="py-8 text-center text-default-500">ไม่มีรายการในเดือนที่เลือก</div>}
+              </div>
+            </div>
+          </>}
+        </div>
+      </Modal>
+
+      <PreviewModal open={!!statementPreview} onClose={() => setStatementPreview('')}
+        title="ตัวอย่างสรุปยอดชำระรายเดือน" html={statementPreview}
+        onDownload={() => {
+          const frame = document.querySelector('iframe[title="document-preview"]') as HTMLIFrameElement | null
+          frame?.contentWindow?.print()
+        }} downloadLabel="พิมพ์ / บันทึก PDF" closeLabel="ปิด" />
     </div>
   )
 }

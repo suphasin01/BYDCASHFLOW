@@ -182,6 +182,11 @@ app.post('/api/payments', (req, res) => {
   } catch (e: unknown) { res.status(400).json({ error: String(e) }); }
 });
 
+app.put('/api/payments/:id', (req, res) => {
+  try { res.json(paymentRepo.update(Number(req.params.id), req.body)); }
+  catch (e: unknown) { res.status(400).json({ error: String(e) }); }
+});
+
 app.delete('/api/payments/:id', (req, res) => {
   paymentRepo.delete(Number(req.params.id));
   res.json({ success: true });
