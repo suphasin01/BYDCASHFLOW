@@ -253,6 +253,17 @@ try { db.exec('ALTER TABLE documents ADD COLUMN meta TEXT'); } catch {}
 for (const col of ['item_note TEXT','color TEXT','size TEXT','fabric_width TEXT','chest TEXT','length TEXT','sleeve_length TEXT','cut_qty REAL NOT NULL DEFAULT 0','received_qty REAL NOT NULL DEFAULT 0']) {
   try { db.exec(`ALTER TABLE document_items ADD COLUMN ${col}`); } catch {}
 }
+
+// Repair legacy receivable rows that were marked paid while their payment
+// ledger still has a positive balance. The ledger is the source of truth.
+db.exec(`
+  UPDATE documents
+  SET status = 'sent', updated_at = datetime('now','localtime')
+  WHERE status = 'paid'
+    AND type IN ('delivery_tax_invoice','invoice','billing_note','cash_invoice')
+    AND (SELECT COALESCE(SUM(amount),0) FROM payments WHERE document_id = documents.id) > 0
+    AND (SELECT COALESCE(SUM(amount),0) FROM payments WHERE document_id = documents.id) < total
+`);
 try {
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_one_active_invoice_per_delivery
     ON documents(ref_doc_id) WHERE type='delivery_tax_invoice' AND status!='cancelled' AND ref_doc_id IS NOT NULL`);
@@ -580,11 +591,12 @@ export const paymentRepo = {
       ':date': data.date ?? new Date().toISOString().slice(0,10),
       ':method': data.method ?? 'transfer', ':reference': data.reference ?? null, ':notes': data.notes ?? null,
     });
-    // Auto-mark paid if fully paid
-    const doc = get<{ total: number }>('SELECT total FROM documents WHERE id = ?', data.document_id as number);
+    // Keep the document status aligned with the actual payment ledger.
+    const doc = get<{ total: number; status: string }>('SELECT total,status FROM documents WHERE id = ?', data.document_id as number);
     const paid = get<{ s: number }>('SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE document_id = ?', data.document_id as number);
-    if (doc && paid && paid.s >= doc.total) {
-      db.prepare(`UPDATE documents SET status = 'paid', updated_at = datetime('now','localtime') WHERE id = ?`).run(data.document_id as number);
+    if (doc && paid) {
+      const status = paid.s >= doc.total ? 'paid' : doc.status === 'paid' ? 'sent' : doc.status;
+      db.prepare(`UPDATE documents SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`).run(status, data.document_id as number);
     }
     return get('SELECT * FROM payments WHERE id = ?', r.lastInsertRowid);
   },
@@ -603,7 +615,19 @@ export const paymentRepo = {
     }
     return get('SELECT * FROM payments WHERE id = ?', id);
   },
-  delete: (id: number) => db.prepare('DELETE FROM payments WHERE id = ?').run(id),
+  delete: (id: number) => {
+    const old = get<{ document_id: number }>('SELECT document_id FROM payments WHERE id = ?', id);
+    const result = db.prepare('DELETE FROM payments WHERE id = ?').run(id);
+    if (old) {
+      const doc = get<{ total: number; status: string }>('SELECT total,status FROM documents WHERE id = ?', old.document_id);
+      const paid = get<{ s: number }>('SELECT COALESCE(SUM(amount),0) as s FROM payments WHERE document_id = ?', old.document_id);
+      if (doc && paid) {
+        const status = paid.s >= doc.total ? 'paid' : doc.status === 'paid' ? 'sent' : doc.status;
+        db.prepare(`UPDATE documents SET status = ?, updated_at = datetime('now','localtime') WHERE id = ?`).run(status, old.document_id);
+      }
+    }
+    return result;
+  },
 };
 
 // ── Companies ───────────────────────────────────────────────────────────────────
@@ -995,7 +1019,19 @@ export const reportRepo = {
     const params = safePeriod ? [safePeriod] : [];
     const revenue = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('delivery_tax_invoice','invoice','receipt','cash_invoice') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
     const expense = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE type IN ('expense','purchase_order') AND status NOT IN ('cancelled','draft') ${whereClause}`, ...params) ?? { v: 0 }).v;
-    const pending = (get<{ v: number }>(`SELECT COALESCE(SUM(total),0) as v FROM documents WHERE ((type IN ('delivery_tax_invoice','invoice','billing_note') AND status = 'sent') OR (type IN ('expense','purchase_order') AND status = 'approved')) ${whereClause}`, ...params) ?? { v: 0 }).v;
+    const pending = (get<{ v: number }>(`
+      SELECT COALESCE(SUM(MAX(0, total - COALESCE(
+        (SELECT SUM(amount) FROM payments WHERE document_id = documents.id), 0
+      ))),0) as v
+      FROM documents
+      WHERE status != 'cancelled'
+        AND (
+          (type IN ('delivery_tax_invoice','invoice','billing_note','cash_invoice')
+            AND (status = 'sent' OR EXISTS (SELECT 1 FROM payments WHERE document_id = documents.id)))
+          OR (type IN ('expense','purchase_order') AND status = 'approved')
+        )
+        ${whereClause}
+    `, ...params) ?? { v: 0 }).v;
     const counts = all<{ type: string; cnt: number }>(`SELECT type, COUNT(*) as cnt FROM documents WHERE 1=1 ${whereClause} GROUP BY type`, ...params);
     const countMap: Record<string, number> = {};
     counts.forEach(r => { countMap[r.type] = r.cnt; });
