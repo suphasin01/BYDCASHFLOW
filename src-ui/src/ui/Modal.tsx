@@ -23,7 +23,7 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-8 sm:py-10 bg-black/75 backdrop-blur-sm animate-[fadeIn_.15s_ease]"
       onClick={onClose}>
-      <div className={`modal-panel w-full ${WIDTHS[size]} max-h-[84vh] flex flex-col bg-content1 border border-content3 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,.7),0_0_0_1px_rgba(255,255,255,.05)] overflow-hidden`}
+      <div className={`modal-panel w-full ${WIDTHS[size]} max-h-[92vh] flex flex-col bg-content1 border border-content3 rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,.7),0_0_0_1px_rgba(255,255,255,.05)] overflow-hidden`}
         onClick={e => e.stopPropagation()}>
         {title && (
           <div className="flex items-center justify-between px-5 py-3 border-b border-content3 flex-shrink-0 bg-gradient-to-r from-content1 to-content2/40">

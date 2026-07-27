@@ -749,7 +749,7 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
       </Card>
 
       {/* Create / Edit Modal */}
-      <Modal open={modal === 'create' || modal === 'edit'} onClose={() => setModal('none')} size="xl"
+      <Modal open={modal === 'create' || modal === 'edit'} onClose={() => setModal('none')} size="4xl"
         title={modalTitle()}
         footer={<>
           <Btn variant="ghost" onClick={() => setModal('none')}>{t('btn_cancel')}</Btn>
