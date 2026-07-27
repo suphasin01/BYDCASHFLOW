@@ -115,6 +115,10 @@ export default function Payments() {
   const openEditPayment = (p: Payment) => {
     const doc = docs.find(d => d.id === p.document_id)
     if (!doc) return
+    // Avoid stacking two same-level modals: close the statement/history first
+    // so the payment editor is always the visible, active dialog.
+    setStatementOpen(false)
+    setHistDoc(null)
     setEditPayment(p); setPayDoc(doc); setFAmount(p.amount); setFDate(p.date)
     setFMethod(p.method); setFRef(p.reference || ''); setFNotes(p.notes || ''); setFImage(null)
   }
