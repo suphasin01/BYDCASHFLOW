@@ -1002,14 +1002,6 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   </div>
                 </div>
               )}
-              {fType === 'delivery_note' && (
-                <div className="border border-content3 rounded-lg bg-content2 px-4 py-3">
-                  <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-2">บริษัทผู้ออกใบส่งของ</div>
-                  <div className="font-semibold">{activeCompany?.name || '—'}</div>
-                  <div className="text-[12px] text-default-500 mt-1">{activeCompany?.address || 'ยังไม่ได้ระบุที่อยู่บริษัท'}</div>
-                  <div className="text-[11px] text-default-400 mt-2">แก้ไขข้อมูลนี้ได้ที่เมนู “บริษัทของฉัน”</div>
-                </div>
-              )}
               <Divider className="my-1" />
               {fType === 'work_order' && <>
                 <SectionLabel label="ข้อมูลใบสั่งงานตัด" />
@@ -1335,7 +1327,7 @@ function buildPDFHtml(doc: Document, company: Company | null, contact: Contact |
   const fmtN = (n: number | undefined | null) =>
     new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)
   const fmtD = (d: string | undefined | null) => d ? d.slice(0, 10) : '-'
-  if (doc.type === 'delivery_note') return buildDeliveryNoteHtml(doc, company, fmtN, fmtD)
+  if (doc.type === 'delivery_note') return buildDeliveryNoteHtml(doc, contact, fmtN, fmtD)
   if (doc.type === 'work_order') return buildWorkOrderHtml(doc, company, fmtN, fmtD)
   if (doc.type === 'delivery_tax_invoice') return buildTaxInvoiceHtml(doc, company, contact, fmtN, fmtD)
   const PDF_TL: Record<string, string> = {
@@ -1545,7 +1537,7 @@ function printShell(title: string, body: string, landscape = false): string {
 }
 
 function buildDeliveryNoteHtml(
-  doc: Document, company: Company | null,
+  doc: Document, contact: Contact | null,
   fmtN: (n: number | undefined | null) => string,
   fmtD: (d: string | undefined | null) => string,
 ): string {
@@ -1559,9 +1551,9 @@ function buildDeliveryNoteHtml(
   return printShell(`ใบส่งของ ${doc.number || ''}`, `
     <div class="center bold" style="font-size:23px;margin:12px 0 20px">ใบส่งของ</div>
     <table style="margin-bottom:14px"><tr>
-      <td style="width:13%" class="bold">ชื่อบริษัท</td><td style="width:57%">${company?.name || '-'}</td>
+      <td style="width:13%" class="bold">ชื่อบริษัท</td><td style="width:57%">${contact?.company || doc.contact_name || '-'}</td>
       <td style="width:12%" class="bold">เลขที่</td><td>${doc.number || '-'}</td>
-    </tr><tr><td class="bold">ที่อยู่</td><td>${company?.address || '-'}</td><td class="bold">วันที่</td><td>${fmtD(doc.date)}</td></tr></table>
+    </tr><tr><td class="bold">ที่อยู่</td><td>${contact?.address || '-'}</td><td class="bold">วันที่</td><td>${fmtD(doc.date)}</td></tr></table>
     <table><thead><tr><th style="width:9%">ลำดับ</th><th style="width:10%">Size</th><th>รายการ</th><th style="width:11%">จำนวน</th><th style="width:11%">ราคา</th><th style="width:15%">จำนวนเงิน</th></tr></thead>
     <tbody>${rows}${blanks}<tr style="background:#f4cc18"><td></td><td colspan="2" class="center bold">รวม</td><td class="center bold">${(doc.items || []).reduce((s,i)=>s+(Number(i.qty)||0),0)}</td><td></td><td class="right bold">${fmtN(doc.total)}</td></tr></tbody></table>
     ${doc.notes ? `<div style="margin-top:10px"><b>หมายเหตุ:</b> ${doc.notes}</div>` : ''}
