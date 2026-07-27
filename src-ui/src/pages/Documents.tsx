@@ -1339,7 +1339,9 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
 function buildPDFHtml(doc: Document, company: Company | null, contact: Contact | null, t: (k: string) => string): string {
   const fmtN = (n: number | undefined | null) =>
     new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0)
-  const fmtD = (d: string | undefined | null) => d ? d.slice(0, 10) : '-'
+  const fmtD = (d: string | undefined | null) => d
+    ? d.slice(0, 10).split('-').reverse().join('-')
+    : '-'
   if (doc.type === 'delivery_note') return buildDeliveryNoteHtml(doc, contact, fmtN, fmtD)
   if (doc.type === 'work_order') return buildWorkOrderHtml(doc, company, fmtN, fmtD)
   if (doc.type === 'delivery_tax_invoice') return buildTaxInvoiceHtml(doc, company, contact, fmtN, fmtD)
