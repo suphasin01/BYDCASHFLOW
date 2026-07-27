@@ -207,7 +207,7 @@ export default function Payments() {
     <div class="head"><div><h1>${esc(activeCompany?.name || 'BYD CASHFLOW')}</h1><div>${esc(activeCompany?.address || '')}</div></div><div style="text-align:right"><h1>สรุปยอดชำระรายเดือน</h1><div>${esc(thaiMonth)}</div></div></div>
     <div class="sub"><b>ลูกค้า:</b> ${esc(name)}</div><table><thead><tr><th>ลำดับ</th><th>วันที่บิล</th><th>จำนวนเงิน</th><th>VAT</th><th>รวม VAT</th><th>วันที่ชำระ</th><th>จำนวนเงิน</th><th>หมายเหตุ</th></tr></thead>
     <tbody>${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td class="bill" style="text-align:center">${r.billDate ? r.billDate.split('-').reverse().join('/') : esc(r.label)}</td><td class="num bill">${r.amount ? fmt(r.amount) : ''}</td><td class="num bill">${r.vat ? fmt(r.vat) : ''}</td><td class="num bill">${r.total ? fmt(r.total) : ''}</td><td class="pay" style="text-align:center">${r.payDate ? r.payDate.split('-').reverse().join('/') : ''}</td><td class="num pay">${r.paid ? fmt(r.paid) : ''}</td><td>${esc(r.note)}</td></tr>`).join('')}${Array.from({length:Math.max(3,12-rows.length)},()=>'<tr><td>&nbsp;</td><td class="bill"></td><td class="bill"></td><td class="bill"></td><td class="bill"></td><td class="pay"></td><td class="pay"></td><td></td></tr>').join('')}</tbody>
-    <tfoot><tr><td colspan="2">รวม</td><td class="num">${fmt(statementData.bills.reduce((s,d)=>s+Math.max(0,(d.total||0)-(d.vat||0)),0))}</td><td class="num">${fmt(statementData.bills.reduce((s,d)=>s+(d.vat||0),0))}</td><td class="num">${fmt(statementData.billed)}</td><td></td><td class="num">${fmt(statementData.received)}</td><td></td></tr><tr><td colspan="7">ยอดคงเหลือยกไปเดือนถัดไป</td><td class="num closing">${fmt(statementData.closing)}</td></tr></tfoot></table></div></body></html>`
+    <tfoot><tr><td colspan="2">รวม</td><td class="num">${fmt(statementData.bills.reduce((s,d)=>s+Math.max(0,(d.total||0)-(d.vat||0)),0))}</td><td class="num">${fmt(statementData.bills.reduce((s,d)=>s+(d.vat||0),0))}</td><td class="num">${fmt(statementData.billed)}</td><td></td><td class="num">${fmt(statementData.received)}</td><td></td></tr><tr><td colspan="7">ยอดคงเหลือที่ยังไม่ได้จ่าย</td><td class="num closing">${fmt(statementData.closing)}</td></tr></tfoot></table></div></body></html>`
   }
 
   const openHistory = async (d: PayableDoc) => {
@@ -490,7 +490,7 @@ export default function Payments() {
                 ['ยอดค้างเดือนก่อน', statementData.opening, 'text-warning'],
                 ['ยอดวางบิลเดือนนี้', statementData.billed, 'text-foreground'],
                 ['รับชำระเดือนนี้', statementData.received, 'text-success'],
-                ['ยอดคงเหลือยกไป', statementData.closing, 'text-danger'],
+                ['ยอดคงเหลือที่ยังไม่ได้จ่าย', statementData.closing, 'text-danger'],
               ] as Array<[string, number, string]>).map(([label, value, color]) => (
                 <div key={label} className="rounded-xl border border-content3 bg-content2 p-3">
                   <div className="text-[11px] text-default-500">{label}</div>
