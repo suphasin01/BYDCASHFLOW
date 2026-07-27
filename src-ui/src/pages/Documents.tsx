@@ -1464,7 +1464,7 @@ function buildTaxInvoiceHtml(
   const vatRate = beforeTax > 0 ? Number(doc.vat || 0) / beforeTax * 100 : 0
   const customerName = contact?.company || doc.contact_name || contact?.name || '-'
   const logo = company?.logo_url ? `<img class="logo" src="${company.logo_url}" alt="" />` : ''
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ใบส่งสินค้า/ใบกำกับภาษี ${doc.number || ''}</title>
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ใบเสร็จรับเงิน/ใบกำกับภาษี ${doc.number || ''}</title>
   <style>
   *{box-sizing:border-box}body{margin:0;background:#fff;color:#111;font-family:Tahoma,"Sarabun",sans-serif;font-size:10.8px;line-height:1.25}
   @page{size:A4 portrait;margin:7mm}.page{width:100%;max-width:196mm;min-height:283mm;margin:auto;padding:2mm}
@@ -1487,7 +1487,7 @@ function buildTaxInvoiceHtml(
       <div class="company-name">${company?.name || 'BYD CASHFLOW'}</div>
       ${company?.branch ? `<div>${company.branch}</div>` : ''}${company?.tax_id ? `<div>เลขประจำตัวผู้เสียภาษี Tax ID: ${company.tax_id}</div>` : ''}
       ${company?.address ? `<div>${company.address}</div>` : ''}<div>${company?.phone ? `โทร. ${company.phone}` : ''}${company?.email ? ` · ${company.email}` : ''}</div>
-    </div></div><div class="title-box"><div class="title">ใบส่งสินค้า/ใบกำกับภาษี<br><span style="font-size:11px">DELIVERY ORDER / TAX INVOICE</span></div><div class="copy">ต้นฉบับ / ORIGINAL<br>สำหรับลูกค้า</div></div></div>
+    </div></div><div class="title-box"><div class="title">ใบเสร็จรับเงิน/ใบกำกับภาษี<br><span style="font-size:11px">RECEIPT / TAX INVOICE</span></div><div class="copy">ต้นฉบับ / ORIGINAL<br>สำหรับลูกค้า</div></div></div>
     <div class="info-grid"><div class="customer">
       <div class="customer-row"><b>ลูกค้า Customer</b><span>${customerName}</span></div><div class="customer-row"><b>สาขา Branch</b><span>${contact?.branch || 'สำนักงานใหญ่'}</span></div>
       <div class="customer-row"><b>เลขประจำตัวผู้เสียภาษี Tax ID</b><span>${contact?.tax_id || '-'}</span></div><div class="customer-row"><b>ที่อยู่ Address</b><span>${contact?.address || '-'}</span></div>
