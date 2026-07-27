@@ -451,8 +451,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   }
 
   const openEdit = async (id: number) => {
-    const [doc, { data: cs }, { data: ps }] = await Promise.all([getDocument(id), getContacts(), getProducts()])
-    setContacts(cs); setProducts(ps)
+    const [doc, { data: cs }, { data: ps }, { data: emps }] = await Promise.all([getDocument(id), getContacts(), getProducts(), getEmployees()])
+    setContacts(cs); setProducts(ps); setEmployees(emps)
     setEditDoc(doc)
     setFType(doc.type); setFNumber(doc.number || ''); setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
     setFDate(doc.date?.slice(0, 10) || today()); setFDue(doc.due_date?.slice(0, 10) || '')
@@ -517,8 +517,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
 
   const doConvert = async () => {
     if (!viewDoc || !convertType) return
-    const [{ data: cs }, { data: ps }] = await Promise.all([getContacts(), getProducts()])
-    setContacts(cs); setProducts(ps); setEditDoc(null)
+    const [{ data: cs }, { data: ps }, { data: emps }] = await Promise.all([getContacts(), getProducts(), getEmployees()])
+    setContacts(cs); setProducts(ps); setEmployees(emps); setEditDoc(null)
     setFType(convertType); setFNumber('')
     setFRefDocId(viewDoc.id)
     setFContactId(viewDoc.contact_id ? String(viewDoc.contact_id) : ''); setFContactName(viewDoc.contact_name || '')
@@ -544,8 +544,8 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
   }
 
   const doDuplicate = async (docId: number) => {
-    const [doc, { data: cs }, { data: ps }] = await Promise.all([getDocument(docId), getContacts(), getProducts()])
-    setContacts(cs); setProducts(ps); setEditDoc(null)
+    const [doc, { data: cs }, { data: ps }, { data: emps }] = await Promise.all([getDocument(docId), getContacts(), getProducts(), getEmployees()])
+    setContacts(cs); setProducts(ps); setEmployees(emps); setEditDoc(null)
     setFType(doc.type); setFNumber('')
     setFRefDocId(null)
     setFContactId(doc.contact_id ? String(doc.contact_id) : ''); setFContactName(doc.contact_name || '')
@@ -997,7 +997,20 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                   <div className="grid grid-cols-2 gap-3">
                     <TextField label="เงื่อนไขชำระ / Credit Term" placeholder="เช่น เครดิต 30 วัน" value={taxInvoiceMeta.credit_term || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, credit_term: e.target.value }))} />
                     <TextField label="อ้างอิง / Reference" value={taxInvoiceMeta.reference || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, reference: e.target.value }))} />
-                    <TextField label="พนักงานขาย / Employee" value={taxInvoiceMeta.salesperson || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, salesperson: e.target.value }))} />
+                    <div>
+                      <label className={LABEL_CLASS}>พนักงานขาย / Employee</label>
+                      <select className={SELECT_CLASS} value={taxInvoiceMeta.salesperson || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, salesperson: e.target.value }))}>
+                        <option value="">— เลือกพนักงาน —</option>
+                        {taxInvoiceMeta.salesperson && !employees.some(employee => employee.name === taxInvoiceMeta.salesperson) && (
+                          <option value={taxInvoiceMeta.salesperson}>{taxInvoiceMeta.salesperson}</option>
+                        )}
+                        {employees.map(employee => (
+                          <option key={employee.id} value={employee.name}>
+                            {employee.employee_no ? `${employee.employee_no} · ` : ''}{employee.name}{employee.position ? ` — ${employee.position}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <TextField label="เลขที่ใบสั่งซื้อ / PO No." value={taxInvoiceMeta.po_number || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, po_number: e.target.value }))} />
                   </div>
                 </div>
