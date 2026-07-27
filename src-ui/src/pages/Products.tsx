@@ -47,9 +47,9 @@ export default function Products() {
 
   useEffect(() => { load() }, [])
 
-  const openCreate = (usage: 'order' | 'delivery') => {
+  const openCreate = () => {
     setEditing(null)
-    setFCode(''); setFName(''); setFPrice(0); setFUnit(''); setFVat('excluded'); setFCategory(''); setFUsage(usage); setFDescription(''); setFImage(null)
+    setFCode(''); setFName(''); setFPrice(0); setFUnit(''); setFVat('excluded'); setFCategory(''); setFUsage('both'); setFDescription(''); setFImage(null)
     setModal(true)
   }
 
@@ -105,10 +105,7 @@ export default function Products() {
             <option value="both">{t('product_usage_both')}</option>
           </select>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
-          <Btn variant="success" onClick={() => openCreate('order')} className="w-full whitespace-nowrap">+ {t('product_usage_order')}</Btn>
-          <Btn variant="success" onClick={() => openCreate('delivery')} className="w-full whitespace-nowrap">+ {t('product_usage_delivery')}</Btn>
-        </div>
+        <Btn variant="success" onClick={openCreate} className="w-full sm:w-auto">{t('btn_add_product')}</Btn>
       </div>
 
       <Card className="bg-content1 border border-content3 glow-hover" shadow="none">
@@ -176,7 +173,7 @@ export default function Products() {
       </Card>
 
       <Modal open={modal} onClose={() => setModal(false)} size="xl"
-        title={editing ? t('modal_edit_product') : `${t('modal_new_product')} — ${t(`product_usage_${fUsage}`)}`}
+        title={editing ? t('modal_edit_product') : t('modal_new_product')}
         footer={<>
           <Btn variant="ghost" onClick={() => setModal(false)}>{t('btn_cancel')}</Btn>
           <Btn variant="primary" onClick={save}>{t('btn_save')}</Btn>
