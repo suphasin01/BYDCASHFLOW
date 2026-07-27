@@ -76,6 +76,10 @@ export interface WorkOrderMeta {
 }
 
 export interface TaxInvoiceMeta {
+  credit_term?: string
+  reference?: string
+  salesperson?: string
+  po_number?: string
   payment_method?: 'cash' | 'cheque' | 'transfer' | ''
   payment_bank?: string
   payment_branch?: string

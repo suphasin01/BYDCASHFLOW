@@ -991,6 +991,17 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
                 <TextField type="date" label={t('lbl_date')} value={fDate} onChange={e => setFDate(e.target.value)} />
                 <TextField type="date" label={fType === 'delivery_tax_invoice' ? t('lbl_due_date') : 'กำหนดส่ง'} value={fDue} onChange={e => setFDue(e.target.value)} />
               </div>
+              {fType === 'delivery_tax_invoice' && (
+                <div className="border border-content3 rounded-lg p-4">
+                  <div className="text-[12px] font-semibold text-default-600 mb-3">ข้อมูลอ้างอิงในแบบพิมพ์</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <TextField label="เงื่อนไขชำระ / Credit Term" placeholder="เช่น เครดิต 30 วัน" value={taxInvoiceMeta.credit_term || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, credit_term: e.target.value }))} />
+                    <TextField label="อ้างอิง / Reference" value={taxInvoiceMeta.reference || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, reference: e.target.value }))} />
+                    <TextField label="พนักงานขาย / Employee" value={taxInvoiceMeta.salesperson || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, salesperson: e.target.value }))} />
+                    <TextField label="เลขที่ใบสั่งซื้อ / PO No." value={taxInvoiceMeta.po_number || ''} onChange={e => setTaxInvoiceMeta(m => ({ ...m, po_number: e.target.value }))} />
+                  </div>
+                </div>
+              )}
               {fType === 'delivery_note' && (
                 <div className="border border-content3 rounded-lg bg-content2 px-4 py-3">
                   <div className="text-[11px] font-medium text-default-500 uppercase tracking-wide mb-2">บริษัทผู้ออกใบส่งของ</div>
@@ -1477,7 +1488,7 @@ function buildTaxInvoiceHtml(
       <div class="customer-row"><b>เลขประจำตัวผู้เสียภาษี Tax ID</b><span>${contact?.tax_id || '-'}</span></div><div class="customer-row"><b>ที่อยู่ Address</b><span>${contact?.address || '-'}</span></div>
     </div><table class="meta"><tbody>
       <tr><td>เลขที่ No.</td><td>${doc.number || '-'}</td></tr><tr><td>วันที่ Date</td><td>${fmtD(doc.date)}</td></tr><tr><td>กำหนดชำระ Due Date</td><td>${fmtD(doc.due_date)}</td></tr>
-      <tr><td>เงื่อนไขชำระ Credit Term</td><td></td></tr><tr><td>อ้างอิง Reference</td><td>${doc.source_document?.number || ''}</td></tr><tr><td>พนักงานขาย Employee</td><td></td></tr><tr><td>เลขที่ใบสั่งซื้อ PO No.</td><td></td></tr>
+      <tr><td>เงื่อนไขชำระ Credit Term</td><td>${invoiceMeta.credit_term || ''}</td></tr><tr><td>อ้างอิง Reference</td><td>${invoiceMeta.reference || doc.source_document?.number || ''}</td></tr><tr><td>พนักงานขาย Employee</td><td>${invoiceMeta.salesperson || ''}</td></tr><tr><td>เลขที่ใบสั่งซื้อ PO No.</td><td>${invoiceMeta.po_number || ''}</td></tr>
     </tbody></table></div>
     <table class="items"><thead><tr><th>ลำดับ<br>Item</th><th>รายการสินค้า<br>Description</th><th>จำนวน<br>Qty</th><th>หน่วย<br>Unit</th><th>ราคาต่อหน่วย<br>Unit Price</th><th>ส่วนลด<br>Discount</th><th>จำนวนเงิน<br>Amount</th></tr></thead><tbody>${rows}${blanks}</tbody></table>
     <div class="summary"><div class="left-summary"><div class="notes-box">${doc.notes || ''}</div><div class="amount-words">(${thaiBahtText(Number(doc.total || 0))})</div></div>
