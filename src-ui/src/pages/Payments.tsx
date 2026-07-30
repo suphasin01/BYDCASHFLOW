@@ -195,7 +195,16 @@ export default function Payments() {
     const rows = [
       ...(statementData.opening > 0 ? [{ billDate: '', label: 'ยอดยกมา', amount: statementData.opening, vat: 0, total: statementData.opening, payDate: '', paid: 0, note: 'ยอดค้างชำระเดือนที่แล้ว' }] : []),
       ...statementData.bills.map(d => ({ billDate: d.date, label: d.number || `#${d.id}`, amount: Math.max(0, (d.total || 0) - (d.vat || 0)), vat: d.vat || 0, total: d.total || 0, payDate: '', paid: 0, note: d.notes || '' })),
-      ...statementData.paid.map(p => ({ billDate: '', label: p.doc_number || '', amount: 0, vat: 0, total: 0, payDate: p.date, paid: p.amount, note: p.notes || p.reference || '' })),
+      ...statementData.paid.map(p => ({
+        billDate: '',
+        label: '',
+        amount: 0,
+        vat: 0,
+        total: 0,
+        payDate: p.date,
+        paid: p.amount,
+        note: [p.doc_number, p.notes || p.reference].filter(Boolean).join(' · '),
+      })),
     ]
     const thaiMonth = new Intl.DateTimeFormat('th-TH', { month: 'long', year: 'numeric' }).format(new Date(`${statementMonth}-01T00:00:00`))
     return `<!doctype html><html><head><meta charset="utf-8"><style>
