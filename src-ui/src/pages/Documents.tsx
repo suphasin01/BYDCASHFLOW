@@ -486,7 +486,10 @@ export default function Documents({ onNavigate: _onNavigate }: { onNavigate?: (p
         ref_doc_id: fRefDocId, items: validItems,
       }
       if (modal === 'edit' && editDoc) { await updateDocument(editDoc.id, payload); toast(t('toast_doc_edited')) }
-      else { await createDocument(payload); toast(t('toast_doc_saved')) }
+      else {
+        await createDocument(payload)
+        toast(t(fType === 'work_order' ? 'toast_work_order_delivery_created' : 'toast_doc_saved'))
+      }
       setModal('none'); load()
     } catch (e: unknown) { toast(e instanceof Error ? e.message : String(e), 'err') }
   }

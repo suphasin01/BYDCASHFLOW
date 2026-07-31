@@ -448,6 +448,30 @@ function validateDocumentWorkflow(data: Record<string, unknown>, items: Record<s
   }
 }
 
+function insertDocument(data: Record<string, unknown>, items: Record<string, unknown>[] = []): number {
+  validateDocumentWorkflow(data, items);
+  if (!data.number) data.number = generateDocNumber(data.type as string);
+  ensureTaxInvoicePoNumber(data);
+  const r = run(`INSERT INTO documents (type,number,contact_id,contact_name,date,due_date,status,subtotal,discount,vat,total,notes,meta,ref_doc_id) VALUES (:type,:number,:contact_id,:contact_name,:date,:due_date,:status,:subtotal,:discount,:vat,:total,:notes,:meta,:ref_doc_id)`, {
+    ':type': data.type, ':number': data.number, ':contact_id': data.contact_id ?? null,
+    ':contact_name': data.contact_name ?? null, ':date': data.date ?? new Date().toISOString().slice(0,10),
+    ':due_date': data.due_date ?? null, ':status': data.status ?? 'draft',
+    ':subtotal': data.subtotal ?? 0, ':discount': data.discount ?? 0, ':vat': data.vat ?? 0,
+    ':total': data.total ?? 0, ':notes': data.notes ?? null, ':meta': data.meta ?? null, ':ref_doc_id': data.ref_doc_id ?? null,
+  });
+  const docId = r.lastInsertRowid as number;
+  items.forEach((item, idx) => {
+    run(`INSERT INTO document_items (document_id,product_id,description,item_note,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,sleeve_length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:item_note,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:sleeve_length,:cut_qty,:received_qty)`, {
+      ':document_id': docId, ':product_id': item.product_id ?? null,
+      ':description': item.description ?? '', ':item_note': item.item_note ?? null, ':qty': item.qty ?? 1, ':unit': item.unit ?? null,
+      ':price': item.price ?? 0, ':discount': item.discount ?? 0, ':amount': item.amount ?? 0, ':sort_order': idx,
+      ':color': item.color ?? null, ':size': item.size ?? null, ':fabric_width': item.fabric_width ?? null,
+      ':chest': item.chest ?? null, ':length': item.length ?? null, ':sleeve_length': item.sleeve_length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
+    });
+  });
+  return docId;
+}
+
 export const documentRepo = {
   list: (filters: { type?: string; status?: string; contact_id?: number; limit?: number; offset?: number; q?: string; month?: string } = {}) => {
     let sql = 'SELECT d.*, c.name as contact_display FROM documents d LEFT JOIN contacts c ON d.contact_id = c.id WHERE 1=1';
@@ -499,27 +523,27 @@ export const documentRepo = {
     return { ...doc, items, payments, linked_documents, source_document, workflow_status };
   },
   create: (data: Record<string, unknown>, items: Record<string, unknown>[] = []) => {
-    validateDocumentWorkflow(data, items);
-    if (!data.number) data.number = generateDocNumber(data.type as string);
-    ensureTaxInvoicePoNumber(data);
-    const r = run(`INSERT INTO documents (type,number,contact_id,contact_name,date,due_date,status,subtotal,discount,vat,total,notes,meta,ref_doc_id) VALUES (:type,:number,:contact_id,:contact_name,:date,:due_date,:status,:subtotal,:discount,:vat,:total,:notes,:meta,:ref_doc_id)`, {
-      ':type': data.type, ':number': data.number, ':contact_id': data.contact_id ?? null,
-      ':contact_name': data.contact_name ?? null, ':date': data.date ?? new Date().toISOString().slice(0,10),
-      ':due_date': data.due_date ?? null, ':status': data.status ?? 'draft',
-      ':subtotal': data.subtotal ?? 0, ':discount': data.discount ?? 0, ':vat': data.vat ?? 0,
-      ':total': data.total ?? 0, ':notes': data.notes ?? null, ':meta': data.meta ?? null, ':ref_doc_id': data.ref_doc_id ?? null,
+    const createWithAutomaticDelivery = db.transaction(() => {
+      const docId = insertDocument(data, items);
+      if (data.type === 'work_order') {
+        insertDocument({
+          type: 'delivery_note',
+          contact_id: data.contact_id ?? null,
+          contact_name: data.contact_name ?? null,
+          date: data.date ?? new Date().toISOString().slice(0,10),
+          due_date: data.due_date ?? null,
+          status: 'draft',
+          subtotal: data.subtotal ?? 0,
+          discount: data.discount ?? 0,
+          vat: data.vat ?? 0,
+          total: data.total ?? 0,
+          notes: data.notes ?? null,
+          ref_doc_id: docId,
+        }, items);
+      }
+      return documentRepo.get(docId);
     });
-    const docId = r.lastInsertRowid as number;
-    items.forEach((item, idx) => {
-      run(`INSERT INTO document_items (document_id,product_id,description,item_note,qty,unit,price,discount,amount,sort_order,color,size,fabric_width,chest,length,sleeve_length,cut_qty,received_qty) VALUES (:document_id,:product_id,:description,:item_note,:qty,:unit,:price,:discount,:amount,:sort_order,:color,:size,:fabric_width,:chest,:length,:sleeve_length,:cut_qty,:received_qty)`, {
-        ':document_id': docId, ':product_id': item.product_id ?? null,
-        ':description': item.description ?? '', ':item_note': item.item_note ?? null, ':qty': item.qty ?? 1, ':unit': item.unit ?? null,
-        ':price': item.price ?? 0, ':discount': item.discount ?? 0, ':amount': item.amount ?? 0, ':sort_order': idx,
-        ':color': item.color ?? null, ':size': item.size ?? null, ':fabric_width': item.fabric_width ?? null,
-        ':chest': item.chest ?? null, ':length': item.length ?? null, ':sleeve_length': item.sleeve_length ?? null, ':cut_qty': item.cut_qty ?? 0, ':received_qty': item.received_qty ?? 0,
-      });
-    });
-    return documentRepo.get(docId);
+    return createWithAutomaticDelivery();
   },
   update: (id: number, data: Record<string, unknown>, items?: Record<string, unknown>[]) => {
     const current = get<Record<string, unknown>>('SELECT * FROM documents WHERE id = ?', id);
